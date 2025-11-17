@@ -10,7 +10,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: calc(100vh - 60px);
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /* כרטיס מותאם למסכים קטנים */
@@ -27,7 +29,7 @@
 }
 
 /* כותרת עליונה */
-.header {
+.header-welcome {
   display: flex;
   justify-content: space-between;
   align-items: center;

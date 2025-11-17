@@ -6,23 +6,24 @@ import Header_in from "../../components/Header_in/Header.jsx";
 
 export default function Home() {
   return (
-    <div className="home-page" dir="rtl" lang="he">
+    <>
       <Header_in />
-      <div className="home-card">
-        {/* כותרת עליונה + לוגו */}
-        <header className="header">
-          <div className="header-title">
-            <div className="header-title-main">שלום, מתנדב/ת</div>
-            <div className="header-title-sub">
-              ברוך/ה הבא/ה ל-Helper On The Way
+      <div className="home-page" dir="rtl" lang="he">
+        <div className="home-card">
+          {/* כותרת עליונה + לוגו */}
+          <header className="header-welcome">
+            <div className="header-title">
+              <div className="header-title-main">שלום, מתנדב/ת</div>
+              <div className="header-title-sub">
+                ברוך/ה הבא/ה ל-Helper On The Way
+              </div>
             </div>
-          </div>
-          <img
-            src="./helper-logo.jpeg"
-            alt="Helper On The Way"
-            className="logo-small"
-          />
-        </header>
+            <img
+              src="./helper-logo.jpeg"
+              alt="Helper On The Way"
+              className="logo-small"
+            />
+          </header>
 
         {/* מפה + טקסט */}
         <section className="map-card">
@@ -77,7 +78,8 @@ export default function Home() {
             <span>פרופיל</span>
           </Link>
         </nav>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

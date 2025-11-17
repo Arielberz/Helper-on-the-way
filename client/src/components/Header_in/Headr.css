@@ -101,48 +101,21 @@
   border-radius: 2px;
 }
 
-/* Auth Buttons */
-.auth-buttons {
+/* User Profile Section */
+.user-profile {
   display: flex;
-  gap: 0.75rem;
   align-items: center;
+  gap: 0.75rem;
 }
 
-.btn {
-  padding: 0.5rem 1.2rem;
-  text-decoration: none;
+.user-greeting {
+  color: white;
   font-weight: 600;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  text-align: center;
+  font-size: 0.95rem;
   white-space: nowrap;
-  font-size: 0.9rem;
-}
-
-.btn-login {
-  color: white;
-  background-color: transparent;
-  border: 2px solid white;
-}
-
-.btn-login:hover {
-  background-color: white;
-  color: #1e3a8a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.btn-register {
-  color: #1e3a8a;
-  background-color: white;
-  border: 2px solid white;
-}
-
-.btn-register:hover {
-  background-color: transparent;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
 }
 
 /* Responsive Design */

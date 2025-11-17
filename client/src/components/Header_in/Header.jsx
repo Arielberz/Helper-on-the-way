@@ -15,26 +15,30 @@ const Header = () => {
           <ul className="nav-list">
             <li className="nav-item">
               <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                Home
+                בית
               </NavLink>
             </li>
             <li className="nav-item">
               <NavLink to="/chat" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                Chat
+                צ'אט
               </NavLink>
             </li>
             <li className="nav-item">
               <NavLink to="/payment" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                Payment
+                תשלום
               </NavLink>
             </li>
             <li className="nav-item">
               <NavLink to="/rating" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
-                Rating
+                דירוג
               </NavLink>
             </li>
           </ul>
         </nav>
+
+        <div className="user-profile">
+          <span className="user-greeting">שלום, מתנדב/ת</span>
+        </div>
       </div>
     </header>
   );
