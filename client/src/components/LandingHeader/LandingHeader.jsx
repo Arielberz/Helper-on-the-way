@@ -1,14 +1,14 @@
 import React from "react";
 import {NavLink} from "react-router-dom"; 
 
-const Header = () => {
+const LandingHeader = () => {
   return (
     <header>
       <h1>My App</h1>
       <nav>
         <ul>
           <li>
-            <NavLink to="/">Home</NavLink>
+            <NavLink to="/"><img src="./logo.png" alt="Logo" /></NavLink>
           </li>
             <li>
             <NavLink to="/login">Login</NavLink>
@@ -22,4 +22,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default LandingHeader;

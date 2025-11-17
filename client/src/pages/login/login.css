@@ -1,0 +1,119 @@
+/* Floating back button (top-left, white style) */
+.back-button-floating {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  background: transparent;
+  color: #333;
+  border: 2px solid #333;
+  border-radius: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.back-button-floating:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Rubik", system-ui, sans-serif;
+}
+
+.login-page {
+  background: #f3f5f8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* ✨ הכרטיס מצומצם למסכים קטנים */
+.card {
+  background: #ffffff;
+  width: 300px;      /* היה 380px */
+  max-width: 90%;
+  padding: 26px 22px 32px;
+  border-radius: 20px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.08);
+}
+
+.logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+/* ✨ לוגו קטן למסך קטן */
+.logo-img {
+  height: 70px;   /* היה 90px */
+  width: auto;
+}
+
+.title {
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 22px;
+  font-size: 20px;   /* היה 24px */
+  font-weight: 700;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  text-align: right;
+}
+
+/* ✨ שדות קטנים */
+.field-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d0d5dd;
+  font-size: 13px;
+}
+
+.field-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.18);
+}
+
+/* ✨ כפתור קטן יותר */
+.button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 0;
+  background: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #0064d0;
+}
+
+.bottom-text {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.bottom-text a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  margin-right: 4px;
+}
