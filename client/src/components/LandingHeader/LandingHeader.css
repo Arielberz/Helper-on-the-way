@@ -1,0 +1,110 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Rubik", system-ui, sans-serif;
+}
+
+.landing-header {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo-img {
+  height: 50px;
+  width: auto;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin-left: 12px;
+}
+
+.nav-menu {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-menu li {
+  display: inline-block;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: #f3f5f8;
+}
+
+.nav-link.login-link {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.nav-link.login-link:hover {
+  background: rgba(0, 123, 255, 0.08);
+}
+
+.nav-link.register-link {
+  background: #007bff;
+  color: #ffffff;
+}
+
+.nav-link.register-link:hover {
+  background: #0064d0;
+}
+
+/* Responsive design for mobile */
+@media (max-width: 640px) {
+  .landing-header {
+    padding: 10px 16px;
+  }
+
+  .app-title {
+    font-size: 18px;
+  }
+
+  .nav-menu {
+    gap: 8px;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    padding: 6px 14px;
+  }
+
+  .logo-img {
+    height: 40px;
+  }
+}
