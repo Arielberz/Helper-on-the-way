@@ -1,11 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "./Home.css";
+import Header_in from "../../components/Header_in/Header.jsx";
 
 
 export default function Home() {
   return (
     <div className="home-page" dir="rtl" lang="he">
+      <Header_in />
       <div className="home-card">
         {/* כותרת עליונה + לוגו */}
         <header className="header">

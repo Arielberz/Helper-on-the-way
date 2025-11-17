@@ -35,15 +35,6 @@ const Header = () => {
             </li>
           </ul>
         </nav>
-
-        <div className="auth-buttons">
-          <NavLink to="/login" className="btn btn-login">
-            Login
-          </NavLink>
-          <NavLink to="/register" className="btn btn-register">
-            Sign Up
-          </NavLink>
-        </div>
       </div>
     </header>
   );
