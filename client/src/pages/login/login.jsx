@@ -15,7 +15,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const API_URL = process.env.API_URL;
+    const API_URL = import.meta.env.VITE_API_URL;
 
     try {
       const response = await axios.post(`${API_URL}/api/users/login`, {
@@ -57,38 +57,38 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page" dir="rtl" lang="he">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" dir="rtl" lang="he">
       <button
         type="button"
-        className="back-button-floating"
+        className="fixed top-6 right-6 bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg z-10"
         onClick={() => navigate('/')}
         aria-label="חזרה לעמוד הראשי"
       >
         ← חזרה
       </button>
 
-      <div className="card">
-        <form onSubmit={handleSubmit}>
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* לוגו */}
-         <div className="logo-wrap">
+         <div className="flex justify-center mb-4">
           <img
             src="./helper-logo.jpeg"
             alt="HELPER ON THE WAY - סולידריות בכבישים"
-            className="logo-img"
+            className="h-24 w-24 object-contain rounded-full"
           />
         </div>
 
 
-        <div className="title">התחברות</div>
+        <div className="text-3xl font-bold text-center text-gray-800 mb-6">התחברות</div>
 
-        {error && <div style={{color: 'red', marginBottom: '10px', textAlign: 'center'}}>{error}</div>}
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm">{error}</div>}
 
         {/* אימייל/טלפון/שם משתמש */}
-        <div className="field">
-          <div className="field-label">אימייל / טלפון / שם משתמש</div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">אימייל / טלפון / שם משתמש</label>
           <input 
-            className="field-input" 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none" 
             type="text" 
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
@@ -97,10 +97,10 @@ export default function Login() {
         </div>
 
         {/* סיסמה */}
-        <div className="field">
-          <div className="field-label">סיסמה</div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">סיסמה</label>
           <input 
-            className="field-input" 
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none" 
             type="password" 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -108,15 +108,19 @@ export default function Login() {
           />
         </div>
 
-        <button className="button" type="submit" disabled={loading}>
+        <button 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" 
+          type="submit" 
+          disabled={loading}
+        >
           {loading ? "מתחבר..." : "כניסה"}
         </button>
 
         </form>
 
-        <div className="bottom-text">
-          אין לך חשבון?
-          <Link to="/register">להרשמה</Link>
+        <div className="mt-6 text-center text-gray-600">
+          אין לך חשבון?{" "}
+          <Link to="/register" className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors duration-200">להרשמה</Link>
         </div>
 
       </div>
