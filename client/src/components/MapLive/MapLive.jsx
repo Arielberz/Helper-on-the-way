@@ -131,7 +131,7 @@ export default function MapLive() {
     <MapContainer
       center={position}
       zoom={15}
-      style={{ height: "220px", width: "100%", borderRadius: "14px" }}
+      style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
     >
       <TileLayer
         attribution='&copy; OpenStreetMap'
