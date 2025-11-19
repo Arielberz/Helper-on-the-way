@@ -1,0 +1,161 @@
+// src/components/MapLive/MapLive.jsx
+import React, { useEffect, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix for default marker icons in Leaflet with React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+const API_BASE = import.meta.env.VITE_API_URL; 
+
+// קומפוננטה פנימית שמטפלת בלחיצה על המפה
+function ClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      onMapClick({ lat, lng });
+    },
+  });
+  return null;
+}
+
+export default function MapLive() {
+  const [position, setPosition] = useState(null);        // המיקום שלך
+  const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
+
+  const token = localStorage.getItem("token"); // מהשמור אחרי login/register
+
+  // 1. מציאת מיקום המשתמש (GPS)
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      alert("הדפדפן לא תומך במיקום (Geolocation)");
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setPosition([pos.coords.latitude, pos.coords.longitude]);
+      },
+      (err) => {
+        console.error(err);
+        alert("לא ניתן לקרוא את המיקום, בדוק הרשאות GPS.");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
+      }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  // 2. טעינת כל המיקומים מהשרת כל כמה שניות
+  useEffect(() => {
+    if (!token) return; // אם אין טוקן אין מה לקרוא לשרת
+
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/locations`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const json = await res.json();
+        // json.data אם הקונטרולר מחזיר { success, data: [...] }
+        setSharedMarkers(json.data || []);
+      } catch (err) {
+        console.error("Failed to fetch locations", err);
+      }
+    };
+
+    fetchLocations(); // פעם ראשונה
+    const intervalId = setInterval(fetchLocations, 3000); // כל 3 שניות
+
+    return () => clearInterval(intervalId);
+  }, [token]);
+
+  // 3. מה קורה כשאתה לוחץ על המפה
+  const handleMapClick = async ({ lat, lng }) => {
+    if (!token) {
+      alert("אין חיבור משתמש (token), צריך להתחבר מחדש");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/locations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ lat, lng }),
+      });
+
+      const json = await res.json();
+
+      if (!json.success) {
+        console.error("Error from server:", json);
+        return;
+      }
+
+      // מוסיפים את המיקום לרשימת הפינים המקומית
+      setSharedMarkers((prev) => [...prev, json.data]);
+    } catch (err) {
+      console.error("Failed to send location", err);
+      alert("לא הצלחנו לשמור את המיקום בשרת");
+    }
+  };
+
+  if (!position) {
+    return (
+      <div style={{ textAlign: "center", padding: "20px 0" }}>
+        טוען מיקום...
+      </div>
+    );
+  }
+
+  return (
+    <MapContainer
+      center={position}
+      zoom={15}
+      style={{ height: "220px", width: "100%", borderRadius: "14px" }}
+    >
+      <TileLayer
+        attribution='&copy; OpenStreetMap'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {/* המיקום הנוכחי שלך */}
+      <Marker position={position}>
+        <Popup>אתה כאן עכשיו 🚗</Popup>
+      </Marker>
+
+      {/* מאזין ללחיצה על המפה */}
+      <ClickHandler onMapClick={handleMapClick} />
+
+      {/* כל הנקודות שהגיעו מהשרת */}
+      {sharedMarkers.map((m) => (
+        <Marker key={m._id || m.id} position={[m.lat, m.lng]}>
+          <Popup>
+            נקודה משותפת<br />
+            lat: {m.lat.toFixed(5)} <br />
+            lng: {m.lng.toFixed(5)}
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+  );
+}
