@@ -11,7 +11,7 @@ export default function Register() {
     password: "",
     confirmPassword: ""
   });
-  const API_URL = process.env.API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -135,37 +135,37 @@ export default function Register() {
   };
 
   return (
-    <div className="register-page" dir="rtl" lang="he">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" dir="rtl" lang="he">
       <button
         type="button"
-        className="back-button-floating"
+        className="fixed top-6 right-6 bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg z-10"
         onClick={() => navigate('/')}
         aria-label="חזרה לעמוד הראשי"
       >
         ← חזרה
       </button>
 
-      <div className="card">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
 
         {/* לוגו */}
-        <div className="logo-wrap">
+        <div className="flex justify-center mb-4">
           <img
             src="./helper-logo.jpeg"
             alt="HELPER ON THE WAY - סולידריות בכבישים"
-            className="logo-img"
+            className="h-24 w-24 object-contain rounded-full"
           />
         </div>
 
-        <div className="title">הרשמה</div>
+        <div className="text-3xl font-bold text-center text-gray-800 mb-6">הרשמה</div>
 
-        {error && <div style={{ color: "red", marginBottom: "10px", textAlign: "center" }}>{error}</div>}
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm mb-4">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* שם מלא */}
-          <div className="field">
-            <div className="field-label">שם מלא</div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">שם מלא</label>
             <input 
-              className="field-input" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
               type="text" 
               name="username"
               value={formData.username}
@@ -175,10 +175,10 @@ export default function Register() {
           </div>
 
           {/* מספר טלפון */}
-          <div className="field">
-            <div className="field-label">מספר טלפון</div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">מספר טלפון</label>
             <input 
-              className="field-input" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
               type="tel" 
               name="phone"
               value={formData.phone}
@@ -188,10 +188,10 @@ export default function Register() {
           </div>
 
           {/* אימייל */}
-          <div className="field">
-            <div className="field-label">אימייל</div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">אימייל</label>
             <input 
-              className="field-input" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
               type="email" 
               name="email"
               value={formData.email}
@@ -201,10 +201,10 @@ export default function Register() {
           </div>
 
           {/* סיסמה */}
-          <div className="field">
-            <div className="field-label">סיסמה</div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">סיסמה</label>
             <input 
-              className="field-input" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
               type="password" 
               name="password"
               value={formData.password}
@@ -214,10 +214,10 @@ export default function Register() {
           </div>
 
           {/* אימות סיסמה */}
-          <div className="field">
-            <div className="field-label">אימות סיסמה</div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">אימות סיסמה</label>
             <input 
-              className="field-input" 
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
               type="password" 
               name="confirmPassword"
               value={formData.confirmPassword}
@@ -226,14 +226,18 @@ export default function Register() {
             />
           </div>
 
-          <button className="button" type="submit" disabled={loading}>
+          <button 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-6" 
+            type="submit" 
+            disabled={loading}
+          >
             {loading ? "מבצע הרשמה..." : "צור חשבון"}
           </button>
         </form>
 
-        <div className="bottom-text">
-          כבר יש לך חשבון?
-          <Link to="/login">להתחברות</Link>
+        <div className="mt-6 text-center text-gray-600">
+          כבר יש לך חשבון?{" "}
+          <Link to="/login" className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors duration-200">להתחברות</Link>
         </div>
 
       </div>
