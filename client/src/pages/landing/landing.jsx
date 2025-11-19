@@ -1,6 +1,5 @@
+import LandingHeader from "../../components/LandingHeader/LandingHeader";
 
-import LandingHeader from "../../components/landingHeader/landingHeader";
-import "./landing.css";
 
 const Landing = () => {
     

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import styles from "./Profile.module.css";
-import Header from "../../components/Header_in/Header";
+
+import Header from "../../components/header/Header";
 
 const Profile = () => {
   const [user, setUser] = useState(null);

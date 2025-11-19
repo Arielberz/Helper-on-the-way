@@ -1,13 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import "./Home.css";
-import Header_in from "../../components/Header_in/Header.jsx";
+import Header from "../../components/header/Header";
+
 
 
 export default function Home() {
   return (
     <>
-      <Header_in />
+      <Header />
       <div className="home-page" dir="rtl" lang="he">
         <div className="home-card">
           {/* כותרת עליונה + לוגו */}
