@@ -11,9 +11,12 @@ export default function Register() {
     password: "",
     confirmPassword: ""
   });
+  const API_URL = process.env.API_URL;
+  
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
 
   const handleChange = (e) => {
     setFormData({
@@ -64,7 +67,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3001/api/users/register", {
+      const response = await fetch(`${API_URL}/api/users/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
