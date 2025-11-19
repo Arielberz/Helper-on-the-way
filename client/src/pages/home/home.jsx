@@ -68,7 +68,7 @@ export default function Home() {
 
         {/* ניווט תחתון */}
         <nav className="bottom-nav">
-          <Link to="/" className="nav-item nav-item--active">
+          <Link to="/home" className="nav-item nav-item--active">
             <span>בית</span>
           </Link>
           <Link to="/chat" className="nav-item">
