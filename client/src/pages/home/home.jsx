@@ -1,13 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Header from "../../components/header/Header";
-
-
+import "./Home.css";
+import Header_in from "../../components/header/Header.jsx";
+import MapLive from "../../components/MapLive/MapLive.jsx";
 
 export default function Home() {
   return (
     <>
-      <Header />
+      <Header_in />
       <div className="home-page" dir="rtl" lang="he">
         <div className="home-card">
           {/* כותרת עליונה + לוגו */}
@@ -25,59 +25,56 @@ export default function Home() {
             />
           </header>
 
-        {/* מפה + טקסט */}
-        <section className="map-card">
-          <img
-            src="./map.png"
-            alt="מפת כבישים"
-            className="map-image"
-          />
-          <p className="map-caption">
-            כאן תוכל לראות פניות לעזרה בסביבה שלך בזמן אמת.
-          </p>
-        </section>
+          {/* מפה + טקסט */}
+          <section className="map-card">
+            {/* מפה חיה במקום תמונה */}
+            <MapLive />
+            <p className="map-caption">
+              כאן תוכל לראות פניות לעזרה בסביבה שלך בזמן אמת.
+            </p>
+          </section>
 
-        {/* כפתורים */}
-        <section className="actions">
-          <button className="btn-primary">
-            בקשת סיוע עכשיו
-          </button>
-          <button className="btn-secondary">
-            אני רוצה להתנדב
-          </button>
-        </section>
+          {/* כפתורים */}
+          <section className="actions">
+            <button className="btn-primary">
+              בקשת סיוע עכשיו
+            </button>
+            <button className="btn-secondary">
+              אני רוצה להתנדב
+            </button>
+          </section>
 
-        {/* מידע נוסף */}
-        <section>
-          <div className="info-card">
-            <div className="info-title">הפנייה האחרונה שלך</div>
-            <div className="info-text">
-              כרגע אין פניות פעילות. כשתיפתח בקשה חדשה, תראה אותה כאן.
+          {/* מידע נוסף */}
+          <section>
+            <div className="info-card">
+              <div className="info-title">הפנייה האחרונה שלך</div>
+              <div className="info-text">
+                כרגע אין פניות פעילות. כשתיפתח בקשה חדשה, תראה אותה כאן.
+              </div>
             </div>
-          </div>
 
-          <div className="info-card">
-            <div className="info-title">טיפ בטיחות</div>
-            <div className="info-text">
-              לפני יציאה לדרך ודא שהטלפון טעון, ושאתה חוגר חגורת בטיחות בכל נסיעה.
+            <div className="info-card">
+              <div className="info-title">טיפ בטיחות</div>
+              <div className="info-text">
+                לפני יציאה לדרך ודא שהטלפון טעון, ושאתה חוגר חגורת בטיחות בכל נסיעה.
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <div className="spacer"></div>
+          <div className="spacer"></div>
 
-        {/* ניווט תחתון */}
-        <nav className="bottom-nav">
-          <Link to="/home" className="nav-item nav-item--active">
-            <span>בית</span>
-          </Link>
-          <Link to="/chat" className="nav-item">
-            <span>צ'אט</span>
-          </Link>
-          <Link to="/profile" className="nav-item">
-            <span>פרופיל</span>
-          </Link>
-        </nav>
+          {/* ניווט תחתון */}
+          <nav className="bottom-nav">
+            <Link to="/home" className="nav-item nav-item--active">
+              <span>בית</span>
+            </Link>
+            <Link to="/chat" className="nav-item">
+              <span>צ'אט</span>
+            </Link>
+            <Link to="/profile" className="nav-item">
+              <span>פרופיל</span>
+            </Link>
+          </nav>
         </div>
       </div>
     </>
