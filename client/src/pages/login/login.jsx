@@ -15,9 +15,10 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    const API_URL = process.env.API_URL;
 
     try {
-      const response = await axios.post("http://localhost:3001/api/users/login", {
+      const response = await axios.post(`${API_URL}/api/users/login`, {
         identifier,
         password
       });
