@@ -14,7 +14,7 @@ const Header = () => {
         <nav className="nav-menu">
           <ul className="nav-list">
             <li className="nav-item">
-              <NavLink to="/" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+              <NavLink to="/home" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
                 בית
               </NavLink>
             </li>
@@ -33,11 +33,15 @@ const Header = () => {
                 דירוג
               </NavLink>
             </li>
+            <li className="nav-item">
+              <NavLink to="/profile" className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}>
+                פרופיל
+              </NavLink>
+            </li>
           </ul>
         </nav>
 
         <div className="user-profile">
-          <span className="user-greeting">שלום, מתנדב/ת</span>
         </div>
       </div>
     </header>

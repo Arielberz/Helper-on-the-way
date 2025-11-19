@@ -7,6 +7,7 @@ import Home from "./pages/home/home.jsx";
 import Payment from "./pages/payment/Payment.jsx";
 import Chat from "./pages/chat/Chat.jsx";
 import Rating from "./pages/rating/Rating.jsx";
+import Profile from "./pages/Profile/Profile.jsx";
 import Header_in from "./components/Header_in/Header.jsx";
 
 
@@ -22,6 +23,7 @@ function App() {
           <Route path="/payment" element={<Payment />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/Rating" element={<Rating />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Landing />} />
 
         </Routes>
