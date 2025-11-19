@@ -7,7 +7,7 @@ import Home from "./pages/home/home";
 import Payment from "./pages/payment/payment";
 import Chat from "./pages/chat/chat";
 import Rating from "./pages/rating/rating";
-import Profile from "./pages/profile/profile";
+import Profile from "./pages/Profile/profile";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 
