@@ -69,10 +69,10 @@ export default function MapLive() {
     const newSocket = io(API_BASE);
     setSocket(newSocket);
 
-    // האזנה למיקומים חדשים מהשרת
-    newSocket.on('locationAdded', (location) => {
-      console.log('New location received:', location);
-      setSharedMarkers((prev) => [...prev, location]);
+    // האזנה לבקשות חדשות מהשרת
+    newSocket.on('requestAdded', (request) => {
+      console.log('New request received:', request);
+      setSharedMarkers((prev) => [...prev, request]);
     });
 
     return () => {
@@ -84,9 +84,9 @@ export default function MapLive() {
   useEffect(() => {
     if (!token) return;
 
-    const fetchLocations = async () => {
+    const fetchRequests = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/locations`, {
+        const res = await fetch(`${API_BASE}/api/requests`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -99,7 +99,7 @@ export default function MapLive() {
       }
     };
 
-    fetchLocations();
+    fetchRequests();
   }, [token]);
 
   // 4. מה קורה כשאתה לוחץ על המפה
@@ -110,13 +110,18 @@ export default function MapLive() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/locations`, {
+      const res = await fetch(`${API_BASE}/api/requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify({
+          location: { lat, lng },
+          problemType: 'other',
+          description: 'בקשת עזרה ממפה',
+          priority: 'medium'
+        }),
       });
 
       const json = await res.json();
@@ -126,18 +131,18 @@ export default function MapLive() {
         return;
       }
 
-      console.log('New location created:', json.data);
+      console.log('New request created:', json.data);
 
       // מוסיפים את המיקום לרשימת הפינים המקומית
       setSharedMarkers((prev) => [...prev, json.data]);
 
       // שולחים עדכון לכל המשתמשים האחרים דרך Socket.IO
       if (socket) {
-        socket.emit('newLocation', json.data);
+        socket.emit('newRequest', json.data);
       }
     } catch (err) {
-      console.error("Failed to send location", err);
-      alert("לא הצלחנו לשמור את המיקום בשרת");
+      console.error("Failed to send request", err);
+      alert("לא הצלחנו לשמור את הבקשה בשרת");
     }
   };
 
@@ -169,12 +174,13 @@ export default function MapLive() {
       <ClickHandler onMapClick={handleMapClick} />
 
       {/* כל הנקודות שהגיעו מהשרת */}
-      {sharedMarkers.map((m) => (
-        <Marker key={m._id || m.id} position={[m.lat, m.lng]}>
+      {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => (
+        <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
           <Popup>
-            נקודה משותפת<br />
-            lat: {m.lat.toFixed(5)} <br />
-            lng: {m.lng.toFixed(5)}
+            <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
+            {m.problemType && `בעיה: ${m.problemType}`}<br />
+            {m.description && `תיאור: ${m.description}`}<br />
+            סטטוס: {m.status || 'pending'}
           </Popup>
         </Marker>
       ))}
