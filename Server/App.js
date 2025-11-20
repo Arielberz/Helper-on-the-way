@@ -1,8 +1,10 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/DB');
-const userRouter = require('./Api/routers/userRouter');
-const locationRouter = require('./Api/routers/locationRouter');
+const userRouter = require('./api/routers/userRouter');
+const requestsRouter = require('./api/routers/requestsRouter');
+// const ratingRouter = require('./api/routers/ratingRouter');
+// const chatRouter = require('./api/routers/chatRouter');
 const cors = require('cors');
 
 dotenv.config();
@@ -19,7 +21,9 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/users', userRouter);
-app.use('/api/locations', locationRouter);
+app.use('/api/requests', requestsRouter);
+// app.use('/api/ratings', ratingRouter);
+// app.use('/api/chat', chatRouter);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
