@@ -3,10 +3,10 @@ const http = require('http');
 const socketIO = require('socket.io');
 const dotenv = require('dotenv');
 const connectDB = require('./config/DB');
-const userRouter = require('./api/routers/userRouter');
-const requestsRouter = require('./api/routers/requestsRouter');
-// const ratingRouter = require('./api/routers/ratingRouter');
-// const chatRouter = require('./api/routers/chatRouter');
+const userRouter = require('./Api/routers/userRouter');
+const requestsRouter = require('./Api/routers/requestsRouter');
+const ratingRouter = require('./Api/routers/ratingRouter');
+// const chatRouter = require('./Api/routers/chatRouter');
 const cors = require('cors');
 
 dotenv.config();
@@ -34,7 +34,7 @@ app.set('io', io);
 
 app.use('/api/users', userRouter);
 app.use('/api/requests', requestsRouter);
-// app.use('/api/ratings', ratingRouter);
+app.use('/api/ratings', ratingRouter);
 // app.use('/api/chat', chatRouter);
 
 // Socket.IO connection handling
