@@ -1,1 +1,2 @@
-# Helper-on-the-way .
+The project is a real-time roadside assistance web app that instantly connects drivers who are stuck (flat tire, out of gas, breakdown, etc.) with nearby volunteers or helpers who can come rescue them — like a friendly, community-driven version of AAA or Uber for emergencies.
+It features a full-screen interactive map showing active help requests as markers, private chat + live location tracking once someone accepts, optional payment after help, and a trust system with ratings.
