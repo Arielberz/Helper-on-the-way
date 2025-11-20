@@ -9,6 +9,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import io from "socket.io-client";
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -34,6 +35,7 @@ function ClickHandler({ onMapClick }) {
 export default function MapLive() {
   const [position, setPosition] = useState(null);        // המיקום שלך
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
+  const [socket, setSocket] = useState(null);
 
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
@@ -62,9 +64,25 @@ export default function MapLive() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // 2. טעינת כל המיקומים מהשרת כל כמה שניות
+  // 2. התחברות ל-Socket.IO לעדכונים בזמן אמת
   useEffect(() => {
-    if (!token) return; // אם אין טוקן אין מה לקרוא לשרת
+    const newSocket = io(API_BASE);
+    setSocket(newSocket);
+
+    // האזנה למיקומים חדשים מהשרת
+    newSocket.on('locationAdded', (location) => {
+      console.log('New location received:', location);
+      setSharedMarkers((prev) => [...prev, location]);
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  // 3. טעינת כל המיקומים מהשרת פעם אחת בהתחלה
+  useEffect(() => {
+    if (!token) return;
 
     const fetchLocations = async () => {
       try {
@@ -74,20 +92,17 @@ export default function MapLive() {
           },
         });
         const json = await res.json();
-        // json.data אם הקונטרולר מחזיר { success, data: [...] }
+        console.log('Initial locations loaded:', json.data?.length || 0);
         setSharedMarkers(json.data || []);
       } catch (err) {
         console.error("Failed to fetch locations", err);
       }
     };
 
-    fetchLocations(); // פעם ראשונה
-    const intervalId = setInterval(fetchLocations, 3000); // כל 3 שניות
-
-    return () => clearInterval(intervalId);
+    fetchLocations();
   }, [token]);
 
-  // 3. מה קורה כשאתה לוחץ על המפה
+  // 4. מה קורה כשאתה לוחץ על המפה
   const handleMapClick = async ({ lat, lng }) => {
     if (!token) {
       alert("אין חיבור משתמש (token), צריך להתחבר מחדש");
@@ -111,8 +126,15 @@ export default function MapLive() {
         return;
       }
 
+      console.log('New location created:', json.data);
+
       // מוסיפים את המיקום לרשימת הפינים המקומית
       setSharedMarkers((prev) => [...prev, json.data]);
+
+      // שולחים עדכון לכל המשתמשים האחרים דרך Socket.IO
+      if (socket) {
+        socket.emit('newLocation', json.data);
+      }
     } catch (err) {
       console.error("Failed to send location", err);
       alert("לא הצלחנו לשמור את המיקום בשרת");
@@ -131,7 +153,7 @@ export default function MapLive() {
     <MapContainer
       center={position}
       zoom={15}
-      style={{ height: "100vh", width: "100vw", position: "fixed", top: 0, left: 0, zIndex: 0 }}
+      style={{ height: "220px", width: "100%", borderRadius: "14px" }}
     >
       <TileLayer
         attribution='&copy; OpenStreetMap'
