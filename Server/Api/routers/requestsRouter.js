@@ -35,6 +35,12 @@ router.patch('/:id/status', authMiddleware, updateRequestStatus);
 // Assign helper to a request
 router.post('/:id/assign', authMiddleware, assignHelper);
 
+// Accept a request (helper)
+router.patch('/:id/accept', authMiddleware, assignHelper);
+
+// General update for a request
+router.patch('/:id', authMiddleware, require('../Controllers/requestsController').updateRequest);
+
 // Add photos to a request
 router.post('/:id/photos', authMiddleware, addPhotos);
 

@@ -472,3 +472,61 @@ exports.updatePayment = async (req, res) => {
     });
   }
 };
+
+// General update for a request
+exports.updateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No user in request (missing or invalid token)'
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Check permissions - user must be owner or helper
+    const isOwner = request.user.toString() === userId;
+    const isHelper = request.helper && request.helper.toString() === userId;
+    
+    if (!isOwner && !isHelper) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this request'
+      });
+    }
+
+    // Update the request
+    const updatedRequest = await Request.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .populate('user', 'name email phone')
+      .populate('helper', 'name email phone');
+
+    res.json({
+      success: true,
+      message: 'Request updated successfully',
+      data: updatedRequest
+    });
+  } catch (err) {
+    console.error('Error updating request:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error updating request',
+      error: err.message
+    });
+  }
+};
