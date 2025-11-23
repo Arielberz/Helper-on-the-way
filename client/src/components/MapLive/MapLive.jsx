@@ -10,6 +10,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import io from "socket.io-client";
+import HelpButton from "../helpButton/helpButton";
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -32,10 +33,25 @@ function ClickHandler({ onMapClick }) {
   return null;
 }
 
+// קומפוננטה לקבלת reference למפה
+function MapRefSetter({ setMapRef }) {
+  const map = useMapEvents({});
+  
+  React.useEffect(() => {
+    if (map) {
+      setMapRef(map);
+    }
+  }, [map, setMapRef]);
+  
+  return null;
+}
+
 export default function MapLive() {
   const [position, setPosition] = useState(null);        // המיקום שלך
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
+  const [mapRef, setMapRef] = useState(null);
+  const [confirmationMessage, setConfirmationMessage] = useState(null);
 
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
@@ -91,6 +107,14 @@ export default function MapLive() {
             Authorization: `Bearer ${token}`,
           },
         });
+        
+        // Check if token expired
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+          return;
+        }
+        
         const json = await res.json();
         console.log('Initial locations loaded:', json.data?.length || 0);
         setSharedMarkers(json.data || []);
@@ -124,6 +148,13 @@ export default function MapLive() {
         }),
       });
 
+      // Check if token expired
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+      }
+
       const json = await res.json();
 
       if (!json.success) {
@@ -146,6 +177,34 @@ export default function MapLive() {
     }
   };
 
+  // Handle new request created from HelpButton
+  const handleRequestCreated = (newRequest) => {
+    console.log('New request created from HelpButton:', newRequest);
+    
+    // Add to local markers
+    setSharedMarkers((prev) => [...prev, newRequest]);
+
+    // Emit to socket for real-time updates
+    if (socket) {
+      socket.emit('newRequest', newRequest);
+    }
+
+    // Zoom to the new request location
+    if (mapRef && newRequest.location) {
+      mapRef.flyTo([newRequest.location.lat, newRequest.location.lng], 16, {
+        duration: 1.5
+      });
+    }
+
+    // Show confirmation message
+    setConfirmationMessage('Help request created successfully!');
+    
+    // Hide confirmation after 5 seconds
+    setTimeout(() => {
+      setConfirmationMessage(null);
+    }, 5000);
+  };
+
   if (!position) {
     return (
       <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -155,35 +214,56 @@ export default function MapLive() {
   }
 
   return (
-    <MapContainer
-      center={position}
-      zoom={15}
-      style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
-    >
-      <TileLayer
-        attribution='&copy; OpenStreetMap'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div style={{ position: "relative", height: "100vh", width: "100%" }}>
+      <MapContainer
+        center={position}
+        zoom={15}
+        style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
+      >
+        <TileLayer
+          attribution='&copy; OpenStreetMap'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      {/* המיקום הנוכחי שלך */}
-      <Marker position={position}>
-        <Popup>אתה כאן עכשיו 🚗</Popup>
-      </Marker>
-
-      {/* מאזין ללחיצה על המפה */}
-      <ClickHandler onMapClick={handleMapClick} />
-
-      {/* כל הנקודות שהגיעו מהשרת */}
-      {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => (
-        <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
-          <Popup>
-            <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
-            {m.problemType && `בעיה: ${m.problemType}`}<br />
-            {m.description && `תיאור: ${m.description}`}<br />
-            סטטוס: {m.status || 'pending'}
-          </Popup>
+        {/* המיקום הנוכחי שלך */}
+        <Marker position={position}>
+          <Popup>אתה כאן עכשיו 🚗</Popup>
         </Marker>
-      ))}
-    </MapContainer>
+
+        {/* Get map reference */}
+        <MapRefSetter setMapRef={setMapRef} />
+
+        {/* מאזין ללחיצה על המפה */}
+        <ClickHandler onMapClick={handleMapClick} />
+
+        {/* כל הנקודות שהגיעו מהשרת */}
+        {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => (
+          <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
+            <Popup>
+              <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
+              {m.problemType && `בעיה: ${m.problemType}`}<br />
+              {m.description && `תיאור: ${m.description}`}<br />
+              סטטוס: {m.status || 'pending'}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {/* Confirmation Message */}
+      {confirmationMessage && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="font-semibold">{confirmationMessage}</span>
+        </div>
+      )}
+
+      {/* Help Button Component */}
+      <HelpButton 
+        currentPosition={position}
+        onRequestCreated={handleRequestCreated} 
+      />
+    </div>
   );
 }
