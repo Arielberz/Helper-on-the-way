@@ -51,7 +51,11 @@ function MapRefSetter({ setMapRef }) {
 }
 
 export default function MapLive() {
-  const [position, setPosition] = useState(null);        // המיקום שלך
+  // Default location: Center of Israel (Tel Aviv area)
+  const DEFAULT_LOCATION = [32.0853, 34.7818];
+  
+  const [position, setPosition] = useState(DEFAULT_LOCATION);        // המיקום שלך
+  const [hasRealLocation, setHasRealLocation] = useState(false);     // האם יש מיקום אמיתי
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
 
@@ -66,17 +70,19 @@ export default function MapLive() {
   // 1. מציאת מיקום המשתמש (GPS)
   useEffect(() => {
     if (!navigator.geolocation) {
-      alert("הדפדפן לא תומך במיקום (Geolocation)");
+      console.warn("הדפדפן לא תומך במיקום (Geolocation)");
       return;
     }
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setPosition([pos.coords.latitude, pos.coords.longitude]);
+        setHasRealLocation(true);
       },
       (err) => {
-        console.error(err);
-        alert("לא ניתן לקרוא את המיקום, בדוק הרשאות GPS.");
+        console.error("Geolocation error:", err);
+        console.log("Using default location. Map will still work without GPS.");
+        // Don't alert - just use default location
       },
       {
         enableHighAccuracy: true,
@@ -125,6 +131,8 @@ export default function MapLive() {
         
         const json = await res.json();
         console.log('Initial locations loaded:', json.data?.length || 0);
+        console.log('Sample request data:', json.data?.[0]);
+        console.log('Sample user object:', json.data?.[0]?.user);
         setSharedMarkers(json.data || []);
       } catch (err) {
         console.error("Failed to fetch locations", err);
@@ -252,16 +260,18 @@ export default function MapLive() {
     }, 5000);
   };
 
-  if (!position) {
-    return (
-      <div style={{ textAlign: "center", padding: "20px 0" }}>
-        טוען מיקום...
-      </div>
-    );
-  }
-
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+      {/* Show warning if using default location */}
+      {!hasRealLocation && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-sm">GPS not available - showing default location</span>
+        </div>
+      )}
+      
       <HelperButton onToggleHelper={handleToggleHelper} />
       {position && (
         <NearbyRequestsButton 
@@ -275,7 +285,7 @@ export default function MapLive() {
       
       <MapContainer
         center={position}
-        zoom={15}
+        zoom={hasRealLocation ? 15 : 12}
         style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
 
         ref={setMapRef}
@@ -287,7 +297,9 @@ export default function MapLive() {
 
         {/* המיקום הנוכחי שלך */}
         <Marker position={position}>
-          <Popup>אתה כאן עכשיו 🚗</Popup>
+          <Popup>
+            {hasRealLocation ? 'אתה כאן עכשיו 🚗' : 'מיקום ברירת מחדל 📍 (אין GPS)'}
+          </Popup>
         </Marker>
 
         {/* Get map reference */}
@@ -297,16 +309,19 @@ export default function MapLive() {
         <ClickHandler onMapClick={handleMapClick} />
 
         {/* כל הנקודות שהגיעו מהשרת */}
-        {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => (
-          <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
-            <Popup>
-              <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
-              {m.problemType && `בעיה: ${m.problemType}`}<br />
-              {m.description && `תיאור: ${m.description}`}<br />
-              סטטוס: {m.status || 'pending'}
-            </Popup>
-          </Marker>
-        ))}
+        {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
+          console.log('Rendering marker:', m._id, 'User object:', m.user, 'Username:', m.user?.username);
+          return (
+            <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
+              <Popup>
+                <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
+                {m.problemType && `בעיה: ${m.problemType}`}<br />
+                {m.description && `תיאור: ${m.description}`}<br />
+                סטטוס: {m.status || 'pending'}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       {/* Confirmation Message */}

@@ -68,7 +68,7 @@ exports.createRequest = async (req, res) => {
     const request = await Request.create(requestData);
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'name email phone');
+      .populate('user', 'username email phone');
 
     res.status(201).json({
       success: true,
@@ -97,8 +97,8 @@ exports.getRequests = async (req, res) => {
     if (helperId) filter.helper = helperId;
 
     const requests = await Request.find(filter)
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone')
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone')
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
@@ -123,8 +123,8 @@ exports.getActiveRequests = async (req, res) => {
     const requests = await Request.find({
       status: { $in: ['pending', 'assigned', 'in_progress'] }
     })
-      .populate('user', 'name phone')
-      .populate('helper', 'name phone')
+      .populate('user', 'username phone')
+      .populate('helper', 'username phone')
       .sort({ createdAt: -1 })
       .limit(200);
 
@@ -149,8 +149,8 @@ exports.getRequestById = async (req, res) => {
     const { id } = req.params;
 
     const request = await Request.findById(id)
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone');
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
 
     if (!request) {
       return res.status(404).json({
@@ -184,7 +184,7 @@ exports.getMyRequests = async (req, res) => {
     }
 
     const requests = await Request.find({ user: req.userId })
-      .populate('helper', 'name phone')
+      .populate('helper', 'username phone')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -238,8 +238,8 @@ exports.updateRequestStatus = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone');
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
 
     if (!request) {
       return res.status(404).json({
@@ -297,8 +297,8 @@ exports.assignHelper = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone');
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
 
     res.json({
       success: true,
@@ -456,8 +456,8 @@ exports.updatePayment = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone');
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
 
     res.json({
       success: true,
@@ -513,8 +513,8 @@ exports.updateRequest = async (req, res) => {
       { $set: updates },
       { new: true, runValidators: true }
     )
-      .populate('user', 'name email phone')
-      .populate('helper', 'name email phone');
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
 
     res.json({
       success: true,
