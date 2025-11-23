@@ -10,7 +10,11 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import io from "socket.io-client";
+
 import HelpButton from "../helpButton/helpButton";
+import HelperButton from "../helperButton/helperButton";
+import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
+
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -50,8 +54,12 @@ export default function MapLive() {
   const [position, setPosition] = useState(null);        // המיקום שלך
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
-  const [mapRef, setMapRef] = useState(null);
+
   const [confirmationMessage, setConfirmationMessage] = useState(null);
+  const [isHelperMode, setIsHelperMode] = useState(false); // מצב עוזר
+  const [helperSettings, setHelperSettings] = useState(null); // הגדרות עוזר
+  const [mapRef, setMapRef] = useState(null); // התייחסות למפה
+
 
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
@@ -126,7 +134,46 @@ export default function MapLive() {
     fetchRequests();
   }, [token]);
 
-  // 4. מה קורה כשאתה לוחץ על המפה
+  // 4. טיפול במצב עוזר
+  const handleToggleHelper = (isActive, settings) => {
+    setIsHelperMode(isActive);
+    setHelperSettings(isActive ? settings : null);
+    
+    if (isActive && settings) {
+      console.log('Helper mode ON with settings:', settings);
+      console.log('Max distance:', settings.maxDistance, 'km');
+      console.log('Destination:', settings.destination || 'None');
+      console.log('Only on route:', settings.onlyOnRoute);
+      console.log('Problem types:', settings.problemTypes.length > 0 ? settings.problemTypes : 'All types');
+    } else {
+      console.log('Helper mode OFF');
+    }
+    
+    // שליחה לשרת שהמשתמש זמין לעזור עם ההגדרות
+    if (socket && position) {
+      socket.emit('toggleHelper', {
+        isHelper: isActive,
+        location: { lat: position[0], lng: position[1] },
+        settings: settings || null
+      });
+    }
+    
+    // TODO: עדכון בדאטאבייס שהמשתמש זמין לעזור
+    // יכול להוסיף שדה isAvailableHelper במודל User עם הגדרות העזרה
+  };
+
+  // 5. טיפול בבחירת בקשה מהרשימה
+  const handleSelectRequest = (request) => {
+    console.log('Selected request:', request);
+    // מרכז את המפה על הבקשה שנבחרה
+    if (mapRef && request.location?.lat && request.location?.lng) {
+      mapRef.flyTo([request.location.lat, request.location.lng], 16, {
+        duration: 1.5
+      });
+    }
+  };
+
+  // 6. מה קורה כשאתה לוחץ על המפה
   const handleMapClick = async ({ lat, lng }) => {
     if (!token) {
       alert("אין חיבור משתמש (token), צריך להתחבר מחדש");
@@ -214,11 +261,24 @@ export default function MapLive() {
   }
 
   return (
-    <div style={{ position: "relative", height: "100vh", width: "100%" }}>
+    <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+      <HelperButton onToggleHelper={handleToggleHelper} />
+      {position && (
+        <NearbyRequestsButton 
+          requests={sharedMarkers}
+          userPosition={position}
+          onSelectRequest={handleSelectRequest}
+          helperSettings={helperSettings}
+          isHelperMode={isHelperMode}
+        />
+      )}
+      
       <MapContainer
         center={position}
         zoom={15}
         style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
+
+        ref={setMapRef}
       >
         <TileLayer
           attribution='&copy; OpenStreetMap'
