@@ -44,6 +44,14 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
           }
         }
         
+        // סינון לפי תשלום מינימלי
+        if (helperSettings.minPayment > 0) {
+          const offeredAmount = req.payment?.offeredAmount || 0
+          if (offeredAmount < helperSettings.minPayment) {
+            return false
+          }
+        }
+        
         // TODO: סינון לפי "בדרך אליי" - דורש חישוב מסלול
         // if (helperSettings.onlyOnRoute && helperSettings.destination) {
         //   // כאן צריך לבדוק אם הבקשה נמצאת על המסלול
@@ -93,7 +101,7 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
               <h2>בקשות עזרה קרובות</h2>
               <p className="nearby-subtitle">
                 {isHelperMode && helperSettings 
-                  ? `Filtered by your helper settings (max ${helperSettings.maxDistance}km${helperSettings.problemTypes.length > 0 ? `, ${helperSettings.problemTypes.length} problem types` : ''})`
+                  ? `Filtered: max ${helperSettings.maxDistance}km${helperSettings.problemTypes.length > 0 ? `, ${helperSettings.problemTypes.length} problem types` : ''}${helperSettings.minPayment > 0 ? `, min ₪${helperSettings.minPayment}` : ''}`
                   : 'Nearby Help Requests'
                 }
               </p>

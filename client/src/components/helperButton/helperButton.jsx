@@ -8,7 +8,8 @@ const HelperButton = ({ onToggleHelper }) => {
     maxDistance: 10, // km
     destination: '',
     onlyOnRoute: false,
-    problemTypes: []
+    problemTypes: [],
+    minPayment: 0 // minimum payment amount
   })
 
   const problemTypeOptions = [
@@ -119,6 +120,26 @@ const HelperButton = ({ onToggleHelper }) => {
                 />
                 <span>רק אנשים שבדרך שלי (Only people on my route)</span>
               </label>
+            </div>
+
+            <div className="modal-section">
+              <label>
+                תשלום מינימלי (Minimum Payment)
+                <div className="input-with-unit">
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={helperSettings.minPayment}
+                    onChange={(e) => setHelperSettings(prev => ({
+                      ...prev,
+                      minPayment: Number(e.target.value)
+                    }))}
+                  />
+                  <span className="unit">₪ (ILS)</span>
+                </div>
+              </label>
+              <p className="label-subtitle">0 = Any payment or free help</p>
             </div>
 
             <div className="modal-section">
