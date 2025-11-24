@@ -13,7 +13,6 @@ export default function HelpButton({ onRequestCreated }) {
   const [formData, setFormData] = useState({
     problemType: 'other',
     description: '',
-    priority: 'medium',
     offeredAmount: '',
     currency: 'ILS',
     manualAddress: ''
@@ -48,7 +47,6 @@ export default function HelpButton({ onRequestCreated }) {
     setFormData({
       problemType: 'other',
       description: '',
-      priority: 'medium',
       offeredAmount: '',
       currency: 'ILS',
       manualAddress: ''
@@ -148,8 +146,7 @@ export default function HelpButton({ onRequestCreated }) {
       const requestData = {
         location,
         problemType: formData.problemType,
-        description: formData.description || 'No description provided',
-        priority: formData.priority
+        description: formData.description || 'No description provided'
       };
 
       // Add optional payment if provided
@@ -185,11 +182,8 @@ export default function HelpButton({ onRequestCreated }) {
       {/* Help Button - positioned at bottom center */}
       <button
         onClick={handleOpenModal}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 bg-white/90 backdrop-blur-md border border-blue-100 text-blue-600 font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-white hover:scale-105 transition-all duration-300 flex items-center gap-2"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
         Need Help?
       </button>
 

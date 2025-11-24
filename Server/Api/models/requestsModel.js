@@ -71,27 +71,6 @@ const requestSchema = new Schema({
   },
   assignedAt: {
     type: Date,
-    default: null,
-  },
-  completedAt: {
-    type: Date,
-    default: null,
-  },
-  estimatedArrival: {
-    type: Date,
-    default: null,
-  },
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium',
-  },
-  payment: {
-    offeredAmount: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
     currency: {
       type: String,
       default: 'ILS',
