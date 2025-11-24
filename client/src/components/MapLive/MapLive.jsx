@@ -313,8 +313,9 @@ export default function MapLive() {
       <MapContainer
         center={position}
         zoom={locationAccuracy === 'precise' ? 15 : 12}
-        style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
-
+        style={{ height: "100vh", width: "100%"}}
+        zoomControl={false}
+        attributionControl={false}
         ref={setMapRef}
       >
         <TileLayer
