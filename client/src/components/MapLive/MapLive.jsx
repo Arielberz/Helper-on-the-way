@@ -305,8 +305,7 @@ export default function MapLive() {
         {/* Get map reference */}
         <MapRefSetter setMapRef={setMapRef} />
 
-        {/* מאזין ללחיצה על המפה */}
-        <ClickHandler onMapClick={handleMapClick} />
+
 
         {/* כל הנקודות שהגיעו מהשרת */}
         {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
