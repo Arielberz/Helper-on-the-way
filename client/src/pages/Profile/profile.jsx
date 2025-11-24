@@ -47,7 +47,13 @@ const Profile = () => {
 
         const data = await response.json();
         console.log("User data received:", data);
-        setUser(data.data?.user || data.user);
+        const userData = data.data?.user || data.user;
+        setUser(userData);
+        
+        // Get the user ID - the sanitizeUser function returns 'id', not '_id'
+        const userId = userData?.id || userData?._id;
+        console.log("User ID for queries:", userId);
+        console.log("Full user object:", userData);
         
         // Fetch user's requests (help asked for)
         const requestsResponse = await fetch("http://localhost:3001/api/requests/my-requests", {
@@ -56,20 +62,78 @@ const Profile = () => {
           },
         });
         
+        // Fetch requests where user is the helper - only if we have a valid user ID
+        let helperResponse = null;
+        
+        if (userId && typeof userId === 'string' && userId.length > 0) {
+          console.log("Fetching helper requests for user ID:", userId);
+          try {
+            helperResponse = await fetch(`http://localhost:3001/api/requests?helperId=${userId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            console.log("Helper response status:", helperResponse.status);
+          } catch (error) {
+            console.error("Error fetching helper requests:", error);
+          }
+        } else {
+          console.warn("Invalid user ID, skipping helper requests fetch");
+        }
+        
+        const allActions = [];
+        
         if (requestsResponse.ok) {
           const requestsData = await requestsResponse.json();
+          console.log("My requests data:", requestsData);
           const myRequests = requestsData.data || [];
+          console.log("Number of my requests:", myRequests.length);
           
           // Format requests as actions
-          const actions = myRequests.map(req => ({
+          const requestActions = myRequests.map(req => ({
             title: `בקשת עזרה: ${getProblemTypeLabel(req.problemType)}`,
             time: new Date(req.createdAt).toLocaleDateString('he-IL'),
             status: req.status,
-            type: 'requested'
+            type: 'requested',
+            address: req.location?.address || 'כתובת לא זמינה'
           }));
           
-          setRecentActions(actions);
+          allActions.push(...requestActions);
+        } else {
+          console.error("Failed to fetch my requests:", requestsResponse.status);
         }
+        
+        if (helperResponse && helperResponse.ok) {
+          try {
+            const helperData = await helperResponse.json();
+            console.log("Helper data:", helperData);
+            const myHelps = helperData.data || [];
+            console.log("Number of times I helped:", myHelps.length);
+            
+            // Format help actions
+            const helpActions = myHelps.map(req => ({
+              title: `עזרתי ב: ${getProblemTypeLabel(req.problemType)}`,
+              time: new Date(req.createdAt).toLocaleDateString('he-IL'),
+              status: req.status,
+              type: 'helped',
+              address: req.location?.address || 'כתובת לא זמינה'
+            }));
+            
+            allActions.push(...helpActions);
+          } catch (error) {
+            console.error("Error parsing helper data:", error);
+          }
+        } else if (helperResponse) {
+          console.error("Failed to fetch helper data:", helperResponse.status);
+          const errorText = await helperResponse.text();
+          console.error("Error details:", errorText);
+        }
+        
+        console.log("Total actions:", allActions.length);
+        
+        // Sort all actions by date (newest first)
+        allActions.sort((a, b) => new Date(b.time) - new Date(a.time));
+        setRecentActions(allActions);
         
         setLoading(false);
       } catch (err) {
@@ -253,7 +317,7 @@ const Profile = () => {
             <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            בקשות עזרה שלי
+            הפעילות שלי
           </h2>
           
           {recentActions.length === 0 ? (
@@ -261,18 +325,49 @@ const Profile = () => {
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-gray-500 text-lg">עדיין לא ביקשת עזרה</p>
+              <p className="text-gray-500 text-lg">עדיין אין פעילות להצגה</p>
             </div>
           ) : (
             <ul className="space-y-3">
               {recentActions.map((action, index) => (
-                <li key={index} className="p-4 bg-gradient-to-l from-blue-50 to-white rounded-lg hover:shadow-md transition-all border-r-4 border-blue-500">
+                <li 
+                  key={index} 
+                  className={`p-4 rounded-lg hover:shadow-md transition-all border-r-4 ${
+                    action.type === 'helped' 
+                      ? 'bg-gradient-to-l from-green-50 to-white border-green-500' 
+                      : 'bg-gradient-to-l from-blue-50 to-white border-blue-500'
+                  }`}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-800 font-semibold">{action.title}</span>
-                    <span className="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-800">
+                    <div className="flex items-center gap-2">
+                      {action.type === 'helped' ? (
+                        <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      )}
+                      <span className="text-gray-800 font-semibold">{action.title}</span>
+                    </div>
+                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                      action.type === 'helped' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
                       {getStatusLabel(action.status)}
                     </span>
                   </div>
+                  {action.address && (
+                    <div className="flex items-center gap-2 text-gray-600 text-sm mb-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {action.address}
+                    </div>
+                  )}
                   {action.time && (
                     <div className="flex items-center gap-2 text-gray-500 text-sm">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
