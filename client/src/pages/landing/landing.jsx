@@ -16,11 +16,20 @@ const Landing = () => {
                 </div>
 
                 <div className="container mx-auto px-6 py-20 md:py-32 relative z-10" dir="rtl">
+                    {/* Mobile Logo - Shows only on mobile */}
+                    <div className="flex justify-center mb-8 md:hidden">
+                        <img 
+                            src="/helper-logo-removebg.png" 
+                            alt="Helper on the way" 
+                            className="w-48"
+                        />
+                    </div>
+
                     <div className="grid md:grid-cols-2 gap-12 items-center">
                         {/* Left Content */}
                         <div className="text-center md:text-right">
                             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                                ברוכים הבאים ל
+                            ברוכים הבאים 
                             </h1>
                             <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
                                 פלטפורמה לסיוע הדדי בדרכים - קבלו עזרה מהירה וקלה בכל מקום ובכל זמן
@@ -46,7 +55,7 @@ const Landing = () => {
                             <img 
                                 src="/helper-logo-removebg.png" 
                                 alt="Helper on the way" 
-                                className="transform hover:scale-105 transition-transform duration-500 w-96"
+                                className="transform hover:scale-105 transition-transform duration-500 w-full max-w-lg"
                             />
                         </div>
                     </div>
