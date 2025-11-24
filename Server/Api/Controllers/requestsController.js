@@ -3,7 +3,7 @@ const Request = require('../models/requestsModel');
 // Create a new roadside assistance request
 exports.createRequest = async (req, res) => {
   try {
-    const { location, problemType, description, photos, priority, offeredAmount, currency } = req.body;
+    const { location, problemType, description, photos, offeredAmount, currency } = req.body;
 
     // Validation
     if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
@@ -52,7 +52,6 @@ exports.createRequest = async (req, res) => {
       problemType,
       description,
       photos: photos || [],
-      priority: priority || 'medium',
       status: 'pending'
     };
 

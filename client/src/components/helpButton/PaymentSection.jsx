@@ -6,13 +6,11 @@ export default function PaymentSection({
   onChange
 }) {
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Payment (Optional)</h3>
-      
+    <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Offered Amount
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Amount
           </label>
           <input
             type="number"
@@ -22,18 +20,18 @@ export default function PaymentSection({
             value={offeredAmount}
             onChange={onChange}
             placeholder="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Currency
           </label>
           <select
             name="currency"
             value={currency}
             onChange={onChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           >
             <option value="ILS">ILS</option>
             <option value="USD">USD</option>
