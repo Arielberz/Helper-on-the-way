@@ -123,7 +123,7 @@ export default function HelpRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
+    <div className="fixed inset-0 z-1001 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-white px-8 py-6 border-b border-slate-100">
