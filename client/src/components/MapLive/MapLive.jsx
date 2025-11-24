@@ -15,6 +15,7 @@ import io from "socket.io-client";
 import HelpButton from "../helpButton/helpButton";
 import HelperButton from "../helperButton/helperButton";
 import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
+import { getInitialLocation, getPreciseLocation, cacheLocation } from "../../utils/locationUtils";
 
 
 // Fix for default marker icons in Leaflet with React
@@ -45,7 +46,8 @@ export default function MapLive() {
   const DEFAULT_LOCATION = [32.0853, 34.7818];
   
   const [position, setPosition] = useState(DEFAULT_LOCATION);        // המיקום שלך
-  const [hasRealLocation, setHasRealLocation] = useState(false);     // האם יש מיקום אמיתי
+  const [locationAccuracy, setLocationAccuracy] = useState('loading'); // 'loading', 'approximate', 'precise', 'default'
+  const [showAccuracyBanner, setShowAccuracyBanner] = useState(false);
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
 
@@ -57,32 +59,50 @@ export default function MapLive() {
 
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
-  // 1. מציאת מיקום המשתמש (GPS)
+  // 1. Get initial location using IP-based geolocation (no permission needed)
   useEffect(() => {
-    if (!navigator.geolocation) {
-      console.warn("הדפדפן לא תומך במיקום (Geolocation)");
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setPosition([pos.coords.latitude, pos.coords.longitude]);
-        setHasRealLocation(true);
-      },
-      (err) => {
-        console.error("Geolocation error:", err);
-        console.log("Using default location. Map will still work without GPS.");
-        // Don't alert - just use default location
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 10000,
+    const initializeLocation = async () => {
+      try {
+        const location = await getInitialLocation();
+        setPosition([location.lat, location.lng]);
+        setLocationAccuracy(location.accuracy);
+        
+        // Show banner if not precise GPS
+        if (location.accuracy !== 'precise') {
+          setShowAccuracyBanner(true);
+        }
+        
+        console.log(`Location initialized: ${location.city || 'Unknown'}, ${location.country || 'Unknown'} (${location.accuracy})`);
+      } catch (error) {
+        console.error('Failed to get initial location:', error);
+        setPosition(DEFAULT_LOCATION);
+        setLocationAccuracy('default');
+        setShowAccuracyBanner(true);
       }
-    );
+    };
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    initializeLocation();
   }, []);
+
+  // Request precise GPS location (only when user clicks button)
+  const requestPreciseLocation = async () => {
+    try {
+      setLocationAccuracy('loading');
+      const preciseLocation = await getPreciseLocation();
+      setPosition([preciseLocation.lat, preciseLocation.lng]);
+      setLocationAccuracy('precise');
+      setShowAccuracyBanner(false);
+      
+      // Cache the GPS location for future use
+      cacheLocation(preciseLocation);
+      
+      console.log('Precise GPS location acquired');
+    } catch (error) {
+      console.error('GPS location denied or unavailable:', error);
+      setLocationAccuracy('approximate');
+      // Keep showing banner
+    }
+  };
 
   // 2. התחברות ל-Socket.IO לעדכונים בזמן אמת
   useEffect(() => {
@@ -201,13 +221,26 @@ export default function MapLive() {
 
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
-      {/* Show warning if using default location */}
-      {!hasRealLocation && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+      {/* Show location accuracy banner */}
+      {showAccuracyBanner && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-1000 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-sm">GPS not available - showing default location</span>
+          <span className="text-sm">
+            {locationAccuracy === 'loading' ? 'Getting location...' : 
+             locationAccuracy === 'approximate' ? '📍 Showing approximate location' :
+             '📍 Using default location'}
+          </span>
+          {locationAccuracy !== 'loading' && (
+            <button
+              onClick={requestPreciseLocation}
+              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors"
+            >
+              Enable Precise Location
+            </button>
+          )}
         </div>
       )}
       
@@ -224,7 +257,7 @@ export default function MapLive() {
       
       <MapContainer
         center={position}
-        zoom={hasRealLocation ? 15 : 12}
+        zoom={locationAccuracy === 'precise' ? 15 : 12}
         style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
 
         ref={setMapRef}
@@ -237,7 +270,9 @@ export default function MapLive() {
         {/* המיקום הנוכחי שלך */}
         <Marker position={position}>
           <Popup>
-            {hasRealLocation ? 'אתה כאן עכשיו 🚗' : 'מיקום ברירת מחדל 📍 (אין GPS)'}
+            {locationAccuracy === 'precise' ? '📍 Your precise location' : 
+             locationAccuracy === 'approximate' ? '📍 Approximate location (IP-based)' :
+             '📍 Default location'}
           </Popup>
         </Marker>
 
@@ -265,7 +300,7 @@ export default function MapLive() {
 
       {/* Confirmation Message */}
       {confirmationMessage && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in">
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-1000 bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -275,7 +310,6 @@ export default function MapLive() {
 
       {/* Help Button Component */}
       <HelpButton 
-        currentPosition={position}
         onRequestCreated={handleRequestCreated} 
       />
        <IconChat />

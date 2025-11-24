@@ -1,47 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { getPreciseLocation } from '../../utils/locationUtils';
 
-export function useLocation(isModalOpen, useCurrentLocation) {
+export function useLocation() {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  useEffect(() => {
-    if (isModalOpen && useCurrentLocation && !currentLocation) {
-      setIsLoadingLocation(true);
-      setLocationError('');
-      
-      if (!navigator.geolocation) {
-        setLocationError('Geolocation is not supported by your browser');
-        setIsLoadingLocation(false);
-        return;
-      }
+  // Request GPS location only when user explicitly chooses "Use Current Location"
+  const requestCurrentLocation = async () => {
+    setIsLoadingLocation(true);
+    setLocationError('');
+    setCurrentLocation(null);
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          setLocationError('');
-          setIsLoadingLocation(false);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          setLocationError('Unable to retrieve your location. Please enter it manually.');
-          setIsLoadingLocation(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
+    try {
+      const location = await getPreciseLocation();
+      setCurrentLocation({
+        lat: location.lat,
+        lng: location.lng,
+        accuracy: location.accuracy,
+        precision: location.precision
+      });
+      setLocationError('');
+    } catch (error) {
+      console.error('Error getting GPS location:', error);
+      
+      let errorMessage = 'Unable to retrieve your location.';
+      if (error.code === error.PERMISSION_DENIED) {
+        errorMessage = 'Location permission denied. Please enter address manually.';
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        errorMessage = 'Location unavailable. Please enter address manually.';
+      } else if (error.code === error.TIMEOUT) {
+        errorMessage = 'Location request timed out. Please try again or enter address manually.';
+      }
+      
+      setLocationError(errorMessage);
+      setCurrentLocation(null);
+    } finally {
+      setIsLoadingLocation(false);
     }
-  }, [isModalOpen, useCurrentLocation, currentLocation]);
+  };
 
   const resetLocation = () => {
     setCurrentLocation(null);
     setLocationError('');
+    setIsLoadingLocation(false);
   };
 
   return {
@@ -49,6 +51,7 @@ export function useLocation(isModalOpen, useCurrentLocation) {
     isLoadingLocation,
     locationError,
     setLocationError,
-    resetLocation
+    resetLocation,
+    requestCurrentLocation
   };
 }
