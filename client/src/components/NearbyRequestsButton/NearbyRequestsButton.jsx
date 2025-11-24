@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './NearbyRequestsButton.css'
 
 const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperSettings, isHelperMode }) => {
   const [showList, setShowList] = useState(false)
@@ -84,37 +83,43 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
   return (
     <>
       <button
-        className={`nearby-requests-button ${isHelperMode ? 'helper-active' : ''}`}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg backdrop-blur-sm ${
+          isHelperMode 
+            ? 'bg-purple-500/20 hover:bg-purple-600/30 text-blue-600 drop-shadow-lg' 
+            : 'bg-orange-500/20 hover:bg-orange-600/30 text-blue-600 drop-shadow-lg'
+        }`}
         onClick={handleToggle}
         aria-label="Show nearby requests"
       >
-        <div className="nearby-icon">📍</div>
-        <span className="nearby-text">
+        <div className="text-2xl">📍</div>
+        <span className="text-sm font-medium">
           {sortedRequests.length} Nearby
         </span>
       </button>
 
       {showList && (
-        <div className="nearby-modal-overlay" onClick={() => setShowList(false)}>
-          <div className="nearby-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="nearby-header">
-              <h2>בקשות עזרה קרובות</h2>
-              <p className="nearby-subtitle">
-                {isHelperMode && helperSettings 
-                  ? `Filtered: max ${helperSettings.maxDistance}km${helperSettings.problemTypes.length > 0 ? `, ${helperSettings.problemTypes.length} problem types` : ''}${helperSettings.minPayment > 0 ? `, min ₪${helperSettings.minPayment}` : ''}`
-                  : 'Nearby Help Requests'
-                }
-              </p>
-              <button className="close-button" onClick={() => setShowList(false)}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowList(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir="rtl">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-xl flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">בקשות עזרה קרובות</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {isHelperMode && helperSettings 
+                    ? `Filtered: max ${helperSettings.maxDistance}km${helperSettings.problemTypes.length > 0 ? `, ${helperSettings.problemTypes.length} problem types` : ''}${helperSettings.minPayment > 0 ? `, min ₪${helperSettings.minPayment}` : ''}`
+                    : 'Nearby Help Requests'
+                  }
+                </p>
+              </div>
+              <button className="text-gray-400 hover:text-gray-600 text-2xl font-bold" onClick={() => setShowList(false)}>
                 ✕
               </button>
             </div>
 
-            <div className="nearby-list">
+            <div className="p-6 space-y-4">
               {sortedRequests.length === 0 ? (
-                <div className="no-requests">
-                  <p>אין בקשות עזרה קרובות</p>
-                  <p className="no-requests-subtitle">
+                <div className="text-center py-12">
+                  <p className="text-xl text-gray-600 mb-2">אין בקשות עזרה קרובות</p>
+                  <p className="text-sm text-gray-400">
                     {isHelperMode && helperSettings 
                       ? 'No requests match your helper settings'
                       : 'No nearby help requests'
@@ -125,44 +130,44 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
                 sortedRequests.map(req => (
                   <div
                     key={req._id || req.id}
-                    className="request-card"
+                    className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all"
                     onClick={() => {
                       onSelectRequest(req)
                       setShowList(false)
                     }}
                   >
-                    <div className="request-header">
-                      <div className="request-type">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
                         {getProblemTypeLabel(req.problemType)}
                       </div>
-                      <div className="request-distance">
+                      <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold">
                         {req.distance.toFixed(1)} ק"מ
                       </div>
                     </div>
                     
-                    <div className="request-user">
+                    <div className="text-gray-700 mb-2">
                       👤 {req.user?.username || 'משתמש לא ידוע'}
                     </div>
                     
                     {req.description && (
-                      <div className="request-description">
+                      <div className="text-gray-600 text-sm mb-2">
                         {req.description}
                       </div>
                     )}
                     
                     {req.location?.address && (
-                      <div className="request-location">
+                      <div className="text-gray-500 text-sm mb-2">
                         📍 {req.location.address}
                       </div>
                     )}
 
                     {req.payment?.offeredAmount && (
-                      <div className="request-payment">
+                      <div className="text-green-600 font-semibold mb-2">
                         💰 {req.payment.offeredAmount} {req.payment.currency || 'ILS'}
                       </div>
                     )}
 
-                    <div className="request-time">
+                    <div className="text-gray-400 text-xs">
                       ⏰ {new Date(req.createdAt).toLocaleString('he-IL')}
                     </div>
                   </div>

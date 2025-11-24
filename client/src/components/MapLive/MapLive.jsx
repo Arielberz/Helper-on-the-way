@@ -310,17 +310,6 @@ export default function MapLive() {
         </div>
       )}
       
-      <HelperButton onToggleHelper={handleToggleHelper} />
-      {position && (
-        <NearbyRequestsButton 
-          requests={sharedMarkers}
-          userPosition={position}
-          onSelectRequest={handleSelectRequest}
-          helperSettings={helperSettings}
-          isHelperMode={isHelperMode}
-        />
-      )}
-      
       <MapContainer
         center={position}
         zoom={locationAccuracy === 'precise' ? 15 : 12}
@@ -369,6 +358,25 @@ export default function MapLive() {
         })}
       </MapContainer>
 
+      {/* Profile Icon - Top Right */}
+      <button
+        onClick={() => navigate('/profile')}
+        className="fixed top-6 right-6 z-1000 h-12 w-12 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl border-2 border-blue-600/20"
+        aria-label="Profile"
+      >
+        <svg 
+          className="h-7 w-7 text-blue-600" 
+          fill="none" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          strokeWidth="2" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+        </svg>
+      </button>
+
       {/* Confirmation Message */}
       {confirmationMessage && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-1000 bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in">
@@ -379,23 +387,32 @@ export default function MapLive() {
         </div>
       )}
 
-      {/* Help Button Component */}
-      <HelpButton 
-        onRequestCreated={handleRequestCreated} 
-      />
-       <IconChat />
-         {/* Demo Message Button - For Testing */}
-            <button
-              onClick={() => {
-                // Simulate a new message notification
-                const event = new CustomEvent('demoMessage');
-                window.dispatchEvent(event);
-              }}
-              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
-              title="Test notification"
-            >
-              📨 Demo
-            </button>
+      {/* Button Group */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-1000">
+        {position && (
+          <NearbyRequestsButton 
+            requests={sharedMarkers}
+            userPosition={position}
+            onSelectRequest={handleSelectRequest}
+            helperSettings={helperSettings}
+            isHelperMode={isHelperMode}
+          />
+        )}
+        <HelperButton 
+          onToggleHelper={(isActive, settings) => {
+            console.log('Helper mode:', isActive, settings);
+            // TODO: Implement helper mode logic
+          }}
+        />
+        <HelpButton 
+          onRequestCreated={handleRequestCreated} 
+        />
+      </div>
+
+      {/* Chat Icon - Beneath Profile Icon */}
+      <div className="fixed top-20 right-6 z-1000">
+        <IconChat />
+      </div>
     </div>
   );
 }

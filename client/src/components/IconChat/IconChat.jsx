@@ -81,16 +81,20 @@ export default function IconChat() {
     };
 
     return (
-        <div onClick={handleClick} className="relative cursor-pointer">
+        <button
+            onClick={handleClick}
+            className="relative h-12 w-12 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl border-2 border-blue-600/20"
+            aria-label="Chat"
+        >
             {/* Only show badge if there are unread messages */}
             {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold z-10">
                     {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
             )}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-600 hover:text-blue-500 transition-colors"
+                className="h-7 w-7 text-blue-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -102,7 +106,7 @@ export default function IconChat() {
                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-4l-4 4-4-4H9z"
                 />
             </svg>
-        </div>
+        </button>
     );
 }       
 

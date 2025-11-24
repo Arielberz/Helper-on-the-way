@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './helperButton.css'
 
 const HelperButton = ({ onToggleHelper }) => {
   const [isHelper, setIsHelper] = useState(false)
@@ -56,28 +55,41 @@ const HelperButton = ({ onToggleHelper }) => {
   return (
     <>
       <button
-        className={`helper-button ${isHelper ? 'active' : ''}`}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg backdrop-blur-sm ${
+          isHelper 
+            ? 'bg-green-500/20 hover:bg-green-600/30 text-blue-600 drop-shadow-lg' 
+            : 'bg-blue-500/20 hover:bg-blue-600/30 text-blue-600 drop-shadow-lg'
+        }`}
         onClick={handleToggle}
         aria-label={isHelper ? 'Stop helping' : 'Start helping'}
       >
-        <div className="helper-icon">
+        <div className="text-2xl">
           {isHelper ? '🚗✓' : '🚗'}
         </div>
-        <span className="helper-text">
+        <span className="text-sm font-medium">
           {isHelper ? 'Helping Mode ON' : 'Help Others'}
         </span>
       </button>
 
       {showModal && (
-        <div className="helper-modal-overlay" onClick={handleCancelSettings}>
-          <div className="helper-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>הגדרות עזרה</h2>
-            <p className="modal-subtitle">Helper Mode Settings</p>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCancelSettings}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">הגדרות עזרה</h2>
+            <p className="text-sm text-gray-500 mb-6">Helper Mode Settings</p>
 
-            <div className="modal-section">
-              <label>
-                מרחק מקסימלי (Maximum Distance)
-                <div className="input-with-unit">
+            <div className="mb-6">
+              <label className="block mb-2">
+                <span className="text-gray-700 font-semibold block mb-2">
+                  מרחק מקסימלי (Maximum Distance)
+                </span>
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min="1"
@@ -87,15 +99,18 @@ const HelperButton = ({ onToggleHelper }) => {
                       ...prev,
                       maxDistance: Number(e.target.value)
                     }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="unit">ק"מ (km)</span>
+                  <span className="text-gray-600 font-medium">ק"מ (km)</span>
                 </div>
               </label>
             </div>
 
-            <div className="modal-section">
-              <label>
-                לאן אתה נוסע? (Where are you going?)
+            <div className="mb-6">
+              <label className="block">
+                <span className="text-gray-700 font-semibold block mb-2">
+                  לאן אתה נוסע? (Where are you going?)
+                </span>
                 <input
                   type="text"
                   placeholder="כתובת יעד (Destination address)"
@@ -104,12 +119,13 @@ const HelperButton = ({ onToggleHelper }) => {
                     ...prev,
                     destination: e.target.value
                   }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
             </div>
 
-            <div className="modal-section">
-              <label className="checkbox-label">
+            <div className="mb-6">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={helperSettings.onlyOnRoute}
@@ -117,15 +133,18 @@ const HelperButton = ({ onToggleHelper }) => {
                     ...prev,
                     onlyOnRoute: e.target.checked
                   }))}
+                  className="w-5 h-5 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                 />
-                <span>רק אנשים שבדרך שלי (Only people on my route)</span>
+                <span className="text-gray-700">רק אנשים שבדרך שלי (Only people on my route)</span>
               </label>
             </div>
 
-            <div className="modal-section">
-              <label>
-                תשלום מינימלי (Minimum Payment)
-                <div className="input-with-unit">
+            <div className="mb-6">
+              <label className="block">
+                <span className="text-gray-700 font-semibold block mb-2">
+                  תשלום מינימלי (Minimum Payment)
+                </span>
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min="0"
@@ -135,35 +154,45 @@ const HelperButton = ({ onToggleHelper }) => {
                       ...prev,
                       minPayment: Number(e.target.value)
                     }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="unit">₪ (ILS)</span>
+                  <span className="text-gray-600 font-medium">₪ (ILS)</span>
                 </div>
+                <p className="text-sm text-gray-500 mt-1">0 = Any payment or free help</p>
               </label>
-              <p className="label-subtitle">0 = Any payment or free help</p>
             </div>
 
-            <div className="modal-section">
-              <label>סוגי בעיות שאני יכול לעזור בהם:</label>
-              <p className="label-subtitle">Problem types I can help with:</p>
-              <div className="problem-types-grid">
+            <div className="mb-6">
+              <label className="block mb-2">
+                <span className="text-gray-700 font-semibold">סוגי בעיות שאני יכול לעזור בהם:</span>
+              </label>
+              <p className="text-sm text-gray-500 mb-3">Problem types I can help with:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {problemTypeOptions.map(option => (
-                  <label key={option.value} className="checkbox-label small">
+                  <label key={option.value} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
                     <input
                       type="checkbox"
                       checked={helperSettings.problemTypes.includes(option.value)}
                       onChange={() => handleProblemTypeChange(option.value)}
+                      className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                     />
-                    <span>{option.label}</span>
+                    <span className="text-sm text-gray-700">{option.label}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={handleCancelSettings}>
+            <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+              <button 
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                onClick={handleCancelSettings}
+              >
                 ביטול (Cancel)
               </button>
-              <button className="btn-confirm" onClick={handleConfirmSettings}>
+              <button 
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors shadow-md"
+                onClick={handleConfirmSettings}
+              >
                 התחל לעזור (Start Helping)
               </button>
             </div>
