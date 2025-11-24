@@ -1,5 +1,6 @@
 // src/components/MapLive/MapLive.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import IconChat from "../IconChat/IconChat.jsx";
 import {
   MapContainer,
@@ -54,7 +55,7 @@ export default function MapLive() {
   const [helperSettings, setHelperSettings] = useState(null); // הגדרות עוזר
   const [mapRef, setMapRef] = useState(null); // התייחסות למפה
 
-
+  const navigate = useNavigate();
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
   // 1. מציאת מיקום המשתמש (GPS)
@@ -199,6 +200,71 @@ export default function MapLive() {
     }, 5000);
   };
 
+  // Open chat with a specific user for a request
+  const openChat = async (request) => {
+    console.log('Opening chat for request:', request);
+    
+    if (!token) {
+      alert("אנא התחבר כדי לשלוח הודעות");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      // First, try to assign yourself as helper if request is pending and has no helper
+      if (!request.helper && request.status === 'pending') {
+        console.log('No helper assigned and status is pending, assigning current user as helper...');
+        const assignResponse = await fetch(`${API_BASE}/api/requests/${request._id}/assign`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!assignResponse.ok) {
+          const assignData = await assignResponse.json();
+          console.error('Failed to assign helper:', assignData);
+          // Don't return - still try to open chat even if assignment fails
+        } else {
+          console.log('Successfully assigned as helper');
+        }
+      } else {
+        console.log('Request already has helper or is not pending, skipping assignment');
+      }
+
+      // Now get or create conversation
+      const url = `${API_BASE}/api/chat/conversation/request/${request._id}`;
+      console.log('Fetching conversation from:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (response.ok) {
+        // Navigate to chat page - the chat page will load this conversation
+        const conversationId = data.data?.conversation?._id || data.data?._id;
+        console.log('Navigating to chat with conversation ID:', conversationId);
+        navigate("/chat", { state: { conversationId } });
+      } else if (response.status === 401) {
+        console.log('Unauthorized - token expired');
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        console.error('Failed to open chat:', data);
+        alert(`לא ניתן לפתוח שיחה: ${data.message || 'שגיאה לא ידועה'}`);
+      }
+    } catch (error) {
+      console.error("Error opening chat:", error);
+      alert(`שגיאה בפתיחת השיחה: ${error.message}`);
+    }
+  };
+
   return (
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
       {/* Show warning if using default location */}
@@ -256,7 +322,12 @@ export default function MapLive() {
                 {m.problemType && `בעיה: ${m.problemType}`}<br />
                 {m.description && `תיאור: ${m.description}`}<br />
                 סטטוס: {m.status || 'pending'}<br />
-                <button onClick={() => openChat(m.user)}>עזור לו</button>
+                <button 
+                  onClick={() => openChat(m)}
+                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+                >
+                  💬 עזור לו
+                </button>
               </Popup>
             </Marker>
           );

@@ -115,7 +115,7 @@ const Profile = () => {
             </ul>
         </div>
         <button onClick={() => navigate("/home")}>חזרה לדף הבית</button>
-
+        <br />
         <button onClick={handleLogout}>
           התנתק
         </button>
