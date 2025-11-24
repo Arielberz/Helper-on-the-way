@@ -56,6 +56,8 @@ export default function MapLive() {
   const [isHelperMode, setIsHelperMode] = useState(false); // מצב עוזר
   const [helperSettings, setHelperSettings] = useState(null); // הגדרות עוזר
   const [mapRef, setMapRef] = useState(null); // התייחסות למפה
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // מצב מודל בקשת עזרה
+  const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
 
   const navigate = useNavigate();
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
@@ -331,12 +333,13 @@ export default function MapLive() {
       <MapContainer
         center={position}
         zoom={locationAccuracy === 'precise' ? 15 : 12}
-        style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
-
+        style={{ height: "100vh", width: "100%"}}
+        zoomControl={false}
+        attributionControl={false}
         ref={setMapRef}
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap'
+          attribution=''
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -414,6 +417,7 @@ export default function MapLive() {
             onSelectRequest={handleSelectRequest}
             helperSettings={helperSettings}
             isHelperMode={isHelperMode}
+            onModalStateChange={setIsNearbyModalOpen}
           />
         )}
         <HelperButton 
@@ -423,14 +427,17 @@ export default function MapLive() {
           }}
         />
         <HelpButton 
-          onRequestCreated={handleRequestCreated} 
+          onRequestCreated={handleRequestCreated}
+          onModalStateChange={setIsHelpModalOpen}
         />
       </div>
 
       {/* Chat Icon - Beneath Profile Icon */}
-      <div className="fixed top-20 right-6 z-1000">
-        <IconChat />
-      </div>
+      {!isHelpModalOpen && !isNearbyModalOpen && (
+        <div className="fixed top-20 right-6 z-1000">
+          <IconChat />
+        </div>
+      )}
     </div>
   );
 }

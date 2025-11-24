@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperSettings, isHelperMode }) => {
+const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperSettings, isHelperMode, onModalStateChange }) => {
   const [showList, setShowList] = useState(false)
 
   // חישוב מרחק בין שתי נקודות (Haversine formula)
@@ -77,7 +77,12 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
   }
 
   const handleToggle = () => {
-    setShowList(!showList)
+    const newState = !showList
+    setShowList(newState)
+    // Notify parent component of modal state change
+    if (onModalStateChange) {
+      onModalStateChange(newState)
+    }
   }
 
   return (
@@ -98,24 +103,36 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
       </button>
 
       {showList && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowList(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} dir="rtl">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-xl flex items-start justify-between">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-1001 p-4" onClick={() => {
+          setShowList(false)
+          if (onModalStateChange) {
+            onModalStateChange(false)
+          }
+        }}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()} dir="rtl">
+            <div className="bg-white px-8 py-6 border-b border-slate-100 flex items-start justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">בקשות עזרה קרובות</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="text-2xl font-bold text-slate-800">בקשות עזרה קרובות</h2>
+                <p className="text-sm text-slate-500 mt-1">
                   {isHelperMode && helperSettings 
                     ? `Filtered: max ${helperSettings.maxDistance}km${helperSettings.problemTypes.length > 0 ? `, ${helperSettings.problemTypes.length} problem types` : ''}${helperSettings.minPayment > 0 ? `, min ₪${helperSettings.minPayment}` : ''}`
                     : 'Nearby Help Requests'
                   }
                 </p>
               </div>
-              <button className="text-gray-400 hover:text-gray-600 text-2xl font-bold" onClick={() => setShowList(false)}>
-                ✕
+              <button className="text-slate-400 hover:text-slate-600 transition-colors" onClick={() => {
+                setShowList(false)
+                if (onModalStateChange) {
+                  onModalStateChange(false)
+                }
+              }}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-8 overflow-y-auto flex-1 space-y-4">
               {sortedRequests.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-xl text-gray-600 mb-2">אין בקשות עזרה קרובות</p>
@@ -134,6 +151,9 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, helperS
                     onClick={() => {
                       onSelectRequest(req)
                       setShowList(false)
+                      if (onModalStateChange) {
+                        onModalStateChange(false)
+                      }
                     }}
                   >
                     <div className="flex items-center justify-between mb-3">

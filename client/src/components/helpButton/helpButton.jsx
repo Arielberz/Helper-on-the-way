@@ -4,7 +4,7 @@ import { useImageUpload } from './useImageUpload';
 import { useLocation } from './useLocation';
 import { geocodeAddress, createHelpRequest, convertImageToBase64 } from './requestService';
 
-export default function HelpButton({ onRequestCreated }) {
+export default function HelpButton({ onRequestCreated, onModalStateChange }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true); // Default to GPS location
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +40,10 @@ export default function HelpButton({ onRequestCreated }) {
     setIsModalOpen(true);
     // Automatically request GPS location when modal opens
     requestCurrentLocation();
+    // Notify parent component that modal is open
+    if (onModalStateChange) {
+      onModalStateChange(true);
+    }
   };
 
   const handleCloseModal = () => {
@@ -55,6 +59,10 @@ export default function HelpButton({ onRequestCreated }) {
     setErrorMessage('');
     resetImage();
     resetLocation();
+    // Notify parent component that modal is closed
+    if (onModalStateChange) {
+      onModalStateChange(false);
+    }
   };
 
   const handleLocationMethodChange = (useGPS) => {
