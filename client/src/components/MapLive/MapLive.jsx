@@ -64,16 +64,27 @@ export default function MapLive() {
   useEffect(() => {
     const initializeLocation = async () => {
       try {
+        // Step 1: Get IP-based location first (instant, no permission)
         const location = await getInitialLocation();
         setPosition([location.lat, location.lng]);
         setLocationAccuracy(location.accuracy);
         
-        // Show banner if not precise GPS
-        if (location.accuracy !== 'precise') {
-          setShowAccuracyBanner(true);
+        // Center map on user's location
+        if (mapRef) {
+          mapRef.setView([location.lat, location.lng], location.accuracy === 'precise' ? 15 : 12);
         }
         
         console.log(`Location initialized: ${location.city || 'Unknown'}, ${location.country || 'Unknown'} (${location.accuracy})`);
+        
+        // Step 2: After IP location is set, automatically request GPS permission
+        if (location.accuracy !== 'precise') {
+          setShowAccuracyBanner(true);
+          
+          // Auto-request precise location after a short delay
+          setTimeout(() => {
+            requestPreciseLocation();
+          }, 1000);
+        }
       } catch (error) {
         console.error('Failed to get initial location:', error);
         setPosition(DEFAULT_LOCATION);
@@ -83,7 +94,7 @@ export default function MapLive() {
     };
 
     initializeLocation();
-  }, []);
+  }, [mapRef]);
 
   // Request precise GPS location (only when user clicks button)
   const requestPreciseLocation = async () => {
@@ -93,6 +104,13 @@ export default function MapLive() {
       setPosition([preciseLocation.lat, preciseLocation.lng]);
       setLocationAccuracy('precise');
       setShowAccuracyBanner(false);
+      
+      // Center map on precise location
+      if (mapRef) {
+        mapRef.flyTo([preciseLocation.lat, preciseLocation.lng], 15, {
+          duration: 1.5
+        });
+      }
       
       // Cache the GPS location for future use
       cacheLocation(preciseLocation);
@@ -313,9 +331,8 @@ export default function MapLive() {
       <MapContainer
         center={position}
         zoom={locationAccuracy === 'precise' ? 15 : 12}
-        style={{ height: "100vh", width: "100%"}}
-        zoomControl={false}
-        attributionControl={false}
+        style={{ height: "100vh", width: "100%", borderRadius: "14px" }}
+
         ref={setMapRef}
       >
         <TileLayer

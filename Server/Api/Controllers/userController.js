@@ -167,60 +167,109 @@ exports.getMe = async (req, res) => {
 
 exports.getLocationFromIP = async (req, res) => {
     try {
-        // Get client IP address
-        const clientIP = req.headers['x-forwarded-for']?.split(',')[0].trim() 
+        // Helper to check if IP is private/internal
+        const isPrivateIP = (ip) => {
+            return ip === '::1' || 
+                   ip === '127.0.0.1' || 
+                   ip.includes('localhost') ||
+                   ip.startsWith('10.') || 
+                   ip.startsWith('192.168.') || 
+                   (ip.startsWith('172.') && parseInt(ip.split('.')[1], 10) >= 16 && parseInt(ip.split('.')[1], 10) <= 31);
+        };
+
+        // Get client IP address - prioritize x-forwarded-for
+        let clientIP = req.headers['x-forwarded-for']?.split(',')[0].trim() 
                       || req.socket.remoteAddress 
                       || req.ip;
         
+        // Clean up IP (remove IPv6 prefix if present)
+        if (clientIP && clientIP.startsWith('::ffff:')) {
+            clientIP = clientIP.replace('::ffff:', '');
+        }
+
         console.log('Getting location for IP:', clientIP);
 
-        // For development (localhost), use /me endpoint or fallback
-        const isDevelopment = clientIP === '::1' || clientIP === '127.0.0.1' || clientIP?.includes('localhost');
-        
         const fetch = (await import('node-fetch')).default;
-        let apiUrl;
         
-        if (isDevelopment) {
-            // Use /me endpoint for development - gets location from the server's IP
-            apiUrl = 'https://ipwho.org/me?fields=latitude,longitude,city,country,ip';
-            console.log('Development mode - using /me endpoint');
-        } else {
-            // Use specific IP endpoint for production
-            apiUrl = `https://ipwho.org/${clientIP}?fields=latitude,longitude,city,country,ip`;
+        // Strategy:
+        // 1. If public IP -> Query specific IP
+        // 2. If private/localhost -> Query "me" endpoint (auto-detect public IP)
+        
+        const useAutoDetect = !clientIP || isPrivateIP(clientIP);
+        console.log(`IP Type: ${useAutoDetect ? 'Private/Local (Auto-detecting public IP)' : 'Public'}`);
+
+        // Primary Service: ipapi.co (Reliable, JSON format)
+        // Fallback Service: ip-api.com (Good free tier, slightly different format)
+        
+        try {
+            // --- PRIMARY ATTEMPT (ipapi.co) ---
+            const primaryUrl = useAutoDetect 
+                ? 'https://ipapi.co/json/' 
+                : `https://ipapi.co/${clientIP}/json/`;
+                
+            console.log(`Trying Primary API: ${primaryUrl}`);
+            const response = await fetch(primaryUrl);
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (!data.error && data.latitude && data.longitude) {
+                    return sendResponse(res, 200, true, "location retrieved successfully", {
+                        latitude: data.latitude,
+                        longitude: data.longitude,
+                        city: data.city || 'Unknown',
+                        country: data.country_name || 'Unknown',
+                        ip: data.ip || clientIP,
+                        source: 'primary'
+                    });
+                }
+            }
+            console.warn('Primary API failed or returned invalid data, trying fallback...');
+        } catch (primaryError) {
+            console.error('Primary API error:', primaryError.message);
         }
 
-        const response = await fetch(apiUrl);
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(result.message || 'IP geolocation failed');
+        // --- FALLBACK ATTEMPT (ip-api.com) ---
+        try {
+            // Note: ip-api.com doesn't support HTTPS on free tier sometimes, but we'll try http if needed or use their secure endpoint if available.
+            // Using http for free tier compatibility as per their docs for non-commercial
+            const fallbackUrl = useAutoDetect
+                ? 'http://ip-api.com/json/'
+                : `http://ip-api.com/json/${clientIP}`;
+                
+            console.log(`Trying Fallback API: ${fallbackUrl}`);
+            const response = await fetch(fallbackUrl);
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    return sendResponse(res, 200, true, "location retrieved successfully (fallback)", {
+                        latitude: data.lat,
+                        longitude: data.lon,
+                        city: data.city || 'Unknown',
+                        country: data.country || 'Unknown',
+                        ip: data.query || clientIP,
+                        source: 'fallback'
+                    });
+                }
+            }
+        } catch (fallbackError) {
+            console.error('Fallback API error:', fallbackError.message);
         }
 
-        // ipwho.org returns data in a nested 'data' object
-        const data = result.data || result;
-
-        // Validate we have the required fields
-        if (!data.latitude || !data.longitude) {
-            throw new Error('Missing location coordinates from API');
-        }
-
-        return sendResponse(res, 200, true, "location retrieved successfully", {
-            latitude: data.latitude,
-            longitude: data.longitude,
-            city: data.city || 'Unknown',
-            country: data.country || 'Unknown',
-            ip: data.ip || clientIP
-        });
+        throw new Error('All geolocation services failed');
 
     } catch (error) {
-        console.error('IP geolocation error:', error);
-        // Fallback to Tel Aviv on error
-        sendResponse(res, 200, true, "location retrieved (fallback)", {
+        console.error('Final IP geolocation error:', error);
+        // Ultimate Fallback to Tel Aviv
+        sendResponse(res, 200, true, "location retrieved (default)", {
             latitude: 32.0853,
             longitude: 34.7818,
             city: 'Tel Aviv',
             country: 'Israel',
-            ip: 'unknown'
+            ip: 'unknown',
+            source: 'default'
         });
     }
 };

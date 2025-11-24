@@ -164,10 +164,20 @@ export const getUserLocation = async () => {
 };
 
 /**
- * Get initial location for app load (alias for getUserLocation)
- * Uses cached location if available and recent, otherwise fetches fresh location
+ * Get initial location for app load - ALWAYS uses IP first
+ * This provides instant location without asking for GPS permission
+ * GPS can be requested later via getPreciseLocation()
  */
-export const getInitialLocation = getUserLocation;
+export const getInitialLocation = async () => {
+  // 1. Check cache first
+  const cached = getCachedLocation();
+  if (cached) {
+    return cached;
+  }
+
+  // 2. Always start with IP geolocation (no permission needed)
+  return await getApproximateLocation();
+};
 
 /**
  * Cache location for future use (legacy - for backward compatibility)
