@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import io from "socket.io-client";
 import Header from "../../components/header/Header";
 
@@ -15,6 +15,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -57,11 +58,18 @@ export default function Chat() {
 
         if (response.ok) {
           const data = await response.json();
-          setConversations(data.data || []);
+          const conversationsArray = data.data?.conversations || [];
+          setConversations(conversationsArray);
           
-          // Select first conversation by default
-          if (data.data && data.data.length > 0) {
-            loadConversation(data.data[0]._id);
+          // Check if there's a specific conversation to load from navigation state
+          const targetConversationId = location.state?.conversationId;
+          
+          if (targetConversationId) {
+            // Load the specific conversation
+            loadConversation(targetConversationId);
+          } else if (conversationsArray.length > 0) {
+            // Select first conversation by default
+            loadConversation(conversationsArray[0]._id);
           } else {
             setLoading(false);
           }
@@ -77,7 +85,7 @@ export default function Chat() {
     };
 
     fetchConversations();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   // Load a specific conversation
   const loadConversation = async (conversationId) => {
@@ -93,8 +101,9 @@ export default function Chat() {
 
       if (response.ok) {
         const data = await response.json();
-        setSelectedConversation(data.data);
-        setMessages(data.data.messages || []);
+        const conversation = data.data?.conversation || data.data;
+        setSelectedConversation(conversation);
+        setMessages(conversation?.messages || []);
         setLoading(false);
 
         // Mark messages as read

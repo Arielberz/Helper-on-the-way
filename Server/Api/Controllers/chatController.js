@@ -83,15 +83,21 @@ exports.getOrCreateConversation = async (req, res) => {
       .populate('request', 'problemType status location description');
 
     if (!conversation) {
-      // Create new conversation only if there's a helper assigned
-      if (!request.helper) {
-        return sendResponse(res, 400, false, 'no helper assigned to this request yet');
+      // Determine helper - either the assigned helper or the current user (if they're trying to help)
+      let helperId = request.helper;
+      
+      // If no helper assigned yet, assign current user as helper if they're not the requester
+      if (!helperId) {
+        if (request.user.toString() === userId) {
+          return sendResponse(res, 400, false, 'you cannot be the helper for your own request');
+        }
+        helperId = userId;
       }
 
       conversation = new Conversation({
         request: requestId,
         user: request.user,
-        helper: request.helper,
+        helper: helperId,
         messages: []
       });
 
