@@ -1,5 +1,6 @@
 // src/components/MapLive/MapLive.jsx
 import React, { useEffect, useState } from "react";
+import IconChat from "../IconChat/IconChat.jsx";
 import {
   MapContainer,
   TileLayer,
@@ -8,7 +9,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import L, { Icon } from "leaflet";
 import io from "socket.io-client";
 
 import HelpButton from "../helpButton/helpButton";
@@ -254,7 +255,8 @@ export default function MapLive() {
                 <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
                 {m.problemType && `בעיה: ${m.problemType}`}<br />
                 {m.description && `תיאור: ${m.description}`}<br />
-                סטטוס: {m.status || 'pending'}
+                סטטוס: {m.status || 'pending'}<br />
+                <button onClick={() => openChat(m.user)}>עזור לו</button>
               </Popup>
             </Marker>
           );
@@ -276,6 +278,19 @@ export default function MapLive() {
         currentPosition={position}
         onRequestCreated={handleRequestCreated} 
       />
+       <IconChat />
+         {/* Demo Message Button - For Testing */}
+            <button
+              onClick={() => {
+                // Simulate a new message notification
+                const event = new CustomEvent('demoMessage');
+                window.dispatchEvent(event);
+              }}
+              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+              title="Test notification"
+            >
+              📨 Demo
+            </button>
     </div>
   );
 }
