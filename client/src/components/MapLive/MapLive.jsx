@@ -26,17 +26,6 @@ L.Icon.Default.mergeOptions({
 
 const API_BASE = import.meta.env.VITE_API_URL; 
 
-// קומפוננטה פנימית שמטפלת בלחיצה על המפה
-function ClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      const { lat, lng } = e.latlng;
-      onMapClick({ lat, lng });
-    },
-  });
-  return null;
-}
-
 // קומפוננטה לקבלת reference למפה
 function MapRefSetter({ setMapRef }) {
   const map = useMapEvents({});
@@ -178,57 +167,6 @@ export default function MapLive() {
       mapRef.flyTo([request.location.lat, request.location.lng], 16, {
         duration: 1.5
       });
-    }
-  };
-
-  // 6. מה קורה כשאתה לוחץ על המפה
-  const handleMapClick = async ({ lat, lng }) => {
-    if (!token) {
-      alert("אין חיבור משתמש (token), צריך להתחבר מחדש");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          location: { lat, lng },
-          problemType: 'other',
-          description: 'בקשת עזרה ממפה',
-          priority: 'medium'
-        }),
-      });
-
-      // Check if token expired
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        return;
-      }
-
-      const json = await res.json();
-
-      if (!json.success) {
-        console.error("Error from server:", json);
-        return;
-      }
-
-      console.log('New request created:', json.data);
-
-      // מוסיפים את המיקום לרשימת הפינים המקומית
-      setSharedMarkers((prev) => [...prev, json.data]);
-
-      // שולחים עדכון לכל המשתמשים האחרים דרך Socket.IO
-      if (socket) {
-        socket.emit('newRequest', json.data);
-      }
-    } catch (err) {
-      console.error("Failed to send request", err);
-      alert("לא הצלחנו לשמור את הבקשה בשרת");
     }
   };
 

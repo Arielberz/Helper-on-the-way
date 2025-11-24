@@ -6,11 +6,10 @@ import Header from "../../components/header/Header";
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [rating, setRating] = useState(0);
   const navigate = useNavigate();
 
-  const maxRating = 5;
-  const rating = 4; // Default rating, you can make this dynamic later
+  // For demo purposes, set a static rating
   const recentActions = []; // Can be populated from API later
 
   useEffect(() => {
@@ -18,17 +17,6 @@ const Profile = () => {
       const token = localStorage.getItem("token");
       console.log("Token from localStorage:", token ? "exists" : "missing");
       
-      if (!token) {
-        console.log("No token found, using demo data");
-        // Show demo profile without token
-        setUser({
-          username: "משתמש אורח",
-          email: "guest@example.com",
-          phone: "050-0000000"
-        });
-        setLoading(false);
-        return;
-      }
 
       try {
         console.log("Fetching user profile...");
@@ -99,17 +87,17 @@ const Profile = () => {
         <h1 className={styles.title}>פרופיל</h1>
 
         <div className={styles.section}>
-          <span className={styles.label}>שם משתמש:</span>
+          <span className={styles.label}>שם משתמש: {user?.username || "לא זמין"}</span>
           <span className={styles.value}>{user?.username || "לא זמין"}</span>
         </div>
 
         <div className={styles.section}>
-          <span className={styles.label}>אימייל:</span>
+          <span className={styles.label}>אימייל: {user?.email || "לא זמין"}</span>
           <span className={styles.value}>{user?.email || "לא זמין"}</span>
         </div>
 
         <div className={styles.section}>
-          <span className={styles.label}>טלפון:</span>
+          <span className={styles.label}>טלפון: {user?.phone || "לא זמין"}</span>
           <span className={styles.value}>{user?.phone || "לא זמין"}</span>
         </div>
 
@@ -132,20 +120,16 @@ const Profile = () => {
 
         <div className={styles.section}>
           <span className={styles.label}>פעולות אחרונות:</span>
-          {recentActions.length === 0 ? (
-            <p className={styles.empty}>אין פעולות להצגה כרגע.</p>
-          ) : (
-            <ul className={styles.list}>
-              {recentActions.map((action, index) => (
-                <li key={index} className={styles.listItem}>
-                  <span className={styles.actionTitle}>{action.title}</span>
+          <ul className={styles.list}>
+            {recentActions.map((action, index) => (
+              <li key={index} className={styles.listItem}>
+                <span className={styles.actionTitle}>{action.title}</span>
                   {action.time && (
                     <span className={styles.actionTime}>{action.time}</span>
                   )}
                 </li>
               ))}
             </ul>
-          )}
         </div>
 
         <button onClick={handleLogout} className={styles.logoutButton}>
