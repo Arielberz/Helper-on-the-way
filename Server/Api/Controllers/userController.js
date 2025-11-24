@@ -144,6 +144,27 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.getMe = async (req, res) => {
+    try {
+        const userId = req.userId; // Set by authMiddleware
+        
+        if (!userId) {
+            return sendResponse(res, 401, false, "unauthorized");
+        }
+
+        const user = await User.findById(userId).select('-password');
+        
+        if (!user) {
+            return sendResponse(res, 404, false, "user not found");
+        }
+
+        sendResponse(res, 200, true, "user profile retrieved successfully", { user: sanitizeUser(user) });
+    } catch (error) {
+        console.error('Error getting user profile:', error);
+        sendResponse(res, 500, false, "server error");
+    }
+};
+
 exports.getLocationFromIP = async (req, res) => {
     try {
         // Get client IP address
