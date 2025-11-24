@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-import Header from "../../components/header/Header";
 
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
   const navigate = useNavigate();
+  const maxRating = 5;
 
   // For demo purposes, set a static rating
   const recentActions = []; // Can be populated from API later
@@ -29,13 +29,7 @@ const Profile = () => {
         console.log("Response status:", response.status);
 
         if (!response.ok) {
-          console.log("Server error, showing demo profile");
-          // Show demo profile on error
-          setUser({
-            username: "משתמש אורח",
-            email: "guest@example.com",
-            phone: "050-0000000"
-          });
+          console.error("Failed to fetch user profile");
           setLoading(false);
           return;
         }
@@ -47,11 +41,6 @@ const Profile = () => {
       } catch (err) {
         console.error("Error fetching profile:", err);
         // Show demo profile on error
-        setUser({
-          username: "משתמש אורח",
-          email: "guest@example.com",
-          phone: "050-0000000"
-        });
         setLoading(false);
       }
     };
@@ -67,9 +56,8 @@ const Profile = () => {
   if (loading) {
     return (
       <>
-        <Header />
-        <div className={styles.page}>
-          <div className={styles.card}>
+        <div>
+          <div >
             <p>טוען...</p>
           </div>
         </div>
@@ -79,60 +67,56 @@ const Profile = () => {
 
   return (
     <>
-      <Header />
-      <div className={styles.page}>
-        <div className={styles.card}>
-          <img src="/helper-logo.jpeg" alt="Helper On The Way" className={styles.logo} />
+      <div >
+        <div>
+          <img src="/helper-logo.jpeg" alt="Helper On The Way"  />  
 
-        <h1 className={styles.title}>פרופיל</h1>
+        <h1>פרופיל</h1>
 
-        <div className={styles.section}>
-          <span className={styles.label}>שם משתמש: {user?.username || "לא זמין"}</span>
-          <span className={styles.value}>{user?.username || "לא זמין"}</span>
+        <div >
+          <span >שם משתמש: {user?.username || "לא זמין"}</span>
         </div>
 
-        <div className={styles.section}>
-          <span className={styles.label}>אימייל: {user?.email || "לא זמין"}</span>
-          <span className={styles.value}>{user?.email || "לא זמין"}</span>
+        <div >
+          <span>אימייל: {user?.email || "לא זמין"}</span>
         </div>
 
-        <div className={styles.section}>
-          <span className={styles.label}>טלפון: {user?.phone || "לא זמין"}</span>
-          <span className={styles.value}>{user?.phone || "לא זמין"}</span>
+        <div >
+          <span>טלפון: {user?.phone || "לא זמין"}</span>
         </div>
-
-        <div className={styles.section}>
-          <span className={styles.label}>הדירוג שלי:</span>
-          <div className={styles.rating}>
+        <div >
+          <span>הדירוג שלי:</span>
+          <div >
             {Array.from({ length: maxRating }).map((_, i) => (
               <span
                 key={i}
-                className={i < rating ? styles.starFilled : styles.starEmpty}
+                style={{ color: i < rating ? "#ffc107" : "#e4e5e9" }}
               >
                 ★
               </span>
             ))}
-            <span className={styles.ratingNumber}>
+            <span >
               {rating}/{maxRating}
             </span>
           </div>
         </div>
 
-        <div className={styles.section}>
-          <span className={styles.label}>פעולות אחרונות:</span>
-          <ul className={styles.list}>
+        <div >
+          <span>פעולות אחרונות:</span>
+          <ul >
             {recentActions.map((action, index) => (
-              <li key={index} className={styles.listItem}>
-                <span className={styles.actionTitle}>{action.title}</span>
+              <li key={index} >
+                <span>{action.title}</span>
                   {action.time && (
-                    <span className={styles.actionTime}>{action.time}</span>
+                    <span>{action.time}</span>
                   )}
                 </li>
               ))}
             </ul>
         </div>
+        <button onClick={() => navigate("/home")}>חזרה לדף הבית</button>
 
-        <button onClick={handleLogout} className={styles.logoutButton}>
+        <button onClick={handleLogout}>
           התנתק
         </button>
       </div>

@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import IconChat from "../IconChat/IconChat";
 
 const Header = () => {
   return (
@@ -60,27 +61,19 @@ const Header = () => {
                   דירוג
                 </NavLink>
               </li>
-              <li>
-                <NavLink 
-                  to="/profile" 
-                  className={({ isActive }) => 
-                    isActive 
-                      ? "text-blue-600 font-semibold border-b-2 border-blue-600 pb-1" 
-                      : "text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium"
-                  }
-                >
-                  פרופיל
-                </NavLink>
-              </li>
             </ul>
           </nav>
 
           <div className="flex items-center gap-4">
-            <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+            <IconChat />
+            <NavLink 
+              to="/profile"
+              className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
+            >
               <svg className="h-6 w-6 text-gray-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
               </svg>
-            </div>
+            </NavLink>
           </div>
         </div>
       </div>
