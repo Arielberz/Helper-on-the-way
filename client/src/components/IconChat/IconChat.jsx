@@ -80,16 +80,14 @@ export default function IconChat() {
         navigate("/chat");
     };
 
-    // Don't show the icon if there are no unread messages
-    if (unreadCount === 0) {
-        return null;
-    }
-
     return (
         <div onClick={handleClick} className="relative cursor-pointer">
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold">
-                {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+            {/* Only show badge if there are unread messages */}
+            {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white bg-red-500 text-white text-xs font-bold">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+            )}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6 text-gray-600 hover:text-blue-500 transition-colors"
