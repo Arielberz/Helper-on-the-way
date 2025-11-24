@@ -44,7 +44,7 @@ const Landing = () => {
                         {/* Right Image/Illustration */}
                         <div className="hidden md:flex justify-center">
                             <img 
-                                src="/helper-logo.jpeg" 
+                                src="/helper-logo-removebg.png" 
                                 alt="Helper on the way" 
                                 className="transform hover:scale-105 transition-transform duration-500 w-96"
                             />
