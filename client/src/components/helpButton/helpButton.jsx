@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import HelpRequestModal from './HelpRequestModal';
 import { useImageUpload } from './useImageUpload';
+import { useLocation } from './useLocation';
 import { geocodeAddress, createHelpRequest, convertImageToBase64 } from './requestService';
 
-export default function HelpButton({ currentPosition, onRequestCreated }) {
+export default function HelpButton({ onRequestCreated }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [useCurrentLocation, setUseCurrentLocation] = useState(true);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(true); // Default to GPS location
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [locationError, setLocationError] = useState('');
   
   const [formData, setFormData] = useState({
     problemType: 'other',
@@ -28,8 +28,19 @@ export default function HelpButton({ currentPosition, onRequestCreated }) {
     resetImage
   } = useImageUpload();
 
+  const {
+    currentLocation,
+    isLoadingLocation,
+    locationError,
+    setLocationError,
+    resetLocation,
+    requestCurrentLocation
+  } = useLocation();
+
   const handleOpenModal = () => {
     setIsModalOpen(true);
+    // Automatically request GPS location when modal opens
+    requestCurrentLocation();
   };
 
   const handleCloseModal = () => {
@@ -42,10 +53,21 @@ export default function HelpButton({ currentPosition, onRequestCreated }) {
       currency: 'ILS',
       manualAddress: ''
     });
-    setUseCurrentLocation(true);
+    setUseCurrentLocation(true); // Reset to GPS default
     setErrorMessage('');
-    setLocationError('');
     resetImage();
+    resetLocation();
+  };
+
+  const handleLocationMethodChange = (useGPS) => {
+    setUseCurrentLocation(useGPS);
+    setLocationError('');
+    resetLocation();
+    
+    // If user chooses GPS, request it immediately
+    if (useGPS) {
+      requestCurrentLocation();
+    }
   };
 
   const handleInputChange = (e) => {
@@ -79,23 +101,31 @@ export default function HelpButton({ currentPosition, onRequestCreated }) {
     let location;
     try {
       if (useCurrentLocation) {
-        if (!currentPosition) {
-          setLocationError('Current location is not available. Please wait or enter manually.');
+        // Use GPS location
+        if (!currentLocation) {
+          setLocationError('GPS location is not available. Please wait or enter address manually.');
           return;
         }
         location = {
-          lat: currentPosition[0],
-          lng: currentPosition[1],
-          address: ''
+          lat: currentLocation.lat,
+          lng: currentLocation.lng,
+          address: '',
+          accuracy: currentLocation.accuracy,
+          precision: currentLocation.precision
         };
       } else {
+        // Use manual address
         if (!formData.manualAddress || !formData.manualAddress.trim()) {
           setLocationError('Please enter a valid address');
           return;
         }
         
         setIsSubmitting(true);
-        location = await geocodeAddress(formData.manualAddress);
+        const geocoded = await geocodeAddress(formData.manualAddress);
+        location = {
+          ...geocoded,
+          accuracy: 'manual'
+        };
       }
     } catch (error) {
       setLocationError(error.message);
@@ -171,9 +201,9 @@ export default function HelpButton({ currentPosition, onRequestCreated }) {
         formData={formData}
         onInputChange={handleInputChange}
         useCurrentLocation={useCurrentLocation}
-        setUseCurrentLocation={setUseCurrentLocation}
-        currentLocation={currentPosition ? { lat: currentPosition[0], lng: currentPosition[1] } : null}
-        isLoadingLocation={!currentPosition}
+        setUseCurrentLocation={handleLocationMethodChange}
+        currentLocation={currentLocation}
+        isLoadingLocation={isLoadingLocation}
         errorMessage={errorMessage}
         locationError={locationError}
         setLocationError={setLocationError}

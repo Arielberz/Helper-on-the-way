@@ -52,12 +52,6 @@ io.on('connection', (socket) => {
         console.log('Broadcasting new request:', request);
         socket.broadcast.emit('requestAdded', request);
     });
-
-    // Listen for new location sharing
-    socket.on('newLocation', (location) => {
-        console.log('Broadcasting new location:', location);
-        socket.broadcast.emit('locationAdded', location);
-    });
 });
 
 const PORT = process.env.PORT || 3001;
