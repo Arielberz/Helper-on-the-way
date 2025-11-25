@@ -49,6 +49,7 @@ export default function MapLive() {
   const [position, setPosition] = useState(DEFAULT_LOCATION);        // המיקום שלך
   const [locationAccuracy, setLocationAccuracy] = useState('loading'); // 'loading', 'approximate', 'precise', 'default'
   const [showAccuracyBanner, setShowAccuracyBanner] = useState(false);
+  const [locationError, setLocationError] = useState(null); // Error message for location issues
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
 
@@ -76,19 +77,15 @@ export default function MapLive() {
           mapRef.setView([location.lat, location.lng], location.accuracy === 'precise' ? 15 : 12);
         }
         
-        console.log(`Location initialized: ${location.city || 'Unknown'}, ${location.country || 'Unknown'} (${location.accuracy})`);
-        
-        // Step 2: After IP location is set, automatically request GPS permission
+        // Step 2: Show banner to let user manually request GPS if needed
         if (location.accuracy !== 'precise') {
           setShowAccuracyBanner(true);
           
-          // Auto-request precise location after a short delay
-          setTimeout(() => {
-            requestPreciseLocation();
-          }, 1000);
+          // Don't auto-request GPS - let user click the banner
+          // This avoids permission prompts appearing without user interaction
+          // and prevents errors when Location Services are disabled
         }
       } catch (error) {
-        console.error('Failed to get initial location:', error);
         setPosition(DEFAULT_LOCATION);
         setLocationAccuracy('default');
         setShowAccuracyBanner(true);
@@ -102,6 +99,7 @@ export default function MapLive() {
   const requestPreciseLocation = async () => {
     try {
       setLocationAccuracy('loading');
+      setLocationError(null);
       const preciseLocation = await getPreciseLocation();
       setPosition([preciseLocation.lat, preciseLocation.lng]);
       setLocationAccuracy('precise');
@@ -116,12 +114,24 @@ export default function MapLive() {
       
       // Cache the GPS location for future use
       cacheLocation(preciseLocation);
-      
-      console.log('Precise GPS location acquired');
     } catch (error) {
-      console.error('GPS location denied or unavailable:', error);
+      // Handle different geolocation error codes
+      let errorMessage = 'GPS location unavailable';
+      
+      if (error.code === 1) {
+        // PERMISSION_DENIED
+        errorMessage = '🚫 Location permission denied. Please enable location access in Safari settings.';
+      } else if (error.code === 2) {
+        // POSITION_UNAVAILABLE (CoreLocation kCLErrorLocationUnknown)
+        errorMessage = '⚠️ Location unavailable. Check System Settings → Privacy & Security → Location Services.';
+      } else if (error.code === 3) {
+        // TIMEOUT
+        errorMessage = '⏱️ Location request timed out. Please try again.';
+      }
+      
       setLocationAccuracy('approximate');
-      // Keep showing banner
+      setLocationError(errorMessage);
+      // Keep showing banner with helpful message
     }
   };
 
@@ -132,7 +142,6 @@ export default function MapLive() {
 
     // האזנה לבקשות חדשות מהשרת
     newSocket.on('requestAdded', (request) => {
-      console.log('New request received:', request);
       setSharedMarkers((prev) => [...prev, request]);
     });
 
@@ -161,12 +170,9 @@ export default function MapLive() {
         }
         
         const json = await res.json();
-        console.log('Initial locations loaded:', json.data?.length || 0);
-        console.log('Sample request data:', json.data?.[0]);
-        console.log('Sample user object:', json.data?.[0]?.user);
         setSharedMarkers(json.data || []);
       } catch (err) {
-        console.error("Failed to fetch locations", err);
+        // Failed to fetch locations
       }
     };
 
@@ -177,16 +183,6 @@ export default function MapLive() {
   const handleToggleHelper = (isActive, settings) => {
     setIsHelperMode(isActive);
     setHelperSettings(isActive ? settings : null);
-    
-    if (isActive && settings) {
-      console.log('Helper mode ON with settings:', settings);
-      console.log('Max distance:', settings.maxDistance, 'km');
-      console.log('Destination:', settings.destination || 'None');
-      console.log('Only on route:', settings.onlyOnRoute);
-      console.log('Problem types:', settings.problemTypes.length > 0 ? settings.problemTypes : 'All types');
-    } else {
-      console.log('Helper mode OFF');
-    }
     
     // שליחה לשרת שהמשתמש זמין לעזור עם ההגדרות
     if (socket && position) {
@@ -203,7 +199,6 @@ export default function MapLive() {
 
   // 5. טיפול בבחירת בקשה מהרשימה
   const handleSelectRequest = (request) => {
-    console.log('Selected request:', request);
     // מרכז את המפה על הבקשה שנבחרה
     if (mapRef && request.location?.lat && request.location?.lng) {
       mapRef.flyTo([request.location.lat, request.location.lng], 16, {
@@ -214,8 +209,6 @@ export default function MapLive() {
 
   // Handle new request created from HelpButton
   const handleRequestCreated = (newRequest) => {
-    console.log('New request created from HelpButton:', newRequest);
-    
     // Add to local markers
     setSharedMarkers((prev) => [...prev, newRequest]);
 
@@ -242,8 +235,6 @@ export default function MapLive() {
 
   // Open chat with a specific user for a request
   const openChat = async (request) => {
-    console.log('Opening chat for request:', request);
-    
     if (!token) {
       alert("אנא התחבר כדי לשלוח הודעות");
       navigate("/login");
@@ -251,30 +242,57 @@ export default function MapLive() {
     }
 
     try {
-      // First, try to assign yourself as helper if request is pending and has no helper
+      const currentUserId = localStorage.getItem('userId');
+      
+      // Flow 1: Request is pending and no helper assigned yet → Send help request
       if (!request.helper && request.status === 'pending') {
-        console.log('No helper assigned and status is pending, assigning current user as helper...');
-        const assignResponse = await fetch(`${API_BASE}/api/requests/${request._id}/assign`, {
+        const helpResponse = await fetch(`${API_BASE}/api/requests/${request._id}/request-help`, {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+            message: 'אני יכול לעזור לך!',
+            location: {
+              lat: position[0],
+              lng: position[1]
+            }
+          })
         });
         
-        if (!assignResponse.ok) {
-          const assignData = await assignResponse.json();
-          console.error('Failed to assign helper:', assignData);
-          // Don't return - still try to open chat even if assignment fails
+        if (!helpResponse.ok) {
+          const helpData = await helpResponse.json();
+          alert(`❌ ${helpData.message || 'נכשל בשליחת בקשת העזרה'}`);
+          return;
         } else {
-          console.log('Successfully assigned as helper');
+          await helpResponse.json();
+          alert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`);
+          // Reload markers to show updated pendingHelpers
+          window.location.reload();
+          return;
         }
-      } else {
-        console.log('Request already has helper or is not pending, skipping assignment');
+      } 
+      
+      // Flow 2: Helper is assigned and current user is the helper → Open chat
+      else if (request.helper && (request.helper === currentUserId || request.helper._id === currentUserId)) {
+        // Continue to chat opening code below
+      } 
+      
+      // Flow 3: Helper already assigned to someone else
+      else if (request.helper) {
+        alert('⚠️ בקשה זו כבר שובצה לעוזר אחר');
+        return;
+      } 
+      
+      // Flow 4: Request is not pending anymore
+      else {
+        alert('⚠️ בקשה זו אינה זמינה יותר');
+        return;
       }
 
       // Now get or create conversation
       const url = `${API_BASE}/api/chat/conversation/request/${request._id}`;
-      console.log('Fetching conversation from:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -282,25 +300,19 @@ export default function MapLive() {
         },
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Response data:', data);
 
       if (response.ok) {
         // Navigate to chat page - the chat page will load this conversation
         const conversationId = data.data?.conversation?._id || data.data?._id;
-        console.log('Navigating to chat with conversation ID:', conversationId);
         navigate("/chat", { state: { conversationId } });
       } else if (response.status === 401) {
-        console.log('Unauthorized - token expired');
         localStorage.removeItem("token");
         navigate("/login");
       } else {
-        console.error('Failed to open chat:', data);
         alert(`לא ניתן לפתוח שיחה: ${data.message || 'שגיאה לא ידועה'}`);
       }
     } catch (error) {
-      console.error("Error opening chat:", error);
       alert(`שגיאה בפתיחת השיחה: ${error.message}`);
     }
   };
@@ -309,24 +321,38 @@ export default function MapLive() {
     <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
       {/* Show location accuracy banner */}
       {showAccuracyBanner && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-1000 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-1000 px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 max-w-md ${
+          locationError ? 'bg-orange-500' : 'bg-blue-500'
+        } text-white`}>
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-sm">
-            {locationAccuracy === 'loading' ? 'Getting location...' : 
-             locationAccuracy === 'approximate' ? '📍 Showing approximate location' :
-             '📍 Using default location'}
-          </span>
+          <div className="flex-1">
+            <span className="text-sm block">
+              {locationError ? locationError :
+               locationAccuracy === 'loading' ? 'Getting location...' : 
+               locationAccuracy === 'approximate' ? '📍 Showing approximate location' :
+               '📍 Using default location'}
+            </span>
+          </div>
           {locationAccuracy !== 'loading' && (
             <button
               onClick={requestPreciseLocation}
-              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors"
+              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors flex-shrink-0"
             >
-              Enable Precise Location
+              {locationError ? 'Try Again' : 'Enable Precise Location'}
             </button>
           )}
+          <button
+            onClick={() => setShowAccuracyBanner(false)}
+            className="ml-1 p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+            aria-label="Close"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
       
@@ -359,7 +385,15 @@ export default function MapLive() {
 
         {/* כל הנקודות שהגיעו מהשרת */}
         {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
-          console.log('Rendering marker:', m._id, 'User object:', m.user, 'Username:', m.user?.username);
+          // Check if current user is the requester
+          const isMyRequest = m.user?._id === localStorage.getItem('userId') || m.user?.id === localStorage.getItem('userId');
+          
+          // Check if current user has already requested to help
+          const currentUserId = localStorage.getItem('userId');
+          const alreadyRequested = m.pendingHelpers?.some(ph => 
+            ph.user?._id === currentUserId || ph.user?.id === currentUserId
+          );
+          
           return (
             <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
               <Popup>
@@ -367,12 +401,37 @@ export default function MapLive() {
                 {m.problemType && `בעיה: ${m.problemType}`}<br />
                 {m.description && `תיאור: ${m.description}`}<br />
                 סטטוס: {m.status || 'pending'}<br />
-                <button 
-                  onClick={() => openChat(m)}
-                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
-                >
-                  💬 עזור לו
-                </button>
+                
+                {!isMyRequest && (
+                  <>
+                    {m.status === 'pending' && !alreadyRequested && (
+                      <button 
+                        onClick={() => openChat(m)}
+                        className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
+                      >
+                        🙋 אני רוצה לעזור
+                      </button>
+                    )}
+                    {m.status === 'pending' && alreadyRequested && (
+                      <div className="mt-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-medium text-center">
+                        ⏳ ממתין לאישור
+                      </div>
+                    )}
+                    {m.status === 'assigned' && m.helper === currentUserId && (
+                      <button 
+                        onClick={() => openChat(m)}
+                        className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                      >
+                        💬 פתח צ'אט
+                      </button>
+                    )}
+                    {m.status === 'assigned' && m.helper !== currentUserId && (
+                      <div className="mt-2 px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium text-center">
+                        👤 כבר שובץ עוזר
+                      </div>
+                    )}
+                  </>
+                )}
               </Popup>
             </Marker>
           );
@@ -422,13 +481,13 @@ export default function MapLive() {
         )}
         <HelperButton 
           onToggleHelper={(isActive, settings) => {
-            console.log('Helper mode:', isActive, settings);
             // TODO: Implement helper mode logic
           }}
         />
         <HelpButton 
           onRequestCreated={handleRequestCreated}
           onModalStateChange={setIsHelpModalOpen}
+          fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
         />
       </div>
 

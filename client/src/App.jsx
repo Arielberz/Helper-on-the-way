@@ -9,12 +9,19 @@ import Chat from "./pages/chat/chat";
 import Rating from "./pages/rating/rating";
 import Profile from "./pages/Profile/profile";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+import { RatingProvider } from "./context/RatingContext";
+import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
+import { HelperRequestProvider } from "./context/HelperRequestContext";
+import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
 
 
 function App() {
   return (
-    <>
-      <Routes>
+    <RatingProvider>
+      <HelperRequestProvider>
+        <GlobalRatingModal />
+        <GlobalHelperRequestModal />
+        <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -65,7 +72,8 @@ function App() {
         <Route path="*" element={<Landing />} />
        
       </Routes>
-    </>
+      </HelperRequestProvider>
+    </RatingProvider>
   );
 }
 

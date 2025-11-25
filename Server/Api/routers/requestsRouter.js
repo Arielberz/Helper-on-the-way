@@ -9,6 +9,9 @@ const {
   getMyRequests,
   updateRequestStatus,
   assignHelper,
+  requestToHelp,
+  confirmHelper,
+  rejectHelper,
   addPhotos,
   deleteRequest,
   updatePayment
@@ -32,10 +35,19 @@ router.get('/:id', authMiddleware, getRequestById);
 // Update request status
 router.patch('/:id/status', authMiddleware, updateRequestStatus);
 
-// Assign helper to a request
+// NEW: Helper requests to help (adds to pending list)
+router.post('/:id/request-help', authMiddleware, requestToHelp);
+
+// NEW: Requester confirms a helper
+router.post('/:id/confirm-helper', authMiddleware, confirmHelper);
+
+// NEW: Requester rejects a helper
+router.post('/:id/reject-helper', authMiddleware, rejectHelper);
+
+// Legacy: Assign helper to a request (now adds to pending)
 router.post('/:id/assign', authMiddleware, assignHelper);
 
-// Accept a request (helper)
+// Accept a request (helper) - also adds to pending
 router.patch('/:id/accept', authMiddleware, assignHelper);
 
 // General update for a request
