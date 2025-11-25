@@ -23,22 +23,64 @@ export async function geocodeAddress(address) {
 }
 
 export async function createHelpRequest(requestData, token) {
-  const response = await fetch(`${API_BASE}/api/requests`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(requestData)
-  });
+  try {
+    const response = await fetch(`${API_BASE}/api/requests`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestData)
+    });
 
-  const result = await response.json();
+    // Handle specific HTTP error codes
+    if (response.status === 413) {
+      throw new Error('The uploaded image is too large. Please select a smaller image (max 5MB).');
+    }
 
-  if (!result.success) {
-    throw new Error(result.message || 'Failed to create request');
+    if (response.status === 401) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+
+    if (response.status === 500) {
+      throw new Error('Server error. Please try again later.');
+    }
+
+    if (!response.ok) {
+      throw new Error('Network error. Please check your connection and try again.');
+    }
+
+    // Try to parse JSON response
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      throw new Error('Unable to process server response. Please try again.');
+    }
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to create request');
+    }
+
+    return result.data;
+  } catch (error) {
+    // Re-throw our custom errors
+    if (error.message.includes('image is too large') || 
+        error.message.includes('session has expired') ||
+        error.message.includes('Server error') ||
+        error.message.includes('Network error') ||
+        error.message.includes('Unable to process')) {
+      throw error;
+    }
+    
+    // Handle network failures
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Cannot connect to server. Please check your internet connection.');
+    }
+    
+    // Generic error fallback
+    throw new Error('Failed to create help request. Please try again.');
   }
-
-  return result.data;
 }
 
 export function convertImageToBase64(file) {

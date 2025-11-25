@@ -14,7 +14,6 @@ import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal"
 import { HelperRequestProvider } from "./context/HelperRequestContext";
 import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
 import HelperConfirmedNotification from "./components/HelperConfirmedNotification/HelperConfirmedNotification";
-import SocketConnectionIndicator from "./components/SocketConnectionIndicator/SocketConnectionIndicator";
 
 
 function App() {
@@ -24,7 +23,6 @@ function App() {
         <GlobalRatingModal />
         <GlobalHelperRequestModal />
         <HelperConfirmedNotification />
-        <SocketConnectionIndicator />
         <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />

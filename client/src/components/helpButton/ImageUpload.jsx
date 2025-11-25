@@ -31,6 +31,7 @@ export default function ImageUpload({
               </svg>
             </div>
             <span className="text-sm font-medium text-gray-600">Tap to add photo</span>
+            <span className="text-xs text-gray-400 mt-1">Max size: 5MB</span>
           </label>
         </div>
       ) : (
