@@ -1,65 +1,73 @@
-import React, { useState } from "react";
-
-
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import RatingModal from "../../components/RatingModal/RatingModal";
 
 export default function Rating() {
-  const [rating, setRating] = useState(0);
-  const [text, setText] = useState("");
+  const [searchParams] = useSearchParams();
+  const [showModal, setShowModal] = useState(false);
+  const [requestId, setRequestId] = useState(null);
+  const [helperName, setHelperName] = useState(null);
+  const navigate = useNavigate();
 
-  const handleStarClick = (index) => {
-    setRating(index + 1); // כוכבים מ-1 עד 5
+  useEffect(() => {
+    // Get requestId and helperName from URL parameters
+    const reqId = searchParams.get('requestId');
+    const helper = searchParams.get('helperName');
+    
+    if (reqId) {
+      setRequestId(reqId);
+      setHelperName(helper);
+      setShowModal(true);
+    }
+  }, [searchParams]);
+
+  const handleClose = () => {
+    setShowModal(false);
+    navigate('/home');
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // כאן אפשר בעתיד לשלוח לשרת
-    alert(`תודה! דירגת ${rating} כוכבים\n${text ? "חוות דעת: " + text : ""}`);
+  const handleSuccess = () => {
+    setShowModal(false);
+    navigate('/profile');
   };
 
   return (
-    <div className="rating-page" dir="rtl" lang="he">
-      <div className="card">
-        {/* לוגו */}
-        <div className="logo-wrap">
-          <img
-            src="./helper-logo.jpeg"
-            className="logo-img"
-            alt="Helper On The Way"
-          />
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <img
+          src="/helper-logo.jpeg"
+          className="w-32 h-32 mx-auto mb-6 rounded-full object-cover"
+          alt="Helper On The Way"
+        />
 
-        <div className="title">דירוג השירות</div>
-        <div className="subtitle">נשמח לשמוע איך הייתה החוויה שלך</div>
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">דירוג השירות</h1>
+        <p className="text-gray-600 mb-8">נשמח לשמוע איך הייתה החוויה שלך</p>
 
-        {/* כוכבים */}
-        <div className="stars">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <span
-              key={i}
-              className={`star ${i < rating ? "active" : ""}`}
-              onClick={() => handleStarClick(i)}
-            >
-              &#9733;
-            </span>
-          ))}
-        </div>
-
-        {/* חוות דעת */}
-        <form onSubmit={handleSubmit}>
-          <div className="field-label">חוות דעת (לא חובה)</div>
-          <textarea
-            className="textarea"
-            placeholder="כתוב כאן מה דעתך..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-
-          {/* כפתור שליחה */}
-          <button className="button" type="submit">
-            שלח דירוג
+        <div className="space-y-4">
+          <button
+            onClick={() => setShowModal(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            דרג עכשיו
           </button>
-        </form>
+
+          <button
+            onClick={() => navigate('/home')}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-all"
+          >
+            חזרה לדף הבית
+          </button>
+        </div>
       </div>
+
+      {showModal && requestId && (
+        <RatingModal
+          requestId={requestId}
+          helperName={helperName}
+          onClose={handleClose}
+          onSubmitSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 }
