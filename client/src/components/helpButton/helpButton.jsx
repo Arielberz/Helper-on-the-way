@@ -190,9 +190,9 @@ export default function HelpButton({ onRequestCreated, onModalStateChange }) {
       {/* Help Button - positioned at bottom center */}
       <button
         onClick={handleOpenModal}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 bg-white/90 backdrop-blur-md border border-blue-100 text-blue-600 font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl hover:bg-white hover:scale-105 transition-all duration-300 flex items-center gap-2"
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 backdrop-blur-md bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-200/40 font-semibold text-xl px-14 py-5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-3"
       >
-        Need Help?
+       Request Help
       </button>
 
       {/* Modal */}

@@ -83,7 +83,7 @@ export default function IconChat() {
     return (
         <button
             onClick={handleClick}
-            className="relative h-12 w-12 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl border-2 border-blue-600/20"
+            className="relative h-12 w-12 backdrop-blur-md bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl border border-white/30"
             aria-label="Chat"
         >
             {/* Only show badge if there are unread messages */}
@@ -94,7 +94,7 @@ export default function IconChat() {
             )}
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-7 w-7 text-blue-600"
+                className="h-6 w-6 text-slate-700"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
