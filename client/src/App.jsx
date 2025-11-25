@@ -1,5 +1,4 @@
 import { Routes, Route } from "react-router-dom";
-import "./App.css";
 import Landing from "./pages/landing/landing";
 import Register from "./pages/register/register";
 import Login from "./pages/login/login";
@@ -8,11 +7,14 @@ import Payment from "./pages/payment/payment";
 import Chat from "./pages/chat/chat";
 import Rating from "./pages/rating/rating";
 import Profile from "./pages/Profile/profile";
+import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { RatingProvider } from "./context/RatingContext";
 import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
 import { HelperRequestProvider } from "./context/HelperRequestContext";
 import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
+import HelperConfirmedNotification from "./components/HelperConfirmedNotification/HelperConfirmedNotification";
+import SocketConnectionIndicator from "./components/SocketConnectionIndicator/SocketConnectionIndicator";
 
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
       <HelperRequestProvider>
         <GlobalRatingModal />
         <GlobalHelperRequestModal />
+        <HelperConfirmedNotification />
+        <SocketConnectionIndicator />
         <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -62,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pending-helpers"
+          element={
+            <ProtectedRoute>
+              <PendingHelpers />
             </ProtectedRoute>
           }
         />

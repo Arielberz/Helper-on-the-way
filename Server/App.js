@@ -47,31 +47,19 @@ initializeChatSockets(io);
 
 // Socket.IO connection handling with authentication
 io.on('connection', (socket) => {
-    console.log('New user connected:', socket.id);
-
-    // Store user ID from auth token
     const token = socket.handshake.auth.token;
     if (token) {
         try {
             const jwt = require('jsonwebtoken');
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             socket.userId = decoded.id;
-            console.log(`User ${socket.userId} connected with socket ${socket.id}`);
-            
-            // Join a room for this user
             socket.join(`user:${socket.userId}`);
         } catch (err) {
             console.error('Socket auth error:', err.message);
         }
     }
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-
-    // Listen for new request clicks
     socket.on('newRequest', (request) => {
-        console.log('Broadcasting new request:', request);
         socket.broadcast.emit('requestAdded', request);
     });
 });
@@ -79,6 +67,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`Socket.IO is ready for connections`);
-    console.log(`Rating system enabled`);
 });

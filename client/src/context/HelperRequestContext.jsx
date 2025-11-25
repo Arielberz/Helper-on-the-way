@@ -13,44 +13,53 @@ export const useHelperRequest = () => {
 
 export const HelperRequestProvider = ({ children }) => {
   const [pendingRequest, setPendingRequest] = useState(null)
+  const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
+  const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
   // Initialize Socket.IO connection
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
     const token = localStorage.getItem('token')
     
-    // Don't connect if no token (user not logged in)
     if (!token) {
       return
     }
 
-    // Connect to socket with auth token
     const newSocket = io(API_BASE, {
       auth: { token },
-      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5
     })
 
     newSocket.on('connect', () => {
-      console.log('✅ Socket connected for helper requests:', newSocket.id)
+      setConnectionStatus('connected')
     })
 
-    newSocket.on('connect_error', (error) => {
-      // Socket connection error
+    newSocket.on('connect_error', () => {
+      setConnectionStatus('error')
     })
 
-    // Listen for helper request notifications
     newSocket.on('helperRequestReceived', (data) => {
-      console.log('🔔 HELPER REQUEST RECEIVED:', data)
-      alert(`🔔 New helper request from ${data.helper?.username || 'Someone'}!`)
       setPendingRequest(data)
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZSR0NVK7n77BfG')
+        audio.play().catch(() => {})
+      } catch (e) {}
     })
 
-    newSocket.on('disconnect', (reason) => {
-      // Socket disconnected
+    newSocket.on('helperConfirmed', (data) => {
+      setHelperConfirmed(data)
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZSR0NVK7n77BfG')
+        audio.play().catch(() => {})
+      } catch (e) {}
+    })
+
+    newSocket.on('disconnect', () => {
+      setConnectionStatus('disconnected')
     })
 
     setSocket(newSocket)
@@ -64,12 +73,19 @@ export const HelperRequestProvider = ({ children }) => {
     setPendingRequest(null)
   }
 
+  const clearHelperConfirmed = () => {
+    setHelperConfirmed(null)
+  }
+
   return (
     <HelperRequestContext.Provider 
       value={{ 
         pendingRequest, 
         clearPendingRequest,
-        socket 
+        helperConfirmed,
+        clearHelperConfirmed,
+        socket,
+        connectionStatus
       }}
     >
       {children}
