@@ -69,6 +69,34 @@ const requestSchema = new Schema({
     ref: 'User',
     default: null,
   },
+  pendingHelpers: [
+    {
+      user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      requestedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      message: {
+        type: String,
+        maxlength: 500,
+        default: '',
+      },
+      location: {
+        lat: {
+          type: Number,
+          default: null,
+        },
+        lng: {
+          type: Number,
+          default: null,
+        }
+      }
+    }
+  ],
   assignedAt: {
     type: Date,
     default: null,

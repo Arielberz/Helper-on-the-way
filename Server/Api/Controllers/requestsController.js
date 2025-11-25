@@ -123,7 +123,8 @@ exports.getActiveRequests = async (req, res) => {
       status: { $in: ['pending', 'assigned', 'in_progress'] }
     })
       .populate('user', 'username phone')
-      .populate('helper', 'username phone')
+      .populate('helper', 'username phone averageRating ratingCount')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount')
       .sort({ createdAt: -1 })
       .limit(200);
 
@@ -183,7 +184,8 @@ exports.getMyRequests = async (req, res) => {
     }
 
     const requests = await Request.find({ user: req.userId })
-      .populate('helper', 'username phone')
+      .populate('helper', 'username phone averageRating ratingCount')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -307,10 +309,272 @@ exports.updateRequestStatus = async (req, res) => {
 };
 
 // Assign a helper to a request
+// Step 1: Helper requests to help (adds themselves to pendingHelpers)
+exports.requestToHelp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const helperId = req.userId;
+    const { message, location } = req.body;
+
+    if (!helperId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No user in request (missing or invalid token)'
+      });
+    }
+
+    const request = await Request.findById(id).populate('user', 'username');
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Request is not available - already assigned or completed'
+      });
+    }
+
+    // Check if helper already requested
+    const alreadyRequested = request.pendingHelpers.some(
+      ph => ph.user.toString() === helperId
+    );
+
+    if (alreadyRequested) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already requested to help with this request'
+      });
+    }
+
+    // Add helper to pending list with their current location
+    const helperData = {
+      user: helperId,
+      requestedAt: Date.now(),
+      message: message || ''
+    };
+
+    // Add location if provided
+    if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+      helperData.location = {
+        lat: location.lat,
+        lng: location.lng
+      };
+    }
+
+    request.pendingHelpers.push(helperData);
+
+    await request.save();
+
+    const populatedRequest = await Request.findById(request._id)
+      .populate('user', 'username email phone')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+
+    // Emit socket event to the requester
+    const io = req.app.get('io');
+    if (io) {
+      const latestHelper = populatedRequest.pendingHelpers[populatedRequest.pendingHelpers.length - 1];
+      io.to(`user:${request.user._id.toString()}`).emit('helperRequestReceived', {
+        requestId: request._id,
+        helper: latestHelper.user,
+        helperLocation: latestHelper.location,
+        message: latestHelper.message,
+        requestedAt: latestHelper.requestedAt,
+        requestLocation: request.location,
+        problemType: getProblemTypeLabel(request.problemType)
+      });
+      console.log(`Emitted helper request notification to user ${request.user._id}`);
+    }
+
+    res.json({
+      success: true,
+      message: `Your help request has been sent to ${request.user.username}. Waiting for confirmation.`,
+      data: populatedRequest
+    });
+  } catch (err) {
+    console.error('Error requesting to help:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error requesting to help',
+      error: err.message
+    });
+  }
+};
+
+// Helper function to get problem type label
+const getProblemTypeLabel = (type) => {
+  const labels = {
+    flat_tire: 'פנצ׳ר',
+    dead_battery: 'בטריה מתה',
+    out_of_fuel: 'נגמר הדלק',
+    engine_problem: 'בעיה במנוע',
+    locked_out: 'נעול בחוץ',
+    accident: 'תאונה',
+    towing_needed: 'נדרש גרר',
+    other: 'אחר'
+  };
+  return labels[type] || type;
+};
+
+// Step 2: Requester confirms a helper (sets helper and changes status to assigned)
+exports.confirmHelper = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { helperId } = req.body;
+    const requesterId = req.userId;
+
+    if (!requesterId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No user in request (missing or invalid token)'
+      });
+    }
+
+    if (!helperId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Helper ID is required'
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Verify requester is the owner
+    if (request.user.toString() !== requesterId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the request owner can confirm a helper'
+      });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Request is not available for assignment'
+      });
+    }
+
+    // Check if helper is in pending list
+    const helperInPending = request.pendingHelpers.find(
+      ph => ph.user.toString() === helperId
+    );
+
+    if (!helperInPending) {
+      return res.status(400).json({
+        success: false,
+        message: 'This helper has not requested to help with this request'
+      });
+    }
+
+    // Assign helper and update status
+    request.helper = helperId;
+    request.status = 'assigned';
+    request.assignedAt = Date.now();
+    await request.save();
+
+    const populatedRequest = await Request.findById(request._id)
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone averageRating ratingCount');
+
+    res.json({
+      success: true,
+      message: 'Helper confirmed successfully',
+      data: populatedRequest
+    });
+  } catch (err) {
+    console.error('Error confirming helper:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error confirming helper',
+      error: err.message
+    });
+  }
+};
+
+// Step 3: Requester rejects a helper (removes from pendingHelpers)
+exports.rejectHelper = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { helperId } = req.body;
+    const requesterId = req.userId;
+
+    if (!requesterId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No user in request (missing or invalid token)'
+      });
+    }
+
+    if (!helperId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Helper ID is required'
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Verify requester is the owner
+    if (request.user.toString() !== requesterId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the request owner can reject a helper'
+      });
+    }
+
+    // Remove helper from pending list
+    const initialLength = request.pendingHelpers.length;
+    request.pendingHelpers = request.pendingHelpers.filter(
+      ph => ph.user.toString() !== helperId
+    );
+
+    if (request.pendingHelpers.length === initialLength) {
+      return res.status(400).json({
+        success: false,
+        message: 'Helper not found in pending list'
+      });
+    }
+
+    await request.save();
+
+    res.json({
+      success: true,
+      message: 'Helper rejected successfully',
+      data: request
+    });
+  } catch (err) {
+    console.error('Error rejecting helper:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error rejecting helper',
+      error: err.message
+    });
+  }
+};
+
+// Legacy endpoint - keep for backward compatibility but update behavior
 exports.assignHelper = async (req, res) => {
   try {
     const { id } = req.params;
-    const helperId = req.userId; // The logged-in user (helper) assigns themselves
+    const helperId = req.userId;
 
     if (!helperId) {
       return res.status(401).json({
@@ -335,17 +599,33 @@ exports.assignHelper = async (req, res) => {
       });
     }
 
-    request.helper = helperId;
-    request.status = 'assigned';
-    request.assignedAt = Date.now();
+    // Check if already requested
+    const alreadyRequested = request.pendingHelpers.some(
+      ph => ph.user.toString() === helperId
+    );
+
+    if (alreadyRequested) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already requested to help with this request'
+      });
+    }
+
+    // Add to pending helpers instead of directly assigning
+    request.pendingHelpers.push({
+      user: helperId,
+      requestedAt: Date.now()
+    });
+
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
       .populate('user', 'username email phone')
-      .populate('helper', 'username email phone');
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
 
     res.json({
       success: true,
+      message: 'Help request sent. Waiting for requester confirmation.',
       data: populatedRequest
     });
   } catch (err) {

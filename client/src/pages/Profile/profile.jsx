@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import RatingModal from "../../components/RatingModal/RatingModal";
+import { useRating } from "../../context/RatingContext";
 
 
 const Profile = () => {
+  const { openRatingModal } = useRating();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
@@ -28,6 +30,21 @@ const Profile = () => {
   const maskPhone = (phone) => {
     if (!phone) return "לא זמין";
     return "*".repeat(phone.length);
+  };
+
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
   };
 
   useEffect(() => {
@@ -126,10 +143,12 @@ const Profile = () => {
             status: req.status,
             type: 'requested',
             address: req.location?.address || 'כתובת לא זמינה',
+            location: req.location, // Include full location for distance calculation
             requestId: req._id,
             helper: req.helper,
             helperCompletedAt: req.helperCompletedAt,
-            requesterConfirmedAt: req.requesterConfirmedAt
+            requesterConfirmedAt: req.requesterConfirmedAt,
+            pendingHelpers: req.pendingHelpers || []
           }));
           
           allActions.push(...requestActions);
@@ -311,11 +330,10 @@ const Profile = () => {
       });
 
       if (response.ok) {
-        // Show rating modal automatically
+        // Show rating modal using global context (works across all pages)
         const request = myRequests.find(req => req._id === action.requestId);
         if (request) {
-          setSelectedRequest(request);
-          setShowRatingModal(true);
+          openRatingModal(request);
         }
       } else {
         const data = await response.json();
@@ -324,6 +342,54 @@ const Profile = () => {
     } catch (error) {
       console.error("Error confirming completion:", error);
       alert('❌ שגיאה באישור השלמה');
+    }
+  };
+
+  const handleConfirmHelper = async (requestId, helperId, helperName) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/confirm-helper`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ helperId })
+      });
+
+      if (response.ok) {
+        // Get or create conversation with the confirmed helper
+        try {
+          const chatResponse = await fetch(`http://localhost:3001/api/chat/conversation/request/${requestId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (chatResponse.ok) {
+            const chatData = await chatResponse.json();
+            const conversationId = chatData.data?.conversation?._id || chatData.data?._id;
+            
+            // Navigate to chat with the conversation
+            alert(`✅ ${helperName} confirmed as helper! Opening chat...`);
+            navigate("/chat", { state: { conversationId } });
+          } else {
+            console.error('Failed to get conversation');
+            alert(`✅ ${helperName} confirmed! But unable to open chat now.`);
+            window.location.reload();
+          }
+        } catch (chatError) {
+          console.error("Error opening chat:", chatError);
+          alert(`✅ ${helperName} confirmed! But unable to open chat now.`);
+          window.location.reload();
+        }
+      } else {
+        const data = await response.json();
+        alert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר עוזר'}`);
+      }
+    } catch (error) {
+      console.error("Error confirming helper:", error);
+      alert('❌ שגיאה באישור עוזר');
     }
   };
 
@@ -603,6 +669,19 @@ const Profile = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       {action.time}
+                    </div>
+                  )}
+                  
+                  {/* Pending Helpers - Now handled via popup */}
+                  {action.type === 'requested' && action.status === 'pending' && action.pendingHelpers && action.pendingHelpers.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-amber-200 bg-amber-50 p-3 rounded-lg">
+                      <p className="text-sm text-amber-700 font-medium flex items-center gap-2">
+                        <span>�</span>
+                        <span>{action.pendingHelpers.length} עוזרים מעוניינים לעזור</span>
+                      </p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        💡 תקבל התראה מיידית כשמישהו חדש מבקש לעזור
+                      </p>
                     </div>
                   )}
                   

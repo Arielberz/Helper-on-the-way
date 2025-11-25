@@ -4,7 +4,7 @@ import { useImageUpload } from './useImageUpload';
 import { useLocation } from './useLocation';
 import { geocodeAddress, createHelpRequest, convertImageToBase64 } from './requestService';
 
-export default function HelpButton({ onRequestCreated, onModalStateChange }) {
+export default function HelpButton({ onRequestCreated, onModalStateChange, fallbackLocation }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true); // Default to GPS location
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,17 +107,19 @@ export default function HelpButton({ onRequestCreated, onModalStateChange }) {
     let location;
     try {
       if (useCurrentLocation) {
-        // Use GPS location
-        if (!currentLocation) {
+        // Use GPS location, or fallback to map's current position (IP-based or cached)
+        if (!currentLocation && !fallbackLocation) {
           setLocationError('GPS location is not available. Please wait or enter address manually.');
           return;
         }
+        
+        const locationToUse = currentLocation || fallbackLocation;
         location = {
-          lat: currentLocation.lat,
-          lng: currentLocation.lng,
+          lat: locationToUse.lat,
+          lng: locationToUse.lng,
           address: '',
-          accuracy: currentLocation.accuracy,
-          precision: currentLocation.precision
+          accuracy: currentLocation ? currentLocation.accuracy : 'approximate',
+          precision: currentLocation ? currentLocation.precision : undefined
         };
       } else {
         // Use manual address

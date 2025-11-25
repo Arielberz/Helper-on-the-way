@@ -292,3 +292,26 @@ exports.getRatingById = async (req, res) => {
         sendResponse(res, 500, false, 'Server error while retrieving rating', error.message);
     }
 };
+
+/**
+ * Check if a request has been rated
+ * GET /api/ratings/:requestId/check
+ * Protected route - requires authentication
+ */
+exports.checkIfRated = async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const userId = req.userId; // From auth middleware
+
+        // Find if there's a rating for this request by this user
+        const rating = await Rating.findOne({ request: requestId, rater: userId });
+
+        sendResponse(res, 200, true, 'Rating check completed', {
+            alreadyRated: !!rating,
+            rating: rating || null
+        });
+    } catch (error) {
+        console.error('Error checking rating:', error);
+        sendResponse(res, 500, false, 'Server error while checking rating', error.message);
+    }
+};

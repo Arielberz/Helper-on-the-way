@@ -45,9 +45,25 @@ app.use('/api/chat', chatRouter);
 // Initialize chat sockets
 initializeChatSockets(io);
 
-// Socket.IO connection handling
+// Socket.IO connection handling with authentication
 io.on('connection', (socket) => {
     console.log('New user connected:', socket.id);
+
+    // Store user ID from auth token
+    const token = socket.handshake.auth.token;
+    if (token) {
+        try {
+            const jwt = require('jsonwebtoken');
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            socket.userId = decoded.id;
+            console.log(`User ${socket.userId} connected with socket ${socket.id}`);
+            
+            // Join a room for this user
+            socket.join(`user:${socket.userId}`);
+        } catch (err) {
+            console.error('Socket auth error:', err.message);
+        }
+    }
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);

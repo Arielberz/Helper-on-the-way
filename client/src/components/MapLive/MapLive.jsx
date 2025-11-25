@@ -53,6 +53,7 @@ export default function MapLive() {
   const [position, setPosition] = useState(DEFAULT_LOCATION); // המיקום שלך
   const [locationAccuracy, setLocationAccuracy] = useState("loading"); // 'loading', 'approximate', 'precise', 'default'
   const [showAccuracyBanner, setShowAccuracyBanner] = useState(false);
+  const [locationError, setLocationError] = useState(null); // Error message for location issues
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const [socket, setSocket] = useState(null);
 
@@ -103,6 +104,9 @@ export default function MapLive() {
             location.accuracy === "precise" ? 15 : 12
           );
         }
+
+       
+
 
         console.log(
           `Location initialized: ${location.city || "Unknown"}, ${
@@ -208,16 +212,33 @@ export default function MapLive() {
         console.log("Sample user object:", json.data?.[0]?.user);
         setSharedMarkers(json.data || []);
       } catch (err) {
-        console.error("Failed to fetch locations", err);
+        // Failed to fetch locations
       }
     };
 
     fetchRequests();
   }, [token]);
 
-  // 4. טיפול בבחירת בקשה מהרשימה
+  // 4. טיפול במצב עוזר
+  const handleToggleHelper = (isActive, settings) => {
+    setIsHelperMode(isActive);
+    setHelperSettings(isActive ? settings : null);
+    
+    // שליחה לשרת שהמשתמש זמין לעזור עם ההגדרות
+    if (socket && position) {
+      socket.emit('toggleHelper', {
+        isHelper: isActive,
+        location: { lat: position[0], lng: position[1] },
+        settings: settings || null
+      });
+    }
+    
+    // TODO: עדכון בדאטאבייס שהמשתמש זמין לעזור
+    // יכול להוסיף שדה isAvailableHelper במודל User עם הגדרות העזרה
+  };
+
+  // 5. טיפול בבחירת בקשה מהרשימה
   const handleSelectRequest = (request) => {
-    console.log("Selected request:", request);
     // מרכז את המפה על הבקשה שנבחרה
     if (mapRef && request.location?.lat && request.location?.lng) {
       mapRef.flyTo([request.location.lat, request.location.lng], 16, {
@@ -265,32 +286,53 @@ export default function MapLive() {
     }
 
     try {
-      // First, try to assign yourself as helper if request is pending and has no helper
-      if (!request.helper && request.status === "pending") {
-        console.log(
-          "No helper assigned and status is pending, assigning current user as helper..."
-        );
-        const assignResponse = await fetch(
-          `${API_BASE}/api/requests/${request._id}/assign`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!assignResponse.ok) {
-          const assignData = await assignResponse.json();
-          console.error("Failed to assign helper:", assignData);
-          // Don't return - still try to open chat even if assignment fails
+      const currentUserId = localStorage.getItem('userId');
+      
+      // Flow 1: Request is pending and no helper assigned yet → Send help request
+      if (!request.helper && request.status === 'pending') {
+        const helpResponse = await fetch(`${API_BASE}/api/requests/${request._id}/request-help`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: 'אני יכול לעזור לך!',
+            location: {
+              lat: position[0],
+              lng: position[1]
+            }
+          })
+        });
+        
+        if (!helpResponse.ok) {
+          const helpData = await helpResponse.json();
+          alert(`❌ ${helpData.message || 'נכשל בשליחת בקשת העזרה'}`);
+          return;
         } else {
-          console.log("Successfully assigned as helper");
+          await helpResponse.json();
+          alert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`);
+          // Reload markers to show updated pendingHelpers
+          window.location.reload();
+          return;
         }
-      } else {
-        console.log(
-          "Request already has helper or is not pending, skipping assignment"
-        );
+      } 
+      
+      // Flow 2: Helper is assigned and current user is the helper → Open chat
+      else if (request.helper && (request.helper === currentUserId || request.helper._id === currentUserId)) {
+        // Continue to chat opening code below
+      } 
+      
+      // Flow 3: Helper already assigned to someone else
+      else if (request.helper) {
+        alert('⚠️ בקשה זו כבר שובצה לעוזר אחר');
+        return;
+      } 
+      
+      // Flow 4: Request is not pending anymore
+      else {
+        alert('⚠️ בקשה זו אינה זמינה יותר');
+        return;
       }
 
       // Now get or create conversation
@@ -321,7 +363,6 @@ export default function MapLive() {
         alert(`לא ניתן לפתוח שיחה: ${data.message || "שגיאה לא ידועה"}`);
       }
     } catch (error) {
-      console.error("Error opening chat:", error);
       alert(`שגיאה בפתיחת השיחה: ${error.message}`);
     }
   };
@@ -360,11 +401,20 @@ export default function MapLive() {
           {locationAccuracy !== "loading" && (
             <button
               onClick={requestPreciseLocation}
-              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors"
+              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors flex-shrink-0"
             >
-              Enable Precise Location
+              {locationError ? 'Try Again' : 'Enable Precise Location'}
             </button>
           )}
+          <button
+            onClick={() => setShowAccuracyBanner(false)}
+            className="ml-1 p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+            aria-label="Close"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -396,41 +446,58 @@ export default function MapLive() {
         <MapRefSetter setMapRef={setMapRef} />
 
         {/* כל הנקודות שהגיעו מהשרת */}
-        {sharedMarkers
-          .filter((m) => m.location?.lat && m.location?.lng)
-          .map((m) => {
-            console.log(
-              "Rendering marker:",
-              m._id,
-              "User object:",
-              m.user,
-              "Username:",
-              m.user?.username
-            );
-            return (
-              <Marker
-                key={m._id || m.id}
-                position={[m.location.lat, m.location.lng]}
-              >
-                <Popup>
-                  <strong>{m.user?.username || "משתמש לא ידוע"}</strong>
-                  <br />
-                  {m.problemType && `בעיה: ${m.problemType}`}
-                  <br />
-                  {m.description && `תיאור: ${m.description}`}
-                  <br />
-                  סטטוס: {m.status || "pending"}
-                  <br />
-                  <button
-                    onClick={() => openChat(m)}
-                    className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
-                  >
-                    💬 עזור לו
-                  </button>
-                </Popup>
-              </Marker>
-            );
-          })}
+        {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
+          // Check if current user is the requester
+          const isMyRequest = m.user?._id === localStorage.getItem('userId') || m.user?.id === localStorage.getItem('userId');
+          
+          // Check if current user has already requested to help
+          const currentUserId = localStorage.getItem('userId');
+          const alreadyRequested = m.pendingHelpers?.some(ph => 
+            ph.user?._id === currentUserId || ph.user?.id === currentUserId
+          );
+          
+          return (
+            <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
+              <Popup>
+                <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
+                {m.problemType && `בעיה: ${m.problemType}`}<br />
+                {m.description && `תיאור: ${m.description}`}<br />
+                סטטוס: {m.status || 'pending'}<br />
+                
+                {!isMyRequest && (
+                  <>
+                    {m.status === 'pending' && !alreadyRequested && (
+                      <button 
+                        onClick={() => openChat(m)}
+                        className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
+                      >
+                        🙋 אני רוצה לעזור
+                      </button>
+                    )}
+                    {m.status === 'pending' && alreadyRequested && (
+                      <div className="mt-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-medium text-center">
+                        ⏳ ממתין לאישור
+                      </div>
+                    )}
+                    {m.status === 'assigned' && m.helper === currentUserId && (
+                      <button 
+                        onClick={() => openChat(m)}
+                        className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                      >
+                        💬 פתח צ'אט
+                      </button>
+                    )}
+                    {m.status === 'assigned' && m.helper !== currentUserId && (
+                      <div className="mt-2 px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium text-center">
+                        👤 כבר שובץ עוזר
+                      </div>
+                    )}
+                  </>
+                )}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       {/* Logo - Top Left (Click to center on user location) */}
@@ -556,6 +623,7 @@ export default function MapLive() {
         <HelpButton
           onRequestCreated={handleRequestCreated}
           onModalStateChange={setIsHelpModalOpen}
+          fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
         />
         {position && (
           <div className="hidden sm:block">

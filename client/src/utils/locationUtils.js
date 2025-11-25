@@ -17,7 +17,6 @@ const getCachedLocation = () => {
     
     // Check if cache is still fresh
     if (now - timestamp < LOCATION_CACHE_DURATION) {
-      console.log('Using cached location');
       return location;
     }
     
@@ -25,7 +24,6 @@ const getCachedLocation = () => {
     localStorage.removeItem(LOCATION_CACHE_KEY);
     return null;
   } catch (error) {
-    console.error('Error reading cached location:', error);
     localStorage.removeItem(LOCATION_CACHE_KEY);
     return null;
   }
@@ -42,7 +40,7 @@ const saveLocationCache = (location) => {
     };
     localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cacheData));
   } catch (error) {
-    console.error('Error caching location:', error);
+    // Silent fail - caching is optional
   }
 };
 
@@ -85,7 +83,6 @@ export const getApproximateLocation = async () => {
     saveLocationCache(location);
     return location;
   } catch (error) {
-    console.error('IP location error:', error);
     // Fallback to Tel Aviv (don't cache this)
     return {
       lat: 32.0853,
@@ -105,7 +102,9 @@ export const getApproximateLocation = async () => {
 export const getPreciseLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation not supported'));
+      const error = new Error('Geolocation not supported by this browser');
+      error.code = 0;
+      reject(error);
       return;
     }
 
@@ -124,11 +123,15 @@ export const getPreciseLocation = () => {
         resolve(location);
       },
       (error) => {
+        // GeolocationPositionError codes:
+        // 1 = PERMISSION_DENIED
+        // 2 = POSITION_UNAVAILABLE (kCLErrorLocationUnknown on macOS)
+        // 3 = TIMEOUT
         reject(error);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000, // Increased timeout to 15 seconds
         maximumAge: 0, // Don't use browser cache, we have our own
       }
     );
@@ -155,7 +158,7 @@ export const getUserLocation = async () => {
       const gpsLocation = await getPreciseLocation();
       return gpsLocation;
     } catch (geoError) {
-      console.log('GPS location failed, falling back to IP:', geoError.message);
+      // GPS failed, continue to IP fallback
     }
   }
 

@@ -4,7 +4,8 @@ const {
     getRatingsByHelper,
     updateRating,
     deleteRating,
-    getRatingById
+    getRatingById,
+    checkIfRated
 } = require('../Controllers/ratingController');
 const authMiddleware = require('../authMiddleware');
 
@@ -13,7 +14,10 @@ const router = express.Router();
 // Create a new rating (protected - must be authenticated)
 router.post('/', authMiddleware, createRating);
 
-// Get a specific rating by ID (public)
+// Check if a request has been rated (protected)
+router.get('/:requestId/check', authMiddleware, checkIfRated);
+
+// Get a specific rating by ID (public) - MUST be after /check route
 router.get('/:id', getRatingById);
 
 // Update a rating (protected - must be the rating owner)
