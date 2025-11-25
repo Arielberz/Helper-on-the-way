@@ -205,41 +205,17 @@ exports.getMyRequests = async (req, res) => {
 exports.updateRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, estimatedArrival } = req.body;
+    const { status, estimatedArrival, helperCompleted, requesterConfirmed } = req.body;
+    const userId = req.userId;
 
-    if (!status) {
+    if (!status && helperCompleted !== true && requesterConfirmed !== true) {
       return res.status(400).json({
         success: false,
-        message: 'Status is required'
+        message: 'Status, helperCompleted, or requesterConfirmed is required'
       });
     }
 
-    const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status value'
-      });
-    }
-
-    const updateData = { status };
-    
-    if (status === 'completed') {
-      updateData.completedAt = Date.now();
-    }
-    
-    if (estimatedArrival) {
-      updateData.estimatedArrival = estimatedArrival;
-    }
-
-    const request = await Request.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    )
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone');
-
+    const request = await Request.findById(id);
     if (!request) {
       return res.status(404).json({
         success: false,
@@ -247,9 +223,78 @@ exports.updateRequestStatus = async (req, res) => {
       });
     }
 
+    const updateData = {};
+
+    // Handle helper marking as completed (waiting for confirmation)
+    if (helperCompleted === true) {
+      // Verify user is the helper
+      if (!request.helper || request.helper.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the assigned helper can mark as completed'
+        });
+      }
+      updateData.helperCompletedAt = Date.now();
+      updateData.status = 'in_progress'; // Keep in_progress until requester confirms
+      console.log(`Helper marked request ${id} as completed, waiting for requester confirmation`);
+    }
+
+    // Handle requester confirmation
+    if (requesterConfirmed === true) {
+      // Verify user is the requester
+      if (request.user.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the requester can confirm completion'
+        });
+      }
+      // Check if helper has marked as completed
+      if (!request.helperCompletedAt) {
+        return res.status(400).json({
+          success: false,
+          message: 'Helper must mark as completed first'
+        });
+      }
+      updateData.requesterConfirmedAt = Date.now();
+      updateData.status = 'completed';
+      updateData.completedAt = Date.now();
+      console.log(`Requester confirmed completion of request ${id}`);
+    }
+
+    // Handle normal status updates
+    if (status) {
+      const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status value'
+        });
+      }
+      updateData.status = status;
+      
+      if (status === 'completed' && !updateData.completedAt) {
+        updateData.completedAt = Date.now();
+      }
+    }
+    
+    if (estimatedArrival) {
+      updateData.estimatedArrival = estimatedArrival;
+    }
+
+    const updatedRequest = await Request.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone');
+
     res.json({
       success: true,
-      data: request
+      data: updatedRequest,
+      message: helperCompleted ? 'Waiting for requester confirmation' : 
+               requesterConfirmed ? 'Request completed successfully' : 
+               'Status updated successfully'
     });
   } catch (err) {
     console.error('Error updating request status:', err);

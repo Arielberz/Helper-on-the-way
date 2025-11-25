@@ -35,7 +35,9 @@ function sanitizeUser(user) {
         id: user._id,
         username: user.username,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        averageRating: user.averageRating || 0,
+        ratingCount: user.ratingCount || 0
     };
 }
 

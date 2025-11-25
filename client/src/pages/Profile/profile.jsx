@@ -127,7 +127,9 @@ const Profile = () => {
             type: 'requested',
             address: req.location?.address || 'כתובת לא זמינה',
             requestId: req._id,
-            helper: req.helper
+            helper: req.helper,
+            helperCompletedAt: req.helperCompletedAt,
+            requesterConfirmedAt: req.requesterConfirmedAt
           }));
           
           allActions.push(...requestActions);
@@ -150,7 +152,9 @@ const Profile = () => {
               type: 'helped',
               address: req.location?.address || 'כתובת לא זמינה',
               requestId: req._id,
-              requesterName: req.user?.username
+              requesterName: req.user?.username,
+              helperCompletedAt: req.helperCompletedAt,
+              requesterConfirmedAt: req.requesterConfirmedAt
             }));
             
             allActions.push(...helpActions);
@@ -265,6 +269,61 @@ const Profile = () => {
     } catch (error) {
       console.error("Error updating request status:", error);
       alert('❌ שגיאה בעדכון סטטוס');
+    }
+  };
+
+  const handleHelperMarkCompleted = async (requestId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ helperCompleted: true })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`✅ ${data.message || 'ממתין לאישור המבקש'}`);
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert(`❌ שגיאה: ${data.message || 'לא ניתן לעדכן סטטוס'}`);
+      }
+    } catch (error) {
+      console.error("Error marking as completed:", error);
+      alert('❌ שגיאה בעדכון סטטוס');
+    }
+  };
+
+  const handleRequesterConfirmCompletion = async (action) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3001/api/requests/${action.requestId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ requesterConfirmed: true })
+      });
+
+      if (response.ok) {
+        // Show rating modal automatically
+        const request = myRequests.find(req => req._id === action.requestId);
+        if (request) {
+          setSelectedRequest(request);
+          setShowRatingModal(true);
+        }
+      } else {
+        const data = await response.json();
+        alert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר השלמה'}`);
+      }
+    } catch (error) {
+      console.error("Error confirming completion:", error);
+      alert('❌ שגיאה באישור השלמה');
     }
   };
 
@@ -436,14 +495,14 @@ const Profile = () => {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-lg">
-                          {ratingItem.rater?.username?.charAt(0).toUpperCase() || "?"}
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span className="text-gray-600 font-bold text-lg">
+                          👤
                         </span>
                       </div>
                       <div>
                         <span className="font-semibold text-gray-800">
-                          {ratingItem.rater?.username || "משתמש"}
+                          דירוג אנונימי
                         </span>
                         <div className="flex gap-1 mt-1">
                           {[...Array(5)].map((_, index) => (
@@ -547,8 +606,25 @@ const Profile = () => {
                     </div>
                   )}
                   
+                  {/* Requester Confirmation Button - waiting for helper to finish */}
+                  {action.type === 'requested' && action.helperCompletedAt && !action.requesterConfirmedAt && (
+                    <div className="mt-3 pt-3 border-t border-blue-200 bg-blue-50 p-3 rounded-lg">
+                      <p className="text-sm text-blue-700 font-medium mb-2 flex items-center gap-2">
+                        <span>👋</span>
+                        <span>העוזר סיים - אשר סיום כדי לדרג</span>
+                      </p>
+                      <button
+                        onClick={() => handleRequesterConfirmCompletion(action)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>✅</span>
+                        <span>אשר סיום ודרג</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Rating Button for completed requests */}
-                  {action.type === 'requested' && action.status === 'completed' && action.helper && (
+                  {action.type === 'requested' && action.status === 'completed' && action.helper && action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <button
                         onClick={() => handleRateHelper(action)}
@@ -561,7 +637,7 @@ const Profile = () => {
                   )}
 
                   {/* Status Update Buttons for helpers */}
-                  {action.type === 'helped' && action.status !== 'completed' && action.status !== 'cancelled' && (
+                  {action.type === 'helped' && action.status !== 'completed' && action.status !== 'cancelled' && !action.helperCompletedAt && (
                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
                       <p className="text-xs text-gray-600 mb-2">עדכן סטטוס:</p>
                       <div className="flex gap-2">
@@ -576,7 +652,7 @@ const Profile = () => {
                         )}
                         {action.status === 'in_progress' && (
                           <button
-                            onClick={() => handleUpdateRequestStatus(action.requestId, 'completed')}
+                            onClick={() => handleHelperMarkCompleted(action.requestId)}
                             className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-1 text-sm"
                           >
                             <span>✅</span>
@@ -595,8 +671,18 @@ const Profile = () => {
                     </div>
                   )}
 
+                  {/* Helper waiting for requester confirmation */}
+                  {action.type === 'helped' && action.helperCompletedAt && !action.requesterConfirmedAt && (
+                    <div className="mt-3 pt-3 border-t border-yellow-200 bg-yellow-50 p-3 rounded-lg">
+                      <p className="text-sm text-yellow-700 flex items-center gap-2">
+                        <span>⏳</span>
+                        <span>ממתין לאישור {action.requesterName || 'המבקש'}</span>
+                      </p>
+                    </div>
+                  )}
+
                   {/* Show info for completed helped requests */}
-                  {action.type === 'helped' && action.status === 'completed' && (
+                  {action.type === 'helped' && action.status === 'completed' && action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-green-200">
                       <p className="text-sm text-green-700 flex items-center gap-2">
                         <span>✅</span>
