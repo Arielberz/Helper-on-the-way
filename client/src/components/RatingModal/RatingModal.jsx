@@ -32,7 +32,12 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
       )
 
       if (response.data.success) {
-        alert('תודה על הדירוג!')
+        const updatedHelper = response.data.data?.updatedHelper;
+        if (updatedHelper) {
+          alert(`✅ תודה על הדירוג!\n${helperName} כעת בעל דירוג: ${updatedHelper.averageRating.toFixed(1)} ⭐ (${updatedHelper.ratingCount} דירוגים)`);
+        } else {
+          alert('✅ תודה על הדירוג!');
+        }
         if (onSubmitSuccess) {
           onSubmitSuccess(response.data.data)
         }

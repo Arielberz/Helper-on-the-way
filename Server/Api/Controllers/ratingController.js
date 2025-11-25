@@ -97,13 +97,25 @@ exports.createRating = async (req, res) => {
         // Update helper's average rating
         await updateHelperRating(helperId);
 
-        // Populate the rating with user and request details
+        // Get updated helper info
+        const updatedHelper = await User.findById(helperId, 'username averageRating ratingCount');
+
+        // Populate the rating with user and request details (rater stays anonymous)
         const populatedRating = await Rating.findById(newRating._id)
-            .populate('helper', 'username email')
-            .populate('rater', 'username email')
+            .populate('helper', 'username email averageRating ratingCount')
             .populate('request', 'problemType description');
 
-        sendResponse(res, 201, true, 'Rating created successfully', populatedRating);
+        console.log(`Rating created: Helper ${updatedHelper.username} now has ${updatedHelper.averageRating} average (${updatedHelper.ratingCount} ratings)`);
+
+        sendResponse(res, 201, true, 'Rating created successfully', {
+            rating: populatedRating,
+            updatedHelper: {
+                id: updatedHelper._id,
+                username: updatedHelper.username,
+                averageRating: updatedHelper.averageRating,
+                ratingCount: updatedHelper.ratingCount
+            }
+        });
     } catch (error) {
         console.error('Error creating rating:', error);
         sendResponse(res, 500, false, 'Server error while creating rating', error.message);
@@ -131,7 +143,7 @@ exports.getRatingsByHelper = async (req, res) => {
 
         const [ratings, totalCount, helper] = await Promise.all([
             Rating.find({ helper: helperId })
-                .populate('rater', 'username')
+                // Don't populate rater to keep ratings anonymous
                 .populate('request', 'problemType createdAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)

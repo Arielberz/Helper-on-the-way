@@ -71,6 +71,29 @@ const requestSchema = new Schema({
   },
   assignedAt: {
     type: Date,
+    default: null,
+  },
+  completedAt: {
+    type: Date,
+    default: null,
+  },
+  helperCompletedAt: {
+    type: Date,
+    default: null,
+  },
+  requesterConfirmedAt: {
+    type: Date,
+    default: null,
+  },
+  estimatedArrival: {
+    type: Date,
+    default: null,
+  },
+  payment: {
+    offeredAmount: {
+      type: Number,
+      default: 0,
+    },
     currency: {
       type: String,
       default: 'ILS',
