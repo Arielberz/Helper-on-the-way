@@ -181,7 +181,10 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       handleCloseModal();
     } catch (error) {
       console.error('Error creating request:', error);
-      setErrorMessage(`Failed to create help request: ${error.message}`);
+      
+      // Display user-friendly error message
+      const errorMsg = error.message || 'Failed to create help request. Please try again.';
+      setErrorMessage(errorMsg);
     } finally {
       setIsSubmitting(false);
     }

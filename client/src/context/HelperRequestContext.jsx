@@ -15,7 +15,6 @@ export const HelperRequestProvider = ({ children }) => {
   const [pendingRequest, setPendingRequest] = useState(null)
   const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
-  const [connectionStatus, setConnectionStatus] = useState('disconnected')
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -34,14 +33,6 @@ export const HelperRequestProvider = ({ children }) => {
       reconnectionAttempts: 5
     })
 
-    newSocket.on('connect', () => {
-      setConnectionStatus('connected')
-    })
-
-    newSocket.on('connect_error', () => {
-      setConnectionStatus('error')
-    })
-
     newSocket.on('helperRequestReceived', (data) => {
       setPendingRequest(data)
       try {
@@ -56,10 +47,6 @@ export const HelperRequestProvider = ({ children }) => {
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZSR0NVK7n77BfG')
         audio.play().catch(() => {})
       } catch (e) {}
-    })
-
-    newSocket.on('disconnect', () => {
-      setConnectionStatus('disconnected')
     })
 
     setSocket(newSocket)
@@ -84,8 +71,7 @@ export const HelperRequestProvider = ({ children }) => {
         clearPendingRequest,
         helperConfirmed,
         clearHelperConfirmed,
-        socket,
-        connectionStatus
+        socket
       }}
     >
       {children}
