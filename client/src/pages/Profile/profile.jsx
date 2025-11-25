@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import RatingModal from "../../components/RatingModal/RatingModal";
 
 
 const Profile = () => {
@@ -9,6 +10,12 @@ const Profile = () => {
   const [showEmail, setShowEmail] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [recentActions, setRecentActions] = useState([]);
+  const [userRatings, setUserRatings] = useState([]);
+  const [showRatings, setShowRatings] = useState(false);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [myRequests, setMyRequests] = useState([]);
   const navigate = useNavigate();
   const maxRating = 5;
 
@@ -49,11 +56,33 @@ const Profile = () => {
         console.log("User data received:", data);
         const userData = data.data?.user || data.user;
         setUser(userData);
+        setRating(userData?.averageRating || 0);
+        setRatingCount(userData?.ratingCount || 0);
         
         // Get the user ID - the sanitizeUser function returns 'id', not '_id'
         const userId = userData?.id || userData?._id;
         console.log("User ID for queries:", userId);
         console.log("Full user object:", userData);
+        
+        // Fetch user's ratings (as helper)
+        if (userId && typeof userId === 'string' && userId.length > 0) {
+          try {
+            const ratingsResponse = await fetch(`http://localhost:3001/api/users/${userId}/ratings`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            if (ratingsResponse.ok) {
+              const ratingsData = await ratingsResponse.json();
+              console.log("Ratings data:", ratingsData);
+              if (ratingsData.success) {
+                setUserRatings(ratingsData.data?.ratings || []);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to fetch ratings:", error);
+          }
+        }
         
         // Fetch user's requests (help asked for)
         const requestsResponse = await fetch("http://localhost:3001/api/requests/my-requests", {
@@ -86,16 +115,19 @@ const Profile = () => {
         if (requestsResponse.ok) {
           const requestsData = await requestsResponse.json();
           console.log("My requests data:", requestsData);
-          const myRequests = requestsData.data || [];
-          console.log("Number of my requests:", myRequests.length);
+          const requests = requestsData.data || [];
+          console.log("Number of my requests:", requests.length);
+          setMyRequests(requests);
           
           // Format requests as actions
-          const requestActions = myRequests.map(req => ({
+          const requestActions = requests.map(req => ({
             title: `בקשת עזרה: ${getProblemTypeLabel(req.problemType)}`,
             time: new Date(req.createdAt).toLocaleDateString('he-IL'),
             status: req.status,
             type: 'requested',
-            address: req.location?.address || 'כתובת לא זמינה'
+            address: req.location?.address || 'כתובת לא זמינה',
+            requestId: req._id,
+            helper: req.helper
           }));
           
           allActions.push(...requestActions);
@@ -173,6 +205,39 @@ const Profile = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
+  };
+
+  const handleRateHelper = (action) => {
+    // Find the full request object
+    const request = myRequests.find(req => req._id === action.requestId);
+    if (request) {
+      setSelectedRequest(request);
+      setShowRatingModal(true);
+    }
+  };
+
+  const handleRatingSuccess = () => {
+    setShowRatingModal(false);
+    // Refresh the page data to show updated ratings
+    window.location.reload();
+  };
+
+  const checkIfRequestRated = async (requestId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3001/api/ratings/${requestId}/check`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.data?.alreadyRated || false;
+      }
+    } catch (error) {
+      console.error("Error checking rating status:", error);
+    }
+    return false;
   };
 
   if (loading) {
@@ -294,22 +359,99 @@ const Profile = () => {
             הדירוג שלי
           </h2>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-4 mb-4">
             <div className="flex gap-1 text-4xl">
               {Array.from({ length: maxRating }).map((_, i) => (
                 <span
                   key={i}
-                  className={i < rating ? "text-yellow-400" : "text-gray-300"}
+                  className={i < Math.floor(rating) ? "text-yellow-400" : "text-gray-300"}
                 >
                   ★
                 </span>
               ))}
             </div>
             <div className="text-3xl font-bold text-gray-700">
-              {rating}/{maxRating}
+              {rating > 0 ? rating.toFixed(1) : "אין דירוגים"}
+            </div>
+            {ratingCount > 0 && (
+              <span className="text-sm text-gray-500">
+                ({ratingCount} {ratingCount === 1 ? "דירוג" : "דירוגים"})
+              </span>
+            )}
+          </div>
+
+          {/* Show Ratings Button */}
+          {userRatings.length > 0 && (
+            <div className="text-center mt-4">
+              <button
+                onClick={() => setShowRatings(!showRatings)}
+                className="text-blue-600 hover:text-blue-700 font-medium transition-colors px-4 py-2 rounded-lg hover:bg-blue-50"
+              >
+                {showRatings ? "הסתר דירוגים" : "הצג דירוגים"} ({userRatings.length})
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Ratings List */}
+        {showRatings && userRatings.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <span className="text-3xl">⭐</span>
+              דירוגים שקיבלתי
+            </h3>
+            <div className="space-y-4">
+              {userRatings.map((ratingItem) => (
+                <div
+                  key={ratingItem._id}
+                  className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-bold text-lg">
+                          {ratingItem.rater?.username?.charAt(0).toUpperCase() || "?"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-800">
+                          {ratingItem.rater?.username || "משתמש"}
+                        </span>
+                        <div className="flex gap-1 mt-1">
+                          {[...Array(5)].map((_, index) => (
+                            <span
+                              key={index}
+                              className={`text-lg ${
+                                index < ratingItem.score
+                                  ? "text-yellow-400"
+                                  : "text-gray-300"
+                              }`}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(ratingItem.createdAt).toLocaleDateString("he-IL")}
+                    </span>
+                  </div>
+                  {ratingItem.review && (
+                    <p className="text-gray-600 text-sm bg-gray-50 rounded-lg p-3 mt-2">
+                      "{ratingItem.review}"
+                    </p>
+                  )}
+                  {ratingItem.request?.problemType && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      סוג בעיה: {getProblemTypeLabel(ratingItem.request.problemType)}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Recent Actions Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
@@ -376,6 +518,19 @@ const Profile = () => {
                       {action.time}
                     </div>
                   )}
+                  
+                  {/* Rating Button for completed requests */}
+                  {action.type === 'requested' && action.status === 'completed' && action.helper && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <button
+                        onClick={() => handleRateHelper(action)}
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>⭐</span>
+                        <span>דרג את העוזר</span>
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -405,6 +560,19 @@ const Profile = () => {
           </button>
         </div>
       </div>
+
+      {/* Rating Modal */}
+      {showRatingModal && selectedRequest && (
+        <RatingModal
+          requestId={selectedRequest._id}
+          helperName={selectedRequest.helper?.username}
+          onClose={() => {
+            setShowRatingModal(false);
+            setSelectedRequest(null);
+          }}
+          onSubmitSuccess={handleRatingSuccess}
+        />
+      )}
     </div>
   );
 };
