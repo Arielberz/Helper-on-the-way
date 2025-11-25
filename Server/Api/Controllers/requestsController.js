@@ -150,7 +150,8 @@ exports.getRequestById = async (req, res) => {
 
     const request = await Request.findById(id)
       .populate('user', 'username email phone')
-      .populate('helper', 'username email phone');
+      .populate('helper', 'username email phone averageRating ratingCount')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
 
     if (!request) {
       return res.status(404).json({
@@ -487,6 +488,17 @@ exports.confirmHelper = async (req, res) => {
       .populate('user', 'username email phone')
       .populate('helper', 'username email phone averageRating ratingCount');
 
+    // Emit Socket.IO event to notify the helper that they were confirmed
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${helperId}`).emit('helperConfirmed', {
+        requestId: populatedRequest._id,
+        request: populatedRequest,
+        message: `You've been confirmed to help ${populatedRequest.user.username}!`
+      });
+      console.log(`✅ Notified helper ${helperId} of confirmation`);
+    }
+
     res.json({
       success: true,
       message: 'Helper confirmed successfully',
@@ -622,6 +634,21 @@ exports.assignHelper = async (req, res) => {
     const populatedRequest = await Request.findById(request._id)
       .populate('user', 'username email phone')
       .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+
+    // Emit Socket.IO event to notify the requester that a helper wants to help
+    const io = req.app.get('io');
+    if (io) {
+      const helperInfo = populatedRequest.pendingHelpers.find(
+        ph => ph.user._id.toString() === helperId
+      );
+      io.to(`user:${request.user}`).emit('helperRequestReceived', {
+        requestId: populatedRequest._id,
+        helper: helperInfo?.user,
+        request: populatedRequest,
+        message: `${helperInfo?.user.username || 'Someone'} wants to help you!`
+      });
+      console.log(`🔔 Notified requester ${request.user} of new helper request`);
+    }
 
     res.json({
       success: true,

@@ -24,9 +24,6 @@ const initializeChatSockets = (io) => {
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.userId}`);
-
-    // Join user to their personal room
     socket.join(`user:${socket.userId}`);
 
     // Join a specific conversation room
@@ -48,18 +45,15 @@ const initializeChatSockets = (io) => {
 
         socket.join(`conversation:${conversationId}`);
         socket.emit('joined_conversation', { conversationId });
-        console.log(`User ${socket.userId} joined conversation ${conversationId}`);
       } catch (error) {
         console.error('Error joining conversation:', error);
         socket.emit('error', { message: 'Failed to join conversation' });
       }
     });
 
-    // Leave a conversation room
     socket.on('leave_conversation', (conversationId) => {
       socket.leave(`conversation:${conversationId}`);
       socket.emit('left_conversation', { conversationId });
-      console.log(`User ${socket.userId} left conversation ${conversationId}`);
     });
 
     // Send a message
@@ -115,8 +109,6 @@ const initializeChatSockets = (io) => {
           message: savedMessage,
           from: socket.userId
         });
-
-        console.log(`Message sent in conversation ${conversationId} by user ${socket.userId}`);
       } catch (error) {
         console.error('Error sending message:', error);
         socket.emit('error', { message: 'Failed to send message' });

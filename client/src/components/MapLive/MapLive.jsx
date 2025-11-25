@@ -14,6 +14,7 @@ import io from "socket.io-client";
 
 import HelpButton from "../helpButton/helpButton";
 import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
+import PendingHelpersMapButton from "../PendingHelpersMapButton/PendingHelpersMapButton";
 import {
   getInitialLocation,
   getPreciseLocation,
@@ -617,6 +618,9 @@ export default function MapLive() {
           <span className="font-semibold">{confirmationMessage}</span>
         </div>
       )}
+
+      {/* Pending Helpers Button - Floating (only when you have pending helpers) */}
+      <PendingHelpersMapButton />
 
       {/* Button Group - Help at bottom, Nearby above (desktop only) */}
       <div className="fixed bottom-6 right-6 flex flex-col-reverse gap-2 z-1000">
