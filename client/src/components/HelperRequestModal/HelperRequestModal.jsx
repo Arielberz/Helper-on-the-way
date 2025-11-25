@@ -106,22 +106,6 @@ const HelperRequestModal = ({ helperRequest, onClose, onConfirm, onReject }) => 
               <p className="text-gray-800">{helperRequest.message}</p>
             </div>
           )}
-
-          {/* Helper Contact Info */}
-          <div className="mt-3 space-y-1 text-sm">
-            {helperRequest.helper?.phone && (
-              <div className="flex items-center gap-2 text-gray-700">
-                <span>📱</span>
-                <span dir="ltr">{helperRequest.helper.phone}</span>
-              </div>
-            )}
-            {helperRequest.helper?.email && (
-              <div className="flex items-center gap-2 text-gray-700">
-                <span>📧</span>
-                <span>{helperRequest.helper.email}</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Request Details */}

@@ -30,7 +30,6 @@ const GlobalHelperRequestModal = () => {
       // Modal will auto-navigate to chat, so just clear the request
       clearPendingRequest()
     } catch (error) {
-      console.error('Error confirming helper:', error)
       throw error
     }
   }
@@ -58,7 +57,6 @@ const GlobalHelperRequestModal = () => {
 
       clearPendingRequest()
     } catch (error) {
-      console.error('Error rejecting helper:', error)
       throw error
     }
   }

@@ -22,11 +22,8 @@ export const HelperRequestProvider = ({ children }) => {
     
     // Don't connect if no token (user not logged in)
     if (!token) {
-      console.log('No token found, skipping socket connection for helper requests')
       return
     }
-
-    console.log('Initializing socket connection for helper requests...')
 
     // Connect to socket with auth token
     const newSocket = io(API_BASE, {
@@ -42,23 +39,23 @@ export const HelperRequestProvider = ({ children }) => {
     })
 
     newSocket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error.message)
+      // Socket connection error
     })
 
     // Listen for helper request notifications
     newSocket.on('helperRequestReceived', (data) => {
-      console.log('🔔 New helper request received:', data)
+      console.log('🔔 HELPER REQUEST RECEIVED:', data)
+      alert(`🔔 New helper request from ${data.helper?.username || 'Someone'}!`)
       setPendingRequest(data)
     })
 
     newSocket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason)
+      // Socket disconnected
     })
 
     setSocket(newSocket)
 
     return () => {
-      console.log('Cleaning up socket connection')
       newSocket.close()
     }
   }, [])
