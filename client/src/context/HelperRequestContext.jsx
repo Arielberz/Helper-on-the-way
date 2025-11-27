@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
+import { getToken } from '../utils/authUtils'
 
 const HelperRequestContext = createContext()
 
@@ -19,7 +20,7 @@ export const HelperRequestProvider = ({ children }) => {
   // Initialize Socket.IO connection
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-    const token = localStorage.getItem('token')
+    const token = getToken()
     
     if (!token) {
       return

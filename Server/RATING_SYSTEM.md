@@ -1,5 +1,7 @@
 # Rating System Documentation
 
+> **Note:** Client-side code examples in this document show legacy localStorage patterns. The app now uses centralized auth utilities (`getToken()` from `utils/authUtils.js`) instead of direct localStorage access.
+
 ## Overview
 
 The rating system allows users who received help on a request to rate the helper who handled their request. This helps build trust and accountability in the Helper-on-the-way platform.

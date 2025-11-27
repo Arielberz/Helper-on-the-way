@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthData, getToken } from '../../utils/authUtils';
 import RatingModal from "../../components/RatingModal/RatingModal";
 import { useRating } from "../../context/RatingContext";
 
@@ -49,8 +50,8 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = localStorage.getItem("token");
-      console.log("Token from localStorage:", token ? "exists" : "missing");
+      const token = getToken();
+      console.log("Token from auth utils:", token ? "exists" : "missing");
       
 
       try {
@@ -228,7 +229,7 @@ const Profile = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    clearAuthData();
     navigate("/login");
   };
 
@@ -249,7 +250,7 @@ const Profile = () => {
 
   const checkIfRequestRated = async (requestId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`http://localhost:3001/api/ratings/${requestId}/check`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -267,7 +268,7 @@ const Profile = () => {
 
   const handleUpdateRequestStatus = async (requestId, newStatus) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
         method: 'PATCH',
         headers: {
@@ -293,7 +294,7 @@ const Profile = () => {
 
   const handleHelperMarkCompleted = async (requestId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
         method: 'PATCH',
         headers: {
@@ -319,7 +320,7 @@ const Profile = () => {
 
   const handleRequesterConfirmCompletion = async (action) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`http://localhost:3001/api/requests/${action.requestId}/status`, {
         method: 'PATCH',
         headers: {
@@ -347,7 +348,7 @@ const Profile = () => {
 
   const handleConfirmHelper = async (requestId, helperId, helperName) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const response = await fetch(`http://localhost:3001/api/requests/${requestId}/confirm-helper`, {
         method: 'POST',
         headers: {

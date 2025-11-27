@@ -1,5 +1,7 @@
 # Helper Request Notification Debug Guide
 
+> **Note:** This guide contains legacy code examples. The app now uses centralized auth utilities (`getToken()`, `getUserId()` from `utils/authUtils.js`) instead of direct localStorage access. Use browser DevTools > Application > Local Storage to inspect stored values.
+
 ## Issue: Not Receiving Helper Request Popup
 
 When someone clicks "I want to help" on your request, you should see a popup notification. If you're not seeing it, follow this debugging guide.

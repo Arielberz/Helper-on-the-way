@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { setAuthData } from "../../utils/authUtils";
 
 
 
@@ -83,9 +84,8 @@ export default function Register() {
       const data = await response.json();
 
       if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem("token", data.data.token);
-        localStorage.setItem("user", JSON.stringify(data.data.user));
+        // Store auth data securely
+        setAuthData(data.data.token, data.data.user);
         
         // Navigate to home page
         navigate("/home");

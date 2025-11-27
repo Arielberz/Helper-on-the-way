@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { setAuthData } from "../../utils/authUtils";
 
 
 
@@ -24,11 +25,8 @@ export default function Login() {
       });
 
       if (response.data.success) {
-        // Store token in localStorage
-        localStorage.setItem("token", response.data.data.token);
-        if (response.data.data.user) {
-          localStorage.setItem("user", JSON.stringify(response.data.data.user));
-        }
+        // Store auth data securely
+        setAuthData(response.data.data.token, response.data.data.user);
         // Redirect to home page
         navigate("/home");
       }
