@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import axios from 'axios'
+import { getToken } from '../../utils/authUtils'
 
 const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
   const [score, setScore] = useState(0)
@@ -18,7 +19,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
     setIsSubmitting(true)
 
     try {
-      const token = localStorage.getItem('token')
+      const token = getToken()
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/ratings`,
         {

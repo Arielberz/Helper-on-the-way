@@ -1,9 +1,10 @@
 import { Navigate } from "react-router-dom";
+import { getToken } from "../../utils/authUtils";
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("token");
+  const token = getToken();
   
-  // If no token exists, redirect to login page
+  // If no token exists or session expired, redirect to login page
   if (!token) {
     return <Navigate to="/login" replace />;
   }

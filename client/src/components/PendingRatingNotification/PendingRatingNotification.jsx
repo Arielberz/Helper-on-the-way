@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRating } from '../../context/RatingContext';
+import { getToken } from '../../utils/authUtils';
 
 const PendingRatingNotification = () => {
   const [pendingCount, setPendingCount] = useState(0);
@@ -16,7 +17,7 @@ const PendingRatingNotification = () => {
 
   const checkPendingRatings = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) return;
 
       const response = await fetch("http://localhost:3001/api/requests/my-requests", {

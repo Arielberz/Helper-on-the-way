@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '../../components/header/Header'
+import { getToken } from '../../utils/authUtils'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -25,7 +26,7 @@ export default function PendingHelpers() {
 
   const fetchRequest = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = getToken()
       const response = await fetch(`${API_BASE}/api/requests/${requestId}`, {
         headers: {
           Authorization: `Bearer ${token}`
@@ -49,9 +50,7 @@ export default function PendingHelpers() {
   const handleConfirmHelper = async (helperId) => {
     setProcessingHelperId(helperId)
     try {
-      const token = localStorage.getItem('token')
-      
-      // Step 1: Confirm the helper
+      const token = getToken()
       const response = await fetch(
         `${API_BASE}/api/requests/${requestId}/confirm-helper`,
         {
@@ -107,7 +106,7 @@ export default function PendingHelpers() {
   const handleRejectHelper = async (helperId) => {
     setProcessingHelperId(helperId)
     try {
-      const token = localStorage.getItem('token')
+      const token = getToken()
       const response = await fetch(
         `${API_BASE}/api/requests/${requestId}/reject-helper`,
         {
