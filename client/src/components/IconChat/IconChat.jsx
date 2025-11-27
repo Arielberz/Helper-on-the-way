@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import { getToken } from "../../utils/authUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -12,7 +13,7 @@ export default function IconChat() {
     // Fetch initial unread count
     useEffect(() => {
         const fetchUnreadCount = async () => {
-            const token = localStorage.getItem("token");
+            const token = getToken();
             if (!token) return;
 
             try {
@@ -40,7 +41,7 @@ export default function IconChat() {
 
     // Setup Socket.IO connection for real-time updates
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) return;
 
         const newSocket = io(API_BASE, {

@@ -20,6 +20,7 @@ import {
   getPreciseLocation,
   cacheLocation,
 } from "../../utils/locationUtils";
+import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
 
 // Fix for default marker icons in Leaflet with React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -66,8 +67,7 @@ export default function MapLive() {
   const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
 
   const navigate = useNavigate();
-  const location = useLocation();
-  const token = localStorage.getItem("token"); // מהשמור אחרי login/register
+  const token = getToken(); // Secure token retrieval
 
   // Fetch unread messages count
   useEffect(() => {
@@ -215,7 +215,7 @@ export default function MapLive() {
 
         // Check if token expired
         if (res.status === 401) {
-          localStorage.removeItem("token");
+          clearAuthData();
           window.location.href = "/login";
           return;
         }
@@ -300,7 +300,7 @@ export default function MapLive() {
     }
 
     try {
-      const currentUserId = localStorage.getItem('userId');
+      const currentUserId = getUserId();
       
       // Flow 1: Request is pending and no helper assigned yet → Send help request
       if (!request.helper && request.status === 'pending') {
@@ -370,7 +370,7 @@ export default function MapLive() {
         navigate("/chat", { state: { conversationId } });
       } else if (response.status === 401) {
         console.log("Unauthorized - token expired");
-        localStorage.removeItem("token");
+        clearAuthData();
         navigate("/login");
       } else {
         console.error("Failed to open chat:", data);
@@ -462,10 +462,10 @@ export default function MapLive() {
         {/* כל הנקודות שהגיעו מהשרת */}
         {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
           // Check if current user is the requester
-          const isMyRequest = m.user?._id === localStorage.getItem('userId') || m.user?.id === localStorage.getItem('userId');
+          const currentUserId = getUserId();
+          const isMyRequest = m.user?._id === currentUserId || m.user?.id === currentUserId;
           
           // Check if current user has already requested to help
-          const currentUserId = localStorage.getItem('userId');
           const alreadyRequested = m.pendingHelpers?.some(ph => 
             ph.user?._id === currentUserId || ph.user?.id === currentUserId
           );
@@ -599,7 +599,13 @@ export default function MapLive() {
                 )}
               </button>
               <button
-                onClick={() => { localStorage.removeItem('token'); navigate('/login'); setShowProfileMenu(false); }}
+                onClick={() => { 
+                  import('../../utils/authUtils').then(({ clearAuthData }) => {
+                    clearAuthData();
+                    navigate('/login');
+                    setShowProfileMenu(false);
+                  });
+                }}
                 className="w-full px-4 py-3 flex items-center gap-3 text-red-600 hover:bg-white/20 transition-colors text-left border-t border-white/20"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

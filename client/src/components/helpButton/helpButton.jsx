@@ -3,6 +3,7 @@ import HelpRequestModal from './HelpRequestModal';
 import { useImageUpload } from './useImageUpload';
 import { useLocation } from './useLocation';
 import { geocodeAddress, createHelpRequest, convertImageToBase64 } from './requestService';
+import { getToken } from '../../utils/authUtils';
 
 export default function HelpButton({ onRequestCreated, onModalStateChange, fallbackLocation }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,7 +98,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
     setErrorMessage('');
     setLocationError('');
     
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) {
       setErrorMessage('You must be logged in to create a help request');
       return;
