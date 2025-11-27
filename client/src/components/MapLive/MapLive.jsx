@@ -1,6 +1,6 @@
 // src/components/MapLive/MapLive.jsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   MapContainer,
   TileLayer,
@@ -66,6 +66,7 @@ export default function MapLive() {
   const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
 
   const navigate = useNavigate();
+  const location = useLocation();
   const token = localStorage.getItem("token"); // מהשמור אחרי login/register
 
   // Fetch unread messages count
@@ -88,6 +89,18 @@ export default function MapLive() {
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [token]);
+
+  // Handle focus location from navigation (when helper clicks "View on Map")
+  useEffect(() => {
+    const { focusLocation } = location.state || {};
+    if (focusLocation && mapRef) {
+      console.log('🗺️ Centering map on request location:', focusLocation);
+      // Center and zoom to the request location with animation
+      mapRef.flyTo([focusLocation.lat, focusLocation.lng], 16, {
+        duration: 1.5,
+      });
+    }
+  }, [location.state, mapRef]);
 
   // 1. Get initial location using IP-based geolocation (no permission needed)
   useEffect(() => {

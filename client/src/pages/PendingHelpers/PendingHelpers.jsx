@@ -50,6 +50,8 @@ export default function PendingHelpers() {
     setProcessingHelperId(helperId)
     try {
       const token = localStorage.getItem('token')
+      
+      // Step 1: Confirm the helper
       const response = await fetch(
         `${API_BASE}/api/requests/${requestId}/confirm-helper`,
         {
@@ -68,11 +70,33 @@ export default function PendingHelpers() {
         throw new Error(data.message || 'Failed to confirm helper')
       }
 
-      // Refresh request data
-      await fetchRequest()
-      
-      // Navigate to chat with the confirmed helper
-      navigate(`/chat?requestId=${requestId}&helperId=${helperId}`)
+      // Step 2: Get or create conversation for this request
+      const chatResponse = await fetch(
+        `${API_BASE}/api/chat/conversation/request/${requestId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      if (chatResponse.ok) {
+        const chatData = await chatResponse.json()
+        const conversationId = chatData.data?.conversation?._id || chatData.data?._id
+
+        if (conversationId) {
+          // Step 3: Navigate to chat with conversation ID
+          navigate('/chat', { state: { conversationId } })
+        } else {
+          // Fallback: refresh page if no conversation ID
+          await fetchRequest()
+          alert('Helper confirmed! Chat will be available shortly.')
+        }
+      } else {
+        // Fallback: refresh page if chat fetch fails
+        await fetchRequest()
+        alert('Helper confirmed! Please navigate to chat manually.')
+      }
     } catch (err) {
       console.error('Error confirming helper:', err)
       alert(err.message || 'Failed to confirm helper')
@@ -229,7 +253,36 @@ export default function PendingHelpers() {
               </div>
 
               <button
-                onClick={() => navigate(`/chat?requestId=${request._id}&helperId=${request.helper._id}`)}
+                onClick={async () => {
+                  const token = localStorage.getItem('token')
+                  try {
+                    // Get or create conversation for this request
+                    const response = await fetch(
+                      `${API_BASE}/api/chat/conversation/request/${request._id}`,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${token}`
+                        }
+                      }
+                    )
+
+                    if (response.ok) {
+                      const chatData = await response.json()
+                      const conversationId = chatData.data?.conversation?._id || chatData.data?._id
+
+                      if (conversationId) {
+                        navigate('/chat', { state: { conversationId } })
+                      } else {
+                        alert('Unable to open chat. Please try again.')
+                      }
+                    } else {
+                      alert('Unable to open chat. Please try again.')
+                    }
+                  } catch (error) {
+                    console.error('Error opening chat:', error)
+                    alert('Unable to open chat. Please try again.')
+                  }
+                }}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
               >
                 💬 Open Chat
