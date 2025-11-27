@@ -25,8 +25,13 @@ export default function Login() {
       });
 
       if (response.data.success) {
-        // Store auth data securely
-        setAuthData(response.data.data.token, response.data.data.user);
+        // Store token in localStorage
+        localStorage.setItem("token", response.data.data.token);
+        if (response.data.data.user) {
+          localStorage.setItem("user", JSON.stringify(response.data.data.user));
+          // Store userId for Socket.IO room management
+          localStorage.setItem("userId", response.data.data.user.id);
+        }
         // Redirect to home page
         navigate("/home");
       }

@@ -84,8 +84,13 @@ export default function Register() {
       const data = await response.json();
 
       if (data.success) {
-        // Store auth data securely
-        setAuthData(data.data.token, data.data.user);
+        // Store token in localStorage
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
+        // Store userId for Socket.IO room management
+        if (data.data.user && data.data.user.id) {
+          localStorage.setItem("userId", data.data.user.id);
+        }
         
         // Navigate to home page
         navigate("/home");

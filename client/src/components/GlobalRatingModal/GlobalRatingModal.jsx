@@ -19,10 +19,10 @@ const GlobalRatingModal = () => {
 
   return (
     <RatingModal
-      isOpen={showRatingModal}
+      requestId={requestToRate._id}
+      helperName={requestToRate.helper?.username || requestToRate.helper?.name || 'Helper'}
       onClose={closeRatingModal}
-      request={requestToRate}
-      onSuccess={handleSuccess}
+      onSubmitSuccess={handleSuccess}
     />
   );
 };
