@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useHelperRequest } from '../../context/HelperRequestContext'
 import { useNavigate } from 'react-router-dom'
+
+const API_BASE = import.meta.env.VITE_API_URL
 
 export default function HelperConfirmedNotification() {
   const { helperConfirmed, clearHelperConfirmed } = useHelperRequest()
   const navigate = useNavigate()
+  const [isLoadingChat, setIsLoadingChat] = useState(false)
 
   useEffect(() => {
     console.log('🎯 HelperConfirmedNotification component mounted')
@@ -19,6 +22,49 @@ export default function HelperConfirmedNotification() {
   }, [helperConfirmed])
 
   console.log('🎯 HelperConfirmedNotification render, helperConfirmed:', helperConfirmed)
+
+  const handleOpenChat = async () => {
+    if (!helperConfirmed?.request?._id) return
+
+    setIsLoadingChat(true)
+    const token = localStorage.getItem('token')
+    const requestId = helperConfirmed.request._id
+
+    try {
+      // Get or create conversation for this request
+      const response = await fetch(
+        `${API_BASE}/api/chat/conversation/request/${requestId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const chatData = await response.json()
+        const conversationId = chatData.data?.conversation?._id || chatData.data?._id
+
+        if (conversationId) {
+          console.log('💬 Opening chat with conversation:', conversationId)
+          // Navigate to chat with conversation ID
+          navigate('/chat', { state: { conversationId } })
+          clearHelperConfirmed()
+        } else {
+          console.error('No conversation ID received')
+          alert('Unable to open chat. Please try again.')
+        }
+      } else {
+        console.error('Failed to get conversation:', response.status)
+        alert('Unable to open chat. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error opening chat:', error)
+      alert('Unable to open chat. Please try again.')
+    } finally {
+      setIsLoadingChat(false)
+    }
+  }
 
   if (!helperConfirmed) {
     console.log('🎯 Not showing notification - helperConfirmed is null')
@@ -59,22 +105,51 @@ export default function HelperConfirmedNotification() {
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3">
             <button
-              onClick={() => {
-                navigate('/map')
-                clearHelperConfirmed()
-              }}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
+              onClick={handleOpenChat}
+              disabled={isLoadingChat}
+              className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              View on Map
+              {isLoadingChat ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Opening Chat...
+                </>
+              ) : (
+                <>
+                  💬 Contact Requester
+                </>
+              )}
             </button>
-            <button
-              onClick={clearHelperConfirmed}
-              className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-medium"
-            >
-              Dismiss
-            </button>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const requestLocation = helperConfirmed.request?.location
+                  navigate('/home', {
+                    state: {
+                      requestId: helperConfirmed.request?._id,
+                      focusLocation: requestLocation ? {
+                        lat: requestLocation.lat,
+                        lng: requestLocation.lng,
+                        address: requestLocation.address
+                      } : null
+                    }
+                  })
+                  clearHelperConfirmed()
+                }}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                📍 View on Map
+              </button>
+              <button
+                onClick={clearHelperConfirmed}
+                className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-medium"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       </div>
