@@ -48,6 +48,8 @@ initializeChatSockets(io);
 
 // Socket.IO connection handling with authentication
 io.on('connection', (socket) => {
+    console.log('✅ New client connected:', socket.id);
+    
     const token = socket.handshake.auth.token;
     if (token) {
         try {
@@ -55,13 +57,24 @@ io.on('connection', (socket) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             socket.userId = decoded.id;
             socket.join(`user:${socket.userId}`);
+            console.log(`User ${socket.userId} joined their room`);
         } catch (err) {
             console.error('Socket auth error:', err.message);
         }
     }
 
+    // Manual join for user-specific room (for clients that send explicit join event)
+    socket.on('join', (userId) => {
+        socket.join(`user:${userId}`);
+        console.log(`User ${userId} manually joined their room`);
+    });
+
     socket.on('newRequest', (request) => {
         socket.broadcast.emit('requestAdded', request);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('❌ Client disconnected:', socket.id);
     });
 });
 

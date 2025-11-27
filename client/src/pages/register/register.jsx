@@ -86,6 +86,10 @@ export default function Register() {
         // Store token in localStorage
         localStorage.setItem("token", data.data.token);
         localStorage.setItem("user", JSON.stringify(data.data.user));
+        // Store userId for Socket.IO room management
+        if (data.data.user && data.data.user.id) {
+          localStorage.setItem("userId", data.data.user.id);
+        }
         
         // Navigate to home page
         navigate("/home");
