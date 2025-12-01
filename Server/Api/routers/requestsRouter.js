@@ -14,7 +14,8 @@ const {
   rejectHelper,
   addPhotos,
   deleteRequest,
-  updatePayment
+  updatePayment,
+  getRoute
 } = require('../Controllers/requestsController');
 
 // Create a new roadside assistance request
@@ -28,6 +29,9 @@ router.get('/active', authMiddleware, getActiveRequests);
 
 // Get current user's requests
 router.get('/my-requests', authMiddleware, getMyRequests);
+
+// Get driving route from OSRM API
+router.get('/route', authMiddleware, getRoute);
 
 // Get a specific request by ID
 router.get('/:id', authMiddleware, getRequestById);
