@@ -31,25 +31,31 @@ export default function Chat() {
 
   // Get current user ID from token
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       navigate("/login");
       return;
     }
 
-    // Decode token to get user ID (simple decode, not verification)
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      setCurrentUserId(payload.id || payload.userId);
-    } catch (error) {
-      console.error("Error decoding token:", error);
+    // Use getUserId utility
+    const userId = getUserId();
+    if (userId) {
+      setCurrentUserId(userId);
+    } else {
+      // Fallback: decode token to get user ID
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setCurrentUserId(payload.id || payload.userId);
+      } catch (error) {
+        console.error("Error decoding token:", error);
+      }
     }
   }, [navigate]);
 
   // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) return;
 
       try {
@@ -77,6 +83,7 @@ export default function Chat() {
             setLoading(false);
           }
         } else if (response.status === 401) {
+          clearAuthData();
           navigate("/login");
         } else {
           setLoading(false);
@@ -92,7 +99,7 @@ export default function Chat() {
 
   // Load a specific conversation
   const loadConversation = async (conversationId) => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
 
     try {
@@ -125,7 +132,7 @@ export default function Chat() {
 
   // Setup Socket.IO
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
 
     const newSocket = io(API_BASE, {
@@ -152,7 +159,7 @@ export default function Chat() {
   const handleSend = async () => {
     if (!input.trim() || !selectedConversation) return;
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
 
     try {

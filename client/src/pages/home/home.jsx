@@ -4,6 +4,7 @@ import MapLive from "../../components/MapLive/MapLive.jsx";
 import { NavLink } from "react-router-dom";
 import { useRating } from "../../context/RatingContext";
 import PendingRatingNotification from "../../components/PendingRatingNotification/PendingRatingNotification";
+import { getToken } from "../../utils/authUtils";
 
 export default function Home() {
   const { openRatingModal } = useRating();
@@ -12,7 +13,7 @@ export default function Home() {
     // Check if there's a pending rating request
     const checkPendingRating = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = getToken();
         if (!token) return;
 
         // Fetch user's requests to check if any need rating

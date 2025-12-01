@@ -39,6 +39,10 @@ export async function createHelpRequest(requestData, token) {
     }
 
     if (response.status === 401) {
+      // Import clearAuthData dynamically to avoid circular dependencies
+      const { clearAuthData } = await import('../../utils/authUtils');
+      clearAuthData();
+      window.location.href = '/login';
       throw new Error('Your session has expired. Please log in again.');
     }
 
