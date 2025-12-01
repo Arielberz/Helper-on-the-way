@@ -7,6 +7,7 @@ const userRouter = require('./Api/routers/userRouter');
 const requestsRouter = require('./Api/routers/requestsRouter');
 const ratingRouter = require('./Api/routers/ratingRouter');
 const chatRouter = require('./Api/routers/chatRouter');
+const reportRouter = require('./Api/routers/reportRouter');
 const initializeChatSockets = require('./Api/sockets/chatSockets');
 const cors = require('cors');
 
@@ -42,6 +43,7 @@ app.use('/api/users', userRouter);
 app.use('/api/requests', requestsRouter);
 app.use('/api/ratings', ratingRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/reports', reportRouter);
 
 // Initialize chat sockets
 initializeChatSockets(io);
