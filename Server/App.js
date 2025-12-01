@@ -3,11 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const dotenv = require('dotenv');
 const connectDB = require('./config/DB');
+
 const userRouter = require('./api/routers/userRouter');
 const requestsRouter = require('./api/routers/requestsRouter');
 const ratingRouter = require('./api/routers/ratingRouter');
 const chatRouter = require('./api/routers/chatRouter');
 const initializeChatSockets = require('./api/sockets/chatSockets');
+const reportRouter = require('./Api/routers/reportRouter');
+
 const cors = require('cors');
 
 dotenv.config();
@@ -38,6 +41,7 @@ app.use('/api/users', userRouter);
 app.use('/api/requests', requestsRouter);
 app.use('/api/ratings', ratingRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/reports', reportRouter);
 
 // Initialize chat sockets (handles all socket connections)
 initializeChatSockets(io);

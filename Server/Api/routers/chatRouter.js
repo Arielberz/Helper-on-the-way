@@ -27,4 +27,7 @@ router.patch('/conversation/:conversationId/read', chatController.markMessagesAs
 // Archive/close a conversation
 router.patch('/conversation/:conversationId/archive', chatController.archiveConversation);
 
+// Delete a conversation
+router.delete('/conversation/:conversationId', chatController.deleteConversation);
+
 module.exports = router;
