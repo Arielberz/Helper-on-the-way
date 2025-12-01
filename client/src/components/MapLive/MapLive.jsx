@@ -6,6 +6,7 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Polyline,
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -55,8 +56,10 @@ export default function MapLive() {
   const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown menu
   const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
+  const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
 
   const navigate = useNavigate();
+  const location = useLocation();
   const token = getToken(); // Secure token retrieval
 
   // Fetch unread messages count
@@ -258,7 +261,68 @@ export default function MapLive() {
     fetchRequests();
   }, [token]);
 
-  // 4. טיפול במצב עוזר
+  // 4. Fetch route from OSRM
+  const fetchRoute = async (requestId, fromLat, fromLng, toLat, toLng) => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('Failed to fetch route from OSRM');
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
+        
+        setRoutes(prev => ({
+          ...prev,
+          [requestId]: {
+            coordinates,
+            distance: route.distance,
+            duration: route.duration
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+    }
+  };
+
+  // Auto-fetch routes for requests where current user is the assigned helper
+  useEffect(() => {
+    if (!position || !position[0] || !position[1] || !sharedMarkers.length) return;
+
+    const currentUserId = getUserId();
+    
+    sharedMarkers.forEach(request => {
+      // Check if current user is the assigned helper
+      const isAssignedHelper = 
+        request.status === 'assigned' && 
+        (request.helper === currentUserId || request.helper?._id === currentUserId);
+      
+      // Fetch route if user is assigned helper and route not already loaded
+      if (isAssignedHelper && 
+          request.location?.lat && 
+          request.location?.lng && 
+          !routes[request._id || request.id]) {
+        
+        console.log('Auto-fetching route for assigned request:', request._id);
+        fetchRoute(
+          request._id || request.id,
+          position[0],
+          position[1],
+          request.location.lat,
+          request.location.lng
+        );
+      }
+    });
+  }, [sharedMarkers, position]); // Re-run when markers or position changes
+
+  // 5. טיפול במצב עוזר
   const handleToggleHelper = (isActive, settings) => {
     setIsHelperMode(isActive);
     setHelperSettings(isActive ? settings : null);
@@ -270,13 +334,24 @@ export default function MapLive() {
     // יכול להוסיף שדה isAvailableHelper במודל User עם הגדרות העזרה
   };
 
-  // 5. טיפול בבחירת בקשה מהרשימה
+  // 6. טיפול בבחירת בקשה מהרשימה
   const handleSelectRequest = (request) => {
     // מרכז את המפה על הבקשה שנבחרה
     if (mapRef && request.location?.lat && request.location?.lng) {
       mapRef.flyTo([request.location.lat, request.location.lng], 16, {
         duration: 1.5,
       });
+
+      // Fetch route from user's position to the request
+      if (position && position[0] && position[1]) {
+        fetchRoute(
+          request._id || request.id,
+          position[0],
+          position[1],
+          request.location.lat,
+          request.location.lng
+        );
+      }
     }
   };
 
@@ -319,6 +394,17 @@ export default function MapLive() {
       alert("אנא התחבר כדי לשלוח הודעות");
       navigate("/login");
       return;
+    }
+
+    // Fetch and display route to the request
+    if (position && position[0] && position[1] && request.location?.lat && request.location?.lng) {
+      fetchRoute(
+        request._id || request.id,
+        position[0],
+        position[1],
+        request.location.lat,
+        request.location.lng
+      );
     }
 
     try {
@@ -504,6 +590,30 @@ export default function MapLive() {
                 {m.description && `תיאור: ${m.description}`}<br />
                 סטטוס: {m.status || 'pending'}<br />
                 
+                {/* Show route info if available */}
+                {routes[m._id || m.id] && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
+                    🚗 מרחק: {(routes[m._id || m.id].distance / 1000).toFixed(2)} ק"מ<br />
+                    ⏱️ זמן: {Math.round(routes[m._id || m.id].duration / 60)} דק'
+                  </div>
+                )}
+                
+                {/* Show route button - available for everyone except the requester */}
+                {!routes[m._id || m.id] && !isMyRequest && position && position[0] && position[1] && (
+                  <button 
+                    onClick={() => fetchRoute(
+                      m._id || m.id,
+                      position[0],
+                      position[1],
+                      m.location.lat,
+                      m.location.lng
+                    )}
+                    className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                  >
+                    🗺️ הצג מסלול
+                  </button>
+                )}
+                
                 {!isMyRequest && (
                   <>
                     {m.status === 'pending' && !alreadyRequested && (
@@ -519,15 +629,32 @@ export default function MapLive() {
                         ⏳ ממתין לאישור
                       </div>
                     )}
-                    {m.status === 'assigned' && m.helper === currentUserId && (
-                      <button 
-                        onClick={() => openChat(m)}
-                        className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
-                      >
-                        💬 פתח צ'אט
-                      </button>
+                    {m.status === 'assigned' && (m.helper === currentUserId || m.helper?._id === currentUserId) && (
+                      <>
+                        <button 
+                          onClick={() => openChat(m)}
+                          className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                        >
+                          💬 פתח צ'אט
+                        </button>
+                        {/* Auto-show route for assigned helper */}
+                        {!routes[m._id || m.id] && position && position[0] && position[1] && (
+                          <button 
+                            onClick={() => fetchRoute(
+                              m._id || m.id,
+                              position[0],
+                              position[1],
+                              m.location.lat,
+                              m.location.lng
+                            )}
+                            className="mt-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
+                          >
+                            🚗 הצג ניווט
+                          </button>
+                        )}
+                      </>
                     )}
-                    {m.status === 'assigned' && m.helper !== currentUserId && (
+                    {m.status === 'assigned' && m.helper !== currentUserId && m.helper?._id !== currentUserId && (
                       <div className="mt-2 px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium text-center">
                         👤 כבר שובץ עוזר
                       </div>
@@ -538,6 +665,17 @@ export default function MapLive() {
             </Marker>
           );
         })}
+
+        {/* Render routes */}
+        {Object.entries(routes).map(([requestId, routeData]) => (
+          <Polyline
+            key={requestId}
+            positions={routeData.coordinates}
+            color="#3B82F6"
+            weight={4}
+            opacity={0.7}
+          />
+        ))}
       </MapContainer>
 
       {/* Logo - Top Left (Click to center on user location) */}

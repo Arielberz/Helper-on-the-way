@@ -975,3 +975,68 @@ exports.updateRequest = async (req, res) => {
     });
   }
 };
+
+// Get driving route from OSRM API
+exports.getRoute = async (req, res) => {
+  try {
+    const { lon1, lat1, lon2, lat2 } = req.query;
+
+    // Validation
+    if (!lon1 || !lat1 || !lon2 || !lat2) {
+      return res.status(400).json({
+        success: false,
+        message: 'All coordinates are required: lon1, lat1, lon2, lat2'
+      });
+    }
+
+    // Validate coordinates are numbers
+    const coords = { lon1, lat1, lon2, lat2 };
+    for (const [key, value] of Object.entries(coords)) {
+      const num = parseFloat(value);
+      if (isNaN(num)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid ${key}: must be a number`
+        });
+      }
+    }
+
+    // Build OSRM API URL
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
+
+    // Make request to OSRM API
+    const fetch = (await import('node-fetch')).default;
+    const response = await fetch(osrmUrl);
+
+    if (!response.ok) {
+      throw new Error(`OSRM API responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Check if route was found
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No route found between the specified coordinates',
+        osrmResponse: data
+      });
+    }
+
+    // Return the route data
+    res.status(200).json({
+      success: true,
+      route: data.routes[0],
+      waypoints: data.waypoints,
+      fullResponse: data
+    });
+
+  } catch (err) {
+    console.error('Error fetching route from OSRM:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching route',
+      error: err.message
+    });
+  }
+};
