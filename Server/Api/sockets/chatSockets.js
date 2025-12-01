@@ -24,7 +24,11 @@ const initializeChatSockets = (io) => {
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
+    console.log('✅ New client connected:', socket.id);
     socket.join(`user:${socket.userId}`);
+    console.log(`User ${socket.userId} joined their room`);
+
+    // Note: Removed insecure 'join' and client-sourced global broadcasts ('newRequest', 'toggleHelper')
 
     // Join a specific conversation room
     socket.on('join_conversation', async (conversationId) => {
@@ -32,7 +36,7 @@ const initializeChatSockets = (io) => {
         const conversation = await Conversation.findById(conversationId);
         
         if (!conversation) {
-          return socket.emit('error', { message: 'Conversation not found' });
+          return socket.emit('chat:error', { message: 'Conversation not found' });
         }
 
         // Verify user is part of this conversation
@@ -40,14 +44,14 @@ const initializeChatSockets = (io) => {
           conversation.user.toString() !== socket.userId &&
           conversation.helper.toString() !== socket.userId
         ) {
-          return socket.emit('error', { message: 'Access denied' });
+          return socket.emit('chat:error', { message: 'Access denied' });
         }
 
         socket.join(`conversation:${conversationId}`);
         socket.emit('joined_conversation', { conversationId });
       } catch (error) {
         console.error('Error joining conversation:', error);
-        socket.emit('error', { message: 'Failed to join conversation' });
+        socket.emit('chat:error', { message: 'Failed to join conversation' });
       }
     });
 
@@ -62,13 +66,13 @@ const initializeChatSockets = (io) => {
         const { conversationId, content } = data;
 
         if (!content || !content.trim()) {
-          return socket.emit('error', { message: 'Message content is required' });
+          return socket.emit('chat:error', { message: 'Message content is required' });
         }
 
         const conversation = await Conversation.findById(conversationId);
         
         if (!conversation) {
-          return socket.emit('error', { message: 'Conversation not found' });
+          return socket.emit('chat:error', { message: 'Conversation not found' });
         }
 
         // Verify user is part of this conversation
@@ -76,7 +80,7 @@ const initializeChatSockets = (io) => {
           conversation.user.toString() !== socket.userId &&
           conversation.helper.toString() !== socket.userId
         ) {
-          return socket.emit('error', { message: 'Access denied' });
+          return socket.emit('chat:error', { message: 'Access denied' });
         }
 
         // Create new message
@@ -98,20 +102,9 @@ const initializeChatSockets = (io) => {
           conversationId,
           message: savedMessage
         });
-
-        // Also emit to the other user's personal room (for notifications)
-        const recipientId = conversation.user.toString() === socket.userId 
-          ? conversation.helper.toString() 
-          : conversation.user.toString();
-        
-        io.to(`user:${recipientId}`).emit('message_notification', {
-          conversationId,
-          message: savedMessage,
-          from: socket.userId
-        });
       } catch (error) {
         console.error('Error sending message:', error);
-        socket.emit('error', { message: 'Failed to send message' });
+        socket.emit('chat:error', { message: 'Failed to send message' });
       }
     });
 
@@ -123,7 +116,7 @@ const initializeChatSockets = (io) => {
         const conversation = await Conversation.findById(conversationId);
         
         if (!conversation) {
-          return socket.emit('error', { message: 'Conversation not found' });
+          return socket.emit('chat:error', { message: 'Conversation not found' });
         }
 
         // Verify user is part of this conversation
@@ -131,7 +124,7 @@ const initializeChatSockets = (io) => {
           conversation.user.toString() !== socket.userId &&
           conversation.helper.toString() !== socket.userId
         ) {
-          return socket.emit('error', { message: 'Access denied' });
+          return socket.emit('chat:error', { message: 'Access denied' });
         }
 
         // Mark all messages not sent by this user as read
@@ -160,14 +153,17 @@ const initializeChatSockets = (io) => {
         socket.emit('marked_as_read', { conversationId });
       } catch (error) {
         console.error('Error marking messages as read:', error);
-        socket.emit('error', { message: 'Failed to mark messages as read' });
+        socket.emit('chat:error', { message: 'Failed to mark messages as read' });
       }
     });
 
     // User is typing indicator
     socket.on('typing', (data) => {
-      const { conversationId, isTyping } = data;
-      socket.to(`conversation:${conversationId}`).emit('user_typing', {
+      const { conversationId, isTyping } = data || {};
+      const room = `conversation:${conversationId}`;
+      // Verify socket joined the conversation room to prevent noise/abuse
+      if (!conversationId || !socket.rooms.has(room)) return;
+      socket.volatile.to(room).emit('user_typing', {
         conversationId,
         userId: socket.userId,
         isTyping
@@ -179,7 +175,7 @@ const initializeChatSockets = (io) => {
       console.log(`User disconnected: ${socket.userId}`);
     });
 
-    // Error handling
+    // Error handling for socket-level errors
     socket.on('error', (error) => {
       console.error('Socket error:', error);
     });

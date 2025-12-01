@@ -18,11 +18,16 @@ export const HelperRequestProvider = ({ children }) => {
   const [socket, setSocket] = useState(null)
 
   // Initialize Socket.IO connection
+  const token = getToken()
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-    const token = getToken()
-    
+
     if (!token) {
+      // Close any existing socket when logging out / no token
+      if (socket) {
+        try { socket.close() } catch {}
+        setSocket(null)
+      }
       return
     }
 
@@ -63,12 +68,17 @@ export const HelperRequestProvider = ({ children }) => {
       console.error('❌ [Socket.IO] Connection error:', error)
     })
 
+    // Application-level socket errors
+    newSocket.on('chat:error', (payload) => {
+      console.error('❌ [Socket.IO] Chat error:', payload)
+    })
+
     setSocket(newSocket)
 
     return () => {
       newSocket.close()
     }
-  }, [])
+  }, [token])
 
   const clearPendingRequest = () => {
     setPendingRequest(null)

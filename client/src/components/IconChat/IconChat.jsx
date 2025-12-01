@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
-import { getToken } from "../../utils/authUtils";
+import { useHelperRequest } from "../../context/HelperRequestContext";
+import { getToken, getUserId } from "../../utils/authUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function IconChat() {
     const [unreadCount, setUnreadCount] = useState(0);
-    const [socket, setSocket] = useState(null);
+    const { socket } = useHelperRequest(); // Use shared socket from context
     const navigate = useNavigate();
 
     // Fetch initial unread count
@@ -39,32 +39,34 @@ export default function IconChat() {
         return () => clearInterval(interval);
     }, []);
 
-    // Setup Socket.IO connection for real-time updates
+    // Setup Socket.IO event listeners for real-time updates
     useEffect(() => {
-        const token = getToken();
-        if (!token) return;
-
-        const newSocket = io(API_BASE, {
-            auth: { token },
-        });
-
-        setSocket(newSocket);
+        if (!socket) return;
 
         // Listen for new messages
-        newSocket.on("new_message", (message) => {
-            // Increment unread count if message is not from current user
+        const handleNewMessage = (data) => {
+            const me = getUserId();
+            const msg = data && (data.message || data);
+            const sender = msg?.sender && (msg.sender._id || msg.sender);
+            if (me && sender && String(sender) === String(me)) {
+                return; // don't count own messages
+            }
             setUnreadCount((prev) => prev + 1);
-        });
+        };
 
         // Listen for messages marked as read
-        newSocket.on("messages_read", () => {
+        const handleMessagesRead = () => {
             setUnreadCount(0);
-        });
+        };
+
+        socket.on("new_message", handleNewMessage);
+        socket.on("messages_read", handleMessagesRead);
 
         return () => {
-            newSocket.close();
+            socket.off("new_message", handleNewMessage);
+            socket.off("messages_read", handleMessagesRead);
         };
-    }, []);
+    }, [socket]);
 
     // Listen for demo message event (for testing)
     useEffect(() => {
