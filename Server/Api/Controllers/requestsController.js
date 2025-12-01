@@ -1,5 +1,29 @@
 const Request = require('../models/requestsModel');
 
+// Helper: sanitize a request document for real-time broadcasts
+const sanitizeRequest = (reqDoc) => {
+  if (!reqDoc) return null;
+  const user = reqDoc.user || null;
+  const helper = reqDoc.helper || null;
+  const normalizeUser = (u) => {
+    if (!u) return null;
+    if (typeof u === 'string') return { _id: u };
+    if (u._id && u.username !== undefined) return { _id: String(u._id), username: u.username };
+    return { _id: String(u._id || u) };
+  };
+  return {
+    _id: String(reqDoc._id),
+    location: reqDoc.location ? { lat: reqDoc.location.lat, lng: reqDoc.location.lng } : null,
+    problemType: reqDoc.problemType,
+    description: reqDoc.description,
+    status: reqDoc.status,
+    user: normalizeUser(user),
+    helper: normalizeUser(helper),
+    createdAt: reqDoc.createdAt,
+    updatedAt: reqDoc.updatedAt,
+  };
+};
+
 // Create a new roadside assistance request
 exports.createRequest = async (req, res) => {
   try {
@@ -73,6 +97,16 @@ exports.createRequest = async (req, res) => {
       success: true,
       data: populatedRequest
     });
+
+    // Server-driven broadcast: new request created (sanitized)
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('requestAdded', sanitizeRequest(populatedRequest));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestAdded:', e.message);
+    }
   } catch (err) {
     console.error('Error creating request:', err);
     res.status(500).json({
@@ -299,6 +333,16 @@ exports.updateRequestStatus = async (req, res) => {
                requesterConfirmed ? 'Request completed successfully' : 
                'Status updated successfully'
     });
+
+    // Server-driven broadcast: request updated
+    try {
+      const io = req.app.get('io');
+      if (io && updatedRequest) {
+        io.emit('requestUpdated', sanitizeRequest(updatedRequest));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestUpdated (status):', e.message);
+    }
   } catch (err) {
     console.error('Error updating request status:', err);
     res.status(500).json({
@@ -379,7 +423,7 @@ exports.requestToHelp = async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       const latestHelper = populatedRequest.pendingHelpers[populatedRequest.pendingHelpers.length - 1];
-      io.to(`user:${request.user._id.toString()}`).emit('helperRequestReceived', {
+      io.to(`user:${String(request.user._id)}`).emit('helperRequestReceived', {
         requestId: request._id,
         helper: latestHelper.user,
         helperLocation: latestHelper.location,
@@ -389,6 +433,8 @@ exports.requestToHelp = async (req, res) => {
         problemType: getProblemTypeLabel(request.problemType)
       });
       console.log(`Emitted helper request notification to user ${request.user._id}`);
+    } else {
+      console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper request');
     }
 
     res.json({
@@ -491,12 +537,14 @@ exports.confirmHelper = async (req, res) => {
     // Emit Socket.IO event to notify the helper that they were confirmed
     const io = req.app.get('io');
     if (io) {
-      io.to(`user:${helperId}`).emit('helperConfirmed', {
+      io.to(`user:${String(helperId)}`).emit('helperConfirmed', {
         requestId: populatedRequest._id,
         request: populatedRequest,
         message: `You've been confirmed to help ${populatedRequest.user.username}!`
       });
       console.log(`✅ Notified helper ${helperId} of confirmation`);
+    } else {
+      console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper confirmation');
     }
 
     res.json({
@@ -641,13 +689,15 @@ exports.assignHelper = async (req, res) => {
       const helperInfo = populatedRequest.pendingHelpers.find(
         ph => ph.user._id.toString() === helperId
       );
-      io.to(`user:${request.user}`).emit('helperRequestReceived', {
+      io.to(`user:${String(request.user)}`).emit('helperRequestReceived', {
         requestId: populatedRequest._id,
         helper: helperInfo?.user,
         request: populatedRequest,
         message: `${helperInfo?.user.username || 'Someone'} wants to help you!`
       });
       console.log(`🔔 Notified requester ${request.user} of new helper request`);
+    } else {
+      console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper request');
     }
 
     res.json({
@@ -707,6 +757,20 @@ exports.addPhotos = async (req, res) => {
       success: true,
       data: request
     });
+
+    // Broadcast photos change as an update
+    try {
+      const io = req.app.get('io');
+      if (io && request) {
+        // Optionally populate minimal user/helper for broadcast
+        const minimal = await Request.findById(request._id)
+          .populate('user', 'username')
+          .populate('helper', 'username');
+        io.emit('requestUpdated', sanitizeRequest(minimal || request));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestUpdated (addPhotos):', e.message);
+    }
   } catch (err) {
     console.error('Error adding photos:', err);
     res.status(500).json({
@@ -745,6 +809,16 @@ exports.deleteRequest = async (req, res) => {
       success: true,
       message: 'Request deleted successfully'
     });
+
+    // Broadcast deletion so clients can remove marker
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('requestDeleted', { _id: String(id) });
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestDeleted:', e.message);
+    }
   } catch (err) {
     console.error('Error deleting request:', err);
     res.status(500).json({
@@ -814,6 +888,16 @@ exports.updatePayment = async (req, res) => {
       success: true,
       data: populatedRequest
     });
+
+    // Broadcast update
+    try {
+      const io = req.app.get('io');
+      if (io && populatedRequest) {
+        io.emit('requestUpdated', sanitizeRequest(populatedRequest));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestUpdated (payment):', e.message);
+    }
   } catch (err) {
     console.error('Error updating payment:', err);
     res.status(500).json({
@@ -872,6 +956,16 @@ exports.updateRequest = async (req, res) => {
       message: 'Request updated successfully',
       data: updatedRequest
     });
+
+    // Broadcast update
+    try {
+      const io = req.app.get('io');
+      if (io && updatedRequest) {
+        io.emit('requestUpdated', sanitizeRequest(updatedRequest));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to emit requestUpdated (general):', e.message);
+    }
   } catch (err) {
     console.error('Error updating request:', err);
     res.status(500).json({

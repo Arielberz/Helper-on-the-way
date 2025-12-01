@@ -10,7 +10,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L, { Icon } from "leaflet";
-import io from "socket.io-client";
+import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
 import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
@@ -57,7 +57,7 @@ export default function MapLive() {
   const [showAccuracyBanner, setShowAccuracyBanner] = useState(false);
   const [locationError, setLocationError] = useState(null); // Error message for location issues
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
-  const [socket, setSocket] = useState(null);
+  const { socket } = useHelperRequest(); // Use shared socket from context
 
   const [confirmationMessage, setConfirmationMessage] = useState(null);
   const [mapRef, setMapRef] = useState(null); // התייחסות למפה
@@ -175,31 +175,56 @@ export default function MapLive() {
     }
   };
 
-  // 2. התחברות ל-Socket.IO לעדכונים בזמן אמת
+  // 2. Listen to Socket.IO events for real-time updates
   useEffect(() => {
-    const newSocket = io(API_BASE);
-    setSocket(newSocket);
+    if (!socket) return;
 
     // האזנה לבקשות חדשות מהשרת
-    newSocket.on("requestAdded", (request) => {
+    const handleRequestAdded = (request) => {
       console.log("New request received:", request);
-      setSharedMarkers((prev) => [...prev, request]);
-    });
+      setSharedMarkers((prev) => {
+        if (!request?._id) return prev;
+        const exists = prev.some((m) => (m._id || m.id) === request._id);
+        return exists ? prev : [...prev, request];
+      });
+    };
+
+    // Update existing request
+    const handleRequestUpdated = (request) => {
+      if (!request?._id) return;
+      setSharedMarkers((prev) => prev.map((m) => ((m._id || m.id) === request._id ? { ...m, ...request } : m)));
+    };
+
+    // Remove deleted request
+    const handleRequestDeleted = ({ _id }) => {
+      if (!_id) return;
+      setSharedMarkers((prev) => prev.filter((m) => (m._id || m.id) !== _id));
+    };
 
     // Listen for new chat messages to update unread count
-    newSocket.on("new_message", () => {
+    const handleNewMessage = (data) => {
       setUnreadCount((prev) => prev + 1);
-    });
+    };
 
     // Listen for messages being read to reset count
-    newSocket.on("messages_read", () => {
+    const handleMessagesRead = () => {
       setUnreadCount(0);
-    });
+    };
+
+    socket.on("requestAdded", handleRequestAdded);
+    socket.on("requestUpdated", handleRequestUpdated);
+    socket.on("requestDeleted", handleRequestDeleted);
+    socket.on("new_message", handleNewMessage);
+    socket.on("messages_read", handleMessagesRead);
 
     return () => {
-      newSocket.close();
+      socket.off("requestAdded", handleRequestAdded);
+      socket.off("requestUpdated", handleRequestUpdated);
+      socket.off("requestDeleted", handleRequestDeleted);
+      socket.off("new_message", handleNewMessage);
+      socket.off("messages_read", handleMessagesRead);
     };
-  }, []);
+  }, [socket]);
 
   // 3. טעינת כל המיקומים מהשרת פעם אחת בהתחלה
   useEffect(() => {
@@ -224,7 +249,17 @@ export default function MapLive() {
         console.log("Initial locations loaded:", json.data?.length || 0);
         console.log("Sample request data:", json.data?.[0]);
         console.log("Sample user object:", json.data?.[0]?.user);
-        setSharedMarkers(json.data || []);
+        
+        // Deduplicate by _id before setting
+        const uniqueRequests = (json.data || []).reduce((acc, req) => {
+          const id = req._id || req.id;
+          if (id && !acc.some(r => (r._id || r.id) === id)) {
+            acc.push(req);
+          }
+          return acc;
+        }, []);
+        
+        setSharedMarkers(uniqueRequests);
       } catch (err) {
         // Failed to fetch locations
       }
@@ -238,14 +273,8 @@ export default function MapLive() {
     setIsHelperMode(isActive);
     setHelperSettings(isActive ? settings : null);
     
-    // שליחה לשרת שהמשתמש זמין לעזור עם ההגדרות
-    if (socket && position) {
-      socket.emit('toggleHelper', {
-        isHelper: isActive,
-        location: { lat: position[0], lng: position[1] },
-        settings: settings || null
-      });
-    }
+    // Note: server-side helper availability should be updated via authenticated REST endpoint,
+    // and the server should emit sanitized updates to relevant subscribers only.
     
     // TODO: עדכון בדאטאבייס שהמשתמש זמין לעזור
     // יכול להוסיף שדה isAvailableHelper במודל User עם הגדרות העזרה
@@ -265,13 +294,16 @@ export default function MapLive() {
   const handleRequestCreated = (newRequest) => {
     console.log("New request created from HelpButton:", newRequest);
 
-    // Add to local markers
-    setSharedMarkers((prev) => [...prev, newRequest]);
+    // Add to local markers (avoid duplicate since server will also emit requestAdded)
+    setSharedMarkers((prev) => {
+      if (!newRequest?._id && !newRequest?.id) return [...prev, newRequest];
+      const id = newRequest._id || newRequest.id;
+      const exists = prev.some((m) => (m._id || m.id) === id);
+      return exists ? prev : [...prev, newRequest];
+    });
 
-    // Emit to socket for real-time updates
-    if (socket) {
-      socket.emit("newRequest", newRequest);
-    }
+    // Note: real-time broadcast of new requests should be triggered by the server
+    // after authenticated creation, not directly by clients.
 
     // Zoom to the new request location
     if (mapRef && newRequest.location) {
@@ -415,14 +447,14 @@ export default function MapLive() {
           {locationAccuracy !== "loading" && (
             <button
               onClick={requestPreciseLocation}
-              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors flex-shrink-0"
+              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors shrink-0"
             >
               {locationError ? 'Try Again' : 'Enable Precise Location'}
             </button>
           )}
           <button
             onClick={() => setShowAccuracyBanner(false)}
-            className="ml-1 p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+            className="ml-1 p-1 hover:bg-white/20 rounded transition-colors shrink-0"
             aria-label="Close"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

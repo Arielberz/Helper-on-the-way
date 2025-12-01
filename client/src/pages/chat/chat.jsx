@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import io from "socket.io-client";
+import { useHelperRequest } from "../../context/HelperRequestContext";
 import Header from "../../components/header/Header";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
 
@@ -11,7 +11,7 @@ export default function Chat() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [socket, setSocket] = useState(null);
+  const { socket } = useHelperRequest(); // Use shared socket from context
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
@@ -128,66 +128,41 @@ export default function Chat() {
     }
   };
 
-  // Setup Socket.IO
+  // Setup Socket.IO event listeners
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    const newSocket = io(API_BASE, {
-      auth: { token },
-    });
-
-    setSocket(newSocket);
+    if (!socket || !selectedConversation) return;
 
     // Join current conversation
-    if (selectedConversation) {
-      newSocket.emit('join_conversation', selectedConversation._id);
-    }
+    socket.emit('join_conversation', selectedConversation._id);
 
     // Listen for new messages
-    newSocket.on('new_message', (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
+    const handleNewMessage = (data) => {
+      // Only update if it's for the current conversation
+      if (data.conversationId === selectedConversation._id) {
+        setMessages((prev) => [...prev, data.message]);
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
 
     return () => {
-      newSocket.close();
+      socket.off('new_message', handleNewMessage);
+      socket.emit('leave_conversation', selectedConversation._id);
     };
-  }, [selectedConversation]);
+  }, [socket, selectedConversation]);
 
   const handleSend = async () => {
-    if (!input.trim() || !selectedConversation) return;
+    if (!input.trim() || !selectedConversation || !socket) return;
 
-    const token = getToken();
-    if (!token) return;
+    const messageContent = input.trim();
+    
+    // Use socket-only approach for real-time messaging
+    socket.emit('send_message', {
+      conversationId: selectedConversation._id,
+      content: messageContent
+    });
 
-    try {
-      const response = await fetch(`${API_BASE}/api/chat/conversation/${selectedConversation._id}/message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          content: input.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Emit via socket for real-time delivery
-        if (socket) {
-          socket.emit('send_message', {
-            conversationId: selectedConversation._id,
-            message: data.data,
-          });
-        }
-
-        setInput("");
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
+    setInput("");
   };
 
   const handleKeyDown = (e) => {

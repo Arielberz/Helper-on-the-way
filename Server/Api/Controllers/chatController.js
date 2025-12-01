@@ -190,6 +190,20 @@ exports.markMessagesAsRead = async (req, res) => {
 
     await conversation.save();
 
+    // Emit socket notification to the other user as well
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const otherUserId = conversation.user.toString() === userId
+          ? conversation.helper.toString()
+          : conversation.user.toString();
+        io.to(`user:${String(otherUserId)}`).emit('messages_read', { conversationId, readBy: userId });
+      }
+    } catch (e) {
+      // Non-fatal: logging only
+      console.warn('⚠️ Failed to emit messages_read from REST path:', e.message);
+    }
+
     sendResponse(res, 200, true, 'messages marked as read');
   } catch (error) {
     console.error(error);
