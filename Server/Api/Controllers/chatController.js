@@ -251,3 +251,40 @@ exports.archiveConversation = async (req, res) => {
     sendResponse(res, 500, false, 'server error');
   }
 };
+
+// Delete a conversation (including all its messages)
+exports.deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return sendResponse(res, 404, false, 'conversation not found');
+    }
+
+    // Verify user is part of conversation
+    if (
+      conversation.user.toString() !== userId &&
+      conversation.helper.toString() !== userId
+    ) {
+      return sendResponse(res, 403, false, 'access denied');
+    }
+
+    // Log the deletion for debugging
+    console.log(`Deleting conversation ${conversationId} with ${conversation.messages.length} messages`);
+
+    // Delete the entire conversation document (including all embedded messages)
+    const result = await Conversation.findByIdAndDelete(conversationId);
+    
+    if (!result) {
+      return sendResponse(res, 500, false, 'failed to delete conversation');
+    }
+
+    console.log(`Successfully deleted conversation ${conversationId}`);
+    sendResponse(res, 200, true, 'conversation and all messages deleted successfully');
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    sendResponse(res, 500, false, 'server error');
+  }
+};
