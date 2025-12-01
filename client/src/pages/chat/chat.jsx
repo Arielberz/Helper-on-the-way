@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useHelperRequest } from "../../context/HelperRequestContext";
-import Header from "../../components/header/Header";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL;

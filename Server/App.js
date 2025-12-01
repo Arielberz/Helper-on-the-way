@@ -9,7 +9,7 @@ const requestsRouter = require('./api/routers/requestsRouter');
 const ratingRouter = require('./api/routers/ratingRouter');
 const chatRouter = require('./api/routers/chatRouter');
 const initializeChatSockets = require('./api/sockets/chatSockets');
-const reportRouter = require('./Api/routers/reportRouter');
+const reportRouter = require('./api/routers/reportRouter');
 
 const cors = require('cors');
 
