@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { getToken } from '../../utils/authUtils'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 
 export default function PendingHelpers() {
   const [searchParams] = useSearchParams()

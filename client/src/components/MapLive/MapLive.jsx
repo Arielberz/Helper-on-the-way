@@ -9,7 +9,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L, { Icon } from "leaflet";
+import L from "leaflet";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
@@ -21,17 +21,7 @@ import {
   cacheLocation,
 } from "../../utils/locationUtils";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
-
-// Fix for default marker icons in Leaflet with React
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
+import { getProblemIcon, getProblemTypeLabel, getUserPositionIcon } from "../../utils/iconUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -478,7 +468,7 @@ export default function MapLive() {
         />
 
         {/* המיקום הנוכחי שלך */}
-        <Marker position={position}>
+        <Marker position={position} icon={getUserPositionIcon()}>
           <Popup>
             {locationAccuracy === "precise"
               ? "📍 Your precise location"
@@ -503,10 +493,14 @@ export default function MapLive() {
           );
           
           return (
-            <Marker key={m._id || m.id} position={[m.location.lat, m.location.lng]}>
+            <Marker 
+              key={m._id || m.id} 
+              position={[m.location.lat, m.location.lng]}
+              icon={getProblemIcon(m.problemType)}
+            >
               <Popup>
                 <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
-                {m.problemType && `בעיה: ${m.problemType}`}<br />
+                {m.problemType && `בעיה: ${getProblemTypeLabel(m.problemType)}`}<br />
                 {m.description && `תיאור: ${m.description}`}<br />
                 סטטוס: {m.status || 'pending'}<br />
                 
