@@ -637,6 +637,82 @@ exports.rejectHelper = async (req, res) => {
   }
 };
 
+// Helper cancels their assignment (unassigns themselves, sets status back to pending)
+exports.cancelHelperAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const helperId = req.userId;
+
+    if (!helperId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No user in request (missing or invalid token)'
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Verify user is the assigned helper
+    if (!request.helper || request.helper.toString() !== helperId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not the assigned helper for this request'
+      });
+    }
+
+    // Only allow cancellation if not yet completed
+    if (request.status === REQUEST_STATUS.COMPLETED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a completed request'
+      });
+    }
+
+    // Remove helper and reset status to pending
+    request.helper = null;
+    request.status = REQUEST_STATUS.PENDING;
+    request.helperCompletedAt = null; // Clear completion timestamp if exists
+    
+    await request.save();
+
+    const updatedRequest = await Request.findById(request._id)
+      .populate('user', 'username email phone')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+
+    // Emit Socket.IO event to notify the requester
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${String(request.user)}`).emit('helperCancelled', {
+        requestId: updatedRequest._id,
+        request: updatedRequest,
+        message: 'The helper has cancelled. Your request is now available again.'
+      });
+      io.emit('requestUpdated', sanitizeRequest(updatedRequest));
+      console.log(`🔔 Notified requester ${request.user} of helper cancellation`);
+    }
+
+    res.json({
+      success: true,
+      message: 'You have cancelled your help. The request is now available for other helpers.',
+      data: updatedRequest
+    });
+  } catch (err) {
+    console.error('Error canceling helper assignment:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error canceling assignment',
+      error: err.message
+    });
+  }
+};
+
 // Legacy endpoint - keep for backward compatibility but update behavior
 exports.assignHelper = async (req, res) => {
   try {
@@ -978,6 +1054,85 @@ exports.updateRequest = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error updating request',
+      error: err.message
+    });
+  }
+};
+
+// Cancel request by requester
+exports.cancelRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requesterId = req.userId;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Request ID is required'
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: 'Request not found'
+      });
+    }
+
+    // Verify user is the requester
+    if (request.user.toString() !== requesterId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to cancel this request'
+      });
+    }
+
+    // Only allow cancellation if request is still pending
+    if (request.status !== REQUEST_STATUS.PENDING) {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only cancel pending requests'
+      });
+    }
+
+    // Update status to cancelled
+    request.status = REQUEST_STATUS.CANCELLED;
+    const helperId = request.helper ? String(request.helper) : null;
+    
+    await request.save();
+
+    const updatedRequest = await Request.findById(request._id)
+      .populate('user', 'username email phone')
+      .populate('helper', 'username email phone averageRating ratingCount');
+
+    // Emit Socket.IO event to notify the helper (if assigned)
+    const io = req.app.get('io');
+    if (io && helperId) {
+      io.to(`user:${helperId}`).emit('requestCancelled', {
+        requestId: updatedRequest._id,
+        request: updatedRequest,
+        message: 'המבקש ביטל את הבקשה'
+      });
+      console.log(`🔔 Notified helper ${helperId} of request cancellation`);
+    }
+    
+    // Emit general update
+    if (io) {
+      io.emit('requestUpdated', sanitizeRequest(updatedRequest));
+    }
+
+    res.json({
+      success: true,
+      message: 'Request cancelled successfully',
+      data: updatedRequest
+    });
+  } catch (err) {
+    console.error('Error canceling request:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error canceling request',
       error: err.message
     });
   }

@@ -13,6 +13,8 @@ const {
   requestToHelp,
   confirmHelper,
   rejectHelper,
+  cancelHelperAssignment,
+  cancelRequest,
   addPhotos,
   deleteRequest,
   updatePayment,
@@ -48,6 +50,12 @@ router.post('/:id/confirm-helper', authMiddleware, confirmHelper);
 
 // NEW: Requester rejects a helper
 router.post('/:id/reject-helper', authMiddleware, rejectHelper);
+
+// NEW: Helper cancels their assignment (unassigns and sets back to pending)
+router.post('/:id/cancel-help', authMiddleware, cancelHelperAssignment);
+
+// NEW: Requester cancels their request
+router.post('/:id/cancel', authMiddleware, cancelRequest);
 
 // Legacy: Assign helper to a request (now adds to pending)
 router.post('/:id/assign', authMiddleware, assignHelper);
