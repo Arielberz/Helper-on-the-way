@@ -3,9 +3,8 @@ import Landing from "./pages/landing/landing";
 import Register from "./pages/register/register";
 import Login from "./pages/login/login";
 import Home from "./pages/home/home";
-import Payment from "./pages/payment/payment";
 import Chat from "./pages/chat/chat";
-import Rating from "./pages/rating/rating";
+import Rating from "./pages/Rating/Rating";
 import Profile from "./pages/Profile/profile";
 import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
@@ -32,14 +31,6 @@ function App() {
           element={
             <ProtectedRoute>
               <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payment"
-          element={
-            <ProtectedRoute>
-              <Payment />
             </ProtectedRoute>
           }
         />

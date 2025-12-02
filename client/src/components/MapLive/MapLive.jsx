@@ -1,16 +1,8 @@
 // src/components/MapLive/MapLive.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  useMapEvents,
-} from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
@@ -22,22 +14,18 @@ import {
   cacheLocation,
 } from "../../utils/locationUtils";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
-import { getProblemIcon, getProblemTypeLabel, getUserPositionIcon } from "../../utils/iconUtils";
+
+// Subcomponents
+import MapRefSetter from "./components/MapRefSetter";
+import LocationAccuracyBanner from "./components/LocationAccuracyBanner";
+import MapLogo from "./components/MapLogo";
+import ProfileMenu from "./components/ProfileMenu";
+import ConfirmationToast from "./components/ConfirmationToast";
+import UserMarker from "./components/UserMarker";
+import RequestMarkers from "./components/RequestMarkers";
+import RoutePolylines from "./components/RoutePolylines";
 
 const API_BASE = import.meta.env.VITE_API_URL;
-
-// קומפוננטה לקבלת reference למפה
-function MapRefSetter({ setMapRef }) {
-  const map = useMapEvents({});
-
-  React.useEffect(() => {
-    if (map) {
-      setMapRef(map);
-    }
-  }, [map, setMapRef]);
-
-  return null;
-}
 
 export default function MapLive() {
   // Default location: Center of Israel (Tel Aviv area)
@@ -52,11 +40,10 @@ export default function MapLive() {
 
   const [confirmationMessage, setConfirmationMessage] = useState(null);
   const [mapRef, setMapRef] = useState(null); // התייחסות למפה
-  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false); // מצב מודל בקשת עזרה
-  const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown menu
   const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
+  const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,9 +98,6 @@ export default function MapLive() {
             location.accuracy === "precise" ? 15 : 12
           );
         }
-
-       
-
 
         console.log(
           `Location initialized: ${location.city || "Unknown"}, ${
@@ -322,19 +306,7 @@ export default function MapLive() {
     });
   }, [sharedMarkers, position]); // Re-run when markers or position changes
 
-  // 5. טיפול במצב עוזר
-  const handleToggleHelper = (isActive, settings) => {
-    setIsHelperMode(isActive);
-    setHelperSettings(isActive ? settings : null);
-    
-    // Note: server-side helper availability should be updated via authenticated REST endpoint,
-    // and the server should emit sanitized updates to relevant subscribers only.
-    
-    // TODO: עדכון בדאטאבייס שהמשתמש זמין לעזור
-    // יכול להוסיף שדה isAvailableHelper במודל User עם הגדרות העזרה
-  };
-
-  // 6. טיפול בבחירת בקשה מהרשימה
+  // 5. טיפול בבחירת בקשה מהרשימה
   const handleSelectRequest = (request) => {
     // מרכז את המפה על הבקשה שנבחרה
     if (mapRef && request.location?.lat && request.location?.lng) {
@@ -491,54 +463,13 @@ export default function MapLive() {
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
-      {/* Show location accuracy banner */}
-      {showAccuracyBanner && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-1000 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-          <span className="text-sm">
-            {locationAccuracy === "loading"
-              ? "Getting location..."
-              : locationAccuracy === "approximate"
-              ? "📍 Showing approximate location"
-              : "📍 Using default location"}
-          </span>
-          {locationAccuracy !== "loading" && (
-            <button
-              onClick={requestPreciseLocation}
-              className="ml-2 px-3 py-1 bg-white text-blue-600 text-sm font-medium rounded hover:bg-blue-50 transition-colors shrink-0"
-            >
-              {locationError ? 'Try Again' : 'Enable Precise Location'}
-            </button>
-          )}
-          <button
-            onClick={() => setShowAccuracyBanner(false)}
-            className="ml-1 p-1 hover:bg-white/20 rounded transition-colors shrink-0"
-            aria-label="Close"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
+      <LocationAccuracyBanner
+        showAccuracyBanner={showAccuracyBanner}
+        locationAccuracy={locationAccuracy}
+        locationError={locationError}
+        requestPreciseLocation={requestPreciseLocation}
+        setShowAccuracyBanner={setShowAccuracyBanner}
+      />
 
       <MapContainer
         center={position}
@@ -546,279 +477,73 @@ export default function MapLive() {
         style={{ height: "100vh", width: "100%" }}
         zoomControl={false}
         attributionControl={false}
-        ref={setMapRef}
       >
         <TileLayer
           attribution=""
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* המיקום הנוכחי שלך */}
-        <Marker position={position} icon={getUserPositionIcon()}>
-          <Popup>
-            {locationAccuracy === "precise"
-              ? "📍 Your precise location"
-              : locationAccuracy === "approximate"
-              ? "📍 Approximate location (IP-based)"
-              : "📍 Default location"}
-          </Popup>
-        </Marker>
+        <UserMarker position={position} locationAccuracy={locationAccuracy} />
 
-        {/* Get map reference */}
         <MapRefSetter setMapRef={setMapRef} />
 
-        {/* כל הנקודות שהגיעו מהשרת */}
-        {sharedMarkers.filter(m => m.location?.lat && m.location?.lng).map((m) => {
-          // Check if current user is the requester
-          const currentUserId = getUserId();
-          const isMyRequest = m.user?._id === currentUserId || m.user?.id === currentUserId;
-          
-          // Check if current user has already requested to help
-          const alreadyRequested = m.pendingHelpers?.some(ph => 
-            ph.user?._id === currentUserId || ph.user?.id === currentUserId
-          );
-          
-          return (
-            <Marker 
-              key={m._id || m.id} 
-              position={[m.location.lat, m.location.lng]}
-              icon={getProblemIcon(m.problemType)}
-            >
-              <Popup>
-                <strong>{m.user?.username || 'משתמש לא ידוע'}</strong><br />
-                {m.problemType && `בעיה: ${getProblemTypeLabel(m.problemType)}`}<br />
-                {m.description && `תיאור: ${m.description}`}<br />
-                סטטוס: {m.status || 'pending'}<br />
-                
-                {/* Show route info if available */}
-                {routes[m._id || m.id] && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-                    🚗 מרחק: {(routes[m._id || m.id].distance / 1000).toFixed(2)} ק"מ<br />
-                    ⏱️ זמן: {Math.round(routes[m._id || m.id].duration / 60)} דק'
-                  </div>
-                )}
-                
-                {/* Show route button - available for everyone except the requester */}
-                {!routes[m._id || m.id] && !isMyRequest && position && position[0] && position[1] && (
-                  <button 
-                    onClick={() => fetchRoute(
-                      m._id || m.id,
-                      position[0],
-                      position[1],
-                      m.location.lat,
-                      m.location.lng
-                    )}
-                    className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
-                  >
-                    🗺️ הצג מסלול
-                  </button>
-                )}
-                
-                {!isMyRequest && (
-                  <>
-                    {m.status === 'pending' && !alreadyRequested && (
-                      <button 
-                        onClick={() => openChat(m)}
-                        className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
-                      >
-                        🙋 אני רוצה לעזור
-                      </button>
-                    )}
-                    {m.status === 'pending' && alreadyRequested && (
-                      <div className="mt-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-medium text-center">
-                        ⏳ ממתין לאישור
-                      </div>
-                    )}
-                    {m.status === 'assigned' && (m.helper === currentUserId || m.helper?._id === currentUserId) && (
-                      <>
-                        <button 
-                          onClick={() => openChat(m)}
-                          className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
-                        >
-                          💬 פתח צ'אט
-                        </button>
-                        {/* Auto-show route for assigned helper */}
-                        {!routes[m._id || m.id] && position && position[0] && position[1] && (
-                          <button 
-                            onClick={() => fetchRoute(
-                              m._id || m.id,
-                              position[0],
-                              position[1],
-                              m.location.lat,
-                              m.location.lng
-                            )}
-                            className="mt-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
-                          >
-                            🚗 הצג ניווט
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {m.status === 'assigned' && m.helper !== currentUserId && m.helper?._id !== currentUserId && (
-                      <div className="mt-2 px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium text-center">
-                        👤 כבר שובץ עוזר
-                      </div>
-                    )}
-                  </>
-                )}
-              </Popup>
-            </Marker>
-          );
-        })}
+        <RequestMarkers
+          sharedMarkers={sharedMarkers}
+          routes={routes}
+          position={position}
+          fetchRoute={fetchRoute}
+          openChat={openChat}
+        />
 
-        {/* Render routes */}
-        {Object.entries(routes).map(([requestId, routeData]) => (
-          <Polyline
-            key={requestId}
-            positions={routeData.coordinates}
-            color="#3B82F6"
-            weight={4}
-            opacity={0.7}
-          />
-        ))}
+        <RoutePolylines routes={routes} />
       </MapContainer>
 
-      {/* Logo - Top Left (Click to center on user location) */}
-      <button
-        onClick={() => {
-          if (mapRef && position) {
-            mapRef.flyTo(position, 18, { duration: 1 });
-          }
-        }}
-        className="fixed top-6 left-6 z-1000 backdrop-blur-md bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center gap-3 h-12 w-12 sm:h-auto sm:w-auto sm:px-4 sm:py-2 transition-all duration-300 shadow-lg hover:shadow-xl border border-white/30 cursor-pointer"
-        aria-label="Center map on my location"
-      >
-        <img src="/logo.png" alt="Helper on the Way" className="h-8 w-8 sm:h-10 sm:w-10 object-contain" />
-        <div className="hidden sm:flex flex-col">
-          <span className="text-slate-600 text-xs leading-tight">HELPER</span>
-          <span className="text-slate-600 text-xs leading-tight">On the Way</span>
-        </div>
-      </button>
+      {!isNearbyModalOpen && <MapLogo mapRef={mapRef} position={position} />}
 
       {/* Nearby Button - Mobile Only (Top Center) */}
       {position && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-1000 sm:hidden">
-          <NearbyRequestsButton
-            requests={sharedMarkers}
-            userPosition={position}
-            onSelectRequest={handleSelectRequest}
-            onModalStateChange={setIsNearbyModalOpen}
-          />
+        <div className="fixed top-6 left-0 right-0 flex justify-center z-1000 sm:hidden pointer-events-none">
+          <div className="pointer-events-auto">
+            <NearbyRequestsButton
+              requests={sharedMarkers}
+              userPosition={position}
+              onSelectRequest={handleSelectRequest}
+              onModalStateChange={setIsNearbyModalOpen}
+            />
+          </div>
         </div>
       )}
 
-      {/* Profile Icon - Top Right */}
-      <div className="fixed top-6 right-6 z-1000">
-        <button
-          onClick={() => setShowProfileMenu(!showProfileMenu)}
-          className="relative h-12 w-12 backdrop-blur-md bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl border border-white/30"
-          aria-label="Profile Menu"
-        >
-          {/* Notification dot */}
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full ring-2 ring-white" />
-          )}
-          <svg
-            className="h-6 w-6 text-slate-700"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-        </button>
-
-        {/* Profile Dropdown Menu */}
-        {showProfileMenu && (
-          <>
-            {/* Backdrop to close menu */}
-            <div 
-              className="fixed inset-0 z-[-1]" 
-              onClick={() => setShowProfileMenu(false)}
-            />
-            <div className="absolute top-14 right-0 backdrop-blur-md bg-white/10 rounded-xl shadow-xl border border-white/30 overflow-hidden min-w-40 animate-fade-in">
-              <button
-                onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
-                className="w-full px-4 py-3 flex items-center gap-3 text-slate-700 hover:bg-white/20 transition-colors text-left"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="font-medium">Settings</span>
-              </button>
-              <button
-                onClick={() => { navigate('/chat'); setShowProfileMenu(false); }}
-                className="w-full px-4 py-3 flex items-center gap-3 text-slate-700 hover:bg-white/20 transition-colors text-left border-t border-white/20"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-4l-4 4-4-4H9z" />
-                </svg>
-                <span className="font-medium">Chat</span>
-                {unreadCount > 0 && (
-                  <span className="ml-auto h-2.5 w-2.5 bg-red-500 rounded-full" />
-                )}
-              </button>
-              <button
-                onClick={() => { 
-                  import('../../utils/authUtils').then(({ clearAuthData }) => {
-                    clearAuthData();
-                    navigate('/login');
-                    setShowProfileMenu(false);
-                  });
-                }}
-                className="w-full px-4 py-3 flex items-center gap-3 text-red-600 hover:bg-white/20 transition-colors text-left border-t border-white/20"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span className="font-medium">Sign Out</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Confirmation Message */}
-      {confirmationMessage && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-1000 bg-green-500 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 animate-fade-in">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span className="font-semibold">{confirmationMessage}</span>
-        </div>
+      {!isNearbyModalOpen && (
+        <ProfileMenu
+          showProfileMenu={showProfileMenu}
+          setShowProfileMenu={setShowProfileMenu}
+          unreadCount={unreadCount}
+          navigate={navigate}
+        />
       )}
+
+      <ConfirmationToast message={confirmationMessage} />
 
       {/* Pending Helpers Button - Floating (only when you have pending helpers) */}
-      <PendingHelpersMapButton />
+      {!isNearbyModalOpen && <PendingHelpersMapButton />}
 
       {/* Button Group - Help at bottom, Nearby above (desktop only) */}
       <div className="fixed bottom-6 right-6 flex flex-col-reverse gap-2 z-1000">
-        <HelpButton
-          onRequestCreated={handleRequestCreated}
-          onModalStateChange={setIsHelpModalOpen}
-          fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
-        />
+        {!isNearbyModalOpen && (
+          <HelpButton
+            onRequestCreated={handleRequestCreated}
+            onModalStateChange={() => {}}
+            fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
+          />
+        )}
         {position && (
           <div className="hidden sm:block">
             <NearbyRequestsButton
               requests={sharedMarkers}
               userPosition={position}
               onSelectRequest={handleSelectRequest}
-              onModalStateChange={setIsNearbyModalOpen}
+              onModalStateChange={() => {}}
             />
           </div>
         )}

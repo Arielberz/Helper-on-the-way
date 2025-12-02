@@ -455,7 +455,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-700 font-semibold">טוען...</p>
@@ -689,8 +689,8 @@ const Profile = () => {
                   key={index} 
                   className={`p-3 sm:p-4 rounded-lg hover:shadow-md transition-all border-r-4 ${
                     action.type === 'helped' 
-                      ? 'bg-gradient-to-l from-green-50 to-white border-green-500' 
-                      : 'bg-gradient-to-l from-blue-50 to-white border-blue-500'
+                      ? 'bg-linear-to-l from-green-50 to-white border-green-500' 
+                      : 'bg-linear-to-l from-blue-50 to-white border-blue-500'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2 gap-2">
