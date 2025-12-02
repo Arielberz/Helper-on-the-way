@@ -1,13 +1,13 @@
 const express = require('express');
-const{ register, login, getLocationFromIP, getMe } = require('../Controllers/userController');
-const { getRatingsByHelper } = require('../Controllers/ratingController');
+const userController = require('../controllers/userController');
+const { getRatingsByHelper } = require('../controllers/ratingController');
 const authMiddleware = require('../authMiddleware');
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/me', authMiddleware, getMe);
-router.get('/location/ip', getLocationFromIP);
+router.post('/register', userController.register);
+router.post('/login', userController.login);
+router.get('/me', authMiddleware, userController.getMe);
+router.get('/location/ip', userController.getLocationFromIP);
 
 // Get all ratings for a specific helper
 router.get('/:id/ratings', getRatingsByHelper);

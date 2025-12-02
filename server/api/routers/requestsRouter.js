@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../authMiddleware');
+const requestsController = require('../controllers/requestsController');
 const {
   createRequest,
   getRequests,
@@ -16,7 +17,7 @@ const {
   deleteRequest,
   updatePayment,
   getRoute
-} = require('../Controllers/requestsController');
+} = requestsController;
 
 // Create a new roadside assistance request
 router.post('/', authMiddleware, createRequest);
@@ -55,7 +56,7 @@ router.post('/:id/assign', authMiddleware, assignHelper);
 router.patch('/:id/accept', authMiddleware, assignHelper);
 
 // General update for a request
-router.patch('/:id', authMiddleware, require('../Controllers/requestsController').updateRequest);
+router.patch('/:id', authMiddleware, require('../controllers/requestsController').updateRequest);
 
 // Add photos to a request
 router.post('/:id/photos', authMiddleware, addPhotos);
