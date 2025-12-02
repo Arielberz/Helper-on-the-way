@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const sendResponse = require('../utils/sendResponse');
 
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -39,10 +40,6 @@ function sanitizeUser(user) {
         averageRating: user.averageRating || 0,
         ratingCount: user.ratingCount || 0
     };
-}
-
-function sendResponse(res, status, success, message, data = null) {
-	res.status(status).json({ success, message, data });
 }
 
 exports.register = async (req, res) => {

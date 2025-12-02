@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const REQUEST_STATUS = require('../constants/requestStatus');
+const PROBLEM_TYPES = require('../constants/problemTypes');
 
 const requestSchema = new Schema({
   user: {
@@ -25,14 +27,14 @@ const requestSchema = new Schema({
     type: String,
     required: true,
     enum: [
-      'flat_tire',
-      'dead_battery',
-      'out_of_fuel',
-      'engine_problem',
-      'locked_out',
-      'accident',
-      'towing_needed',
-      'other'
+      PROBLEM_TYPES.FLAT_TIRE,
+      PROBLEM_TYPES.DEAD_BATTERY,
+      PROBLEM_TYPES.OUT_OF_FUEL,
+      PROBLEM_TYPES.ENGINE_PROBLEM,
+      PROBLEM_TYPES.LOCKED_OUT,
+      PROBLEM_TYPES.ACCIDENT,
+      PROBLEM_TYPES.TOWING_NEEDED,
+      PROBLEM_TYPES.OTHER
     ]
   },
   description: {
@@ -56,13 +58,13 @@ const requestSchema = new Schema({
     type: String,
     required: true,
     enum: [
-      'pending',
-      'assigned',
-      'in_progress',
-      'completed',
-      'cancelled'
+      REQUEST_STATUS.PENDING,
+      REQUEST_STATUS.ASSIGNED,
+      REQUEST_STATUS.IN_PROGRESS,
+      REQUEST_STATUS.COMPLETED,
+      REQUEST_STATUS.CANCELLED
     ],
-    default: 'pending',
+    default: REQUEST_STATUS.PENDING,
   },
   helper: {
     type: Schema.Types.ObjectId,

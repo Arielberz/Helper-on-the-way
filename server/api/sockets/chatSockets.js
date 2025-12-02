@@ -1,20 +1,27 @@
 const Conversation = require('../models/chatModel');
-const jwt = require('jsonwebtoken');
+const verifyToken = require('../utils/verifyToken');
+const chatService = require('../services/chatService');
+const { isConversationParticipant } = require('../utils/conversationUtils');
 
 // Socket.IO authentication middleware
 const authenticateSocket = (socket, next) => {
   try {
-    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+    const rawToken = socket.handshake.auth.token || socket.handshake.headers.authorization;
     
-    if (!token) {
-      return next(new Error('Authentication error: No token provided'));
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id || decoded.userId;
+    const { decoded, userId } = verifyToken(rawToken);
+    socket.userId = userId;
     next();
   } catch (error) {
-    next(new Error('Authentication error: Invalid token'));
+    if (error.code === 'NO_TOKEN') {
+      return next(new Error('Authentication error: No token provided'));
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return next(new Error('Authentication error: Invalid token'));
+    }
+    if (error.name === 'TokenExpiredError') {
+      return next(new Error('Authentication error: Token expired'));
+    }
+    return next(new Error('Authentication error: Invalid token'));
   }
 };
 
@@ -40,10 +47,7 @@ const initializeChatSockets = (io) => {
         }
 
         // Verify user is part of this conversation
-        if (
-          conversation.user.toString() !== socket.userId &&
-          conversation.helper.toString() !== socket.userId
-        ) {
+        if (!isConversationParticipant(conversation, socket.userId)) {
           return socket.emit('chat:error', { message: 'Access denied' });
         }
 
@@ -69,40 +73,25 @@ const initializeChatSockets = (io) => {
           return socket.emit('chat:error', { message: 'Message content is required' });
         }
 
-        const conversation = await Conversation.findById(conversationId);
-        
-        if (!conversation) {
-          return socket.emit('chat:error', { message: 'Conversation not found' });
-        }
-
-        // Verify user is part of this conversation
-        if (
-          conversation.user.toString() !== socket.userId &&
-          conversation.helper.toString() !== socket.userId
-        ) {
-          return socket.emit('chat:error', { message: 'Access denied' });
-        }
-
-        // Create new message
-        const newMessage = {
-          sender: socket.userId,
-          content: content.trim(),
-          timestamp: new Date(),
-          read: false
-        };
-
-        conversation.messages.push(newMessage);
-        await conversation.save();
-
-        // Get the saved message (with _id)
-        const savedMessage = conversation.messages[conversation.messages.length - 1];
+        // Use chat service to append message
+        const { conversation, message } = await chatService.appendMessage({
+          conversationId,
+          senderId: socket.userId,
+          content: content.trim()
+        });
 
         // Emit to all users in this conversation
         io.to(`conversation:${conversationId}`).emit('new_message', {
           conversationId,
-          message: savedMessage
+          message
         });
       } catch (error) {
+        if (error.code === 'CONVERSATION_NOT_FOUND') {
+          return socket.emit('chat:error', { message: 'Conversation not found' });
+        }
+        if (error.code === 'NOT_PARTICIPANT') {
+          return socket.emit('chat:error', { message: 'Access denied' });
+        }
         console.error('Error sending message:', error);
         socket.emit('chat:error', { message: 'Failed to send message' });
       }
@@ -113,45 +102,30 @@ const initializeChatSockets = (io) => {
       try {
         const { conversationId } = data;
 
-        const conversation = await Conversation.findById(conversationId);
-        
-        if (!conversation) {
-          return socket.emit('chat:error', { message: 'Conversation not found' });
-        }
-
-        // Verify user is part of this conversation
-        if (
-          conversation.user.toString() !== socket.userId &&
-          conversation.helper.toString() !== socket.userId
-        ) {
-          return socket.emit('chat:error', { message: 'Access denied' });
-        }
-
-        // Mark all messages not sent by this user as read
-        let updated = false;
-        conversation.messages.forEach(message => {
-          if (message.sender.toString() !== socket.userId && !message.read) {
-            message.read = true;
-            updated = true;
-          }
+        // Use chat service to mark messages as read
+        const conversation = await chatService.markConversationRead({
+          conversationId,
+          userId: socket.userId
         });
 
-        if (updated) {
-          await conversation.save();
-          
-          // Notify other user that messages were read
-          const otherUserId = conversation.user.toString() === socket.userId 
-            ? conversation.helper.toString() 
-            : conversation.user.toString();
-          
-          io.to(`user:${otherUserId}`).emit('messages_read', {
-            conversationId,
-            readBy: socket.userId
-          });
-        }
+        // Notify other user that messages were read
+        const otherUserId = conversation.user.toString() === socket.userId 
+          ? conversation.helper.toString() 
+          : conversation.user.toString();
+        
+        io.to(`user:${otherUserId}`).emit('messages_read', {
+          conversationId,
+          readBy: socket.userId
+        });
 
         socket.emit('marked_as_read', { conversationId });
       } catch (error) {
+        if (error.code === 'CONVERSATION_NOT_FOUND') {
+          return socket.emit('chat:error', { message: 'Conversation not found' });
+        }
+        if (error.code === 'NOT_PARTICIPANT') {
+          return socket.emit('chat:error', { message: 'Access denied' });
+        }
         console.error('Error marking messages as read:', error);
         socket.emit('chat:error', { message: 'Failed to mark messages as read' });
       }
