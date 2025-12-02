@@ -1,3 +1,5 @@
+// Problem type selection and description component with icon-based buttons for common roadside issues
+// and a text area for detailed problem descriptions.
 import React from 'react';
 
 const problemOptions = [
@@ -55,36 +57,68 @@ export default function ProblemDetailsSection({
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
+        <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-main)' }}>
           Problem Type
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {problemOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => handleTypeSelect(option.value)}
-              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 gap-2 h-28 ${
-                problemType === option.value
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                  : 'border-gray-100 bg-white text-gray-600 hover:border-blue-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className={problemType === option.value ? 'text-blue-600' : 'text-gray-400'}>
-                {option.icon}
-              </div>
-              <span className="text-sm font-medium text-center leading-tight">
-                {option.label}
-              </span>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 'var(--space-md)' }}>
+          {problemOptions.map((option) => {
+            const iconColorMap = {
+              'flat_tire': 'var(--icon-flat-tire)',
+              'dead_battery': 'var(--icon-dead-battery)',
+              'out_of_fuel': 'var(--icon-out-of-fuel)',
+              'engine_problem': 'var(--icon-engine-problem)',
+              'locked_out': 'var(--icon-locked-out)',
+              'accident': 'var(--icon-accident)',
+              'towing_needed': 'var(--icon-towing)',
+              'other': 'var(--icon-other)'
+            };
+            const isSelected = problemType === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleTypeSelect(option.value)}
+                className="flex flex-col items-center justify-center h-28 transition-all"
+                style={{
+                  padding: 'var(--space-lg)',
+                  borderRadius: 'var(--rounded-lg)',
+                  border: '2px solid',
+                  borderColor: isSelected ? 'var(--primary)' : 'var(--glass-border)',
+                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.05)' : 'white',
+                  gap: 'var(--space-sm)',
+                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                  transitionDuration: 'var(--transition-mid)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.borderColor = 'var(--primary-light)';
+                    e.currentTarget.style.backgroundColor = 'var(--background)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.borderColor = 'var(--glass-border)';
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }
+                }}
+              >
+                <div style={{ color: isSelected ? iconColorMap[option.value] : 'var(--text-light)' }}>
+                  {option.icon}
+                </div>
+                <span className="text-sm font-medium text-center leading-tight"
+                      style={{ color: isSelected ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                  {option.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-main)' }}>
           Description
         </label>
         <textarea
@@ -94,7 +128,17 @@ export default function ProblemDetailsSection({
           placeholder="Describe the problem..."
           rows="4"
           maxLength="1000"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full resize-none focus:outline-none"
+          style={{
+            padding: 'var(--space-md) var(--space-lg)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: 'var(--rounded-lg)'
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.outline = '2px solid var(--primary)';
+            e.currentTarget.style.outlineOffset = '0px';
+          }}
+          onBlur={(e) => e.currentTarget.style.outline = 'none'}
         />
       </div>
 

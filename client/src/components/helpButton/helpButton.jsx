@@ -1,3 +1,5 @@
+// Main help request button component that manages the modal state and handles
+// the complete flow of creating a help request including location, problem details, photos, and payment.
 import React, { useState } from 'react';
 import HelpRequestModal from './HelpRequestModal';
 import { useImageUpload } from './useImageUpload';
@@ -39,12 +41,8 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-    // Automatically request GPS location when modal opens
     requestCurrentLocation();
-    // Notify parent component that modal is open
-    if (onModalStateChange) {
-      onModalStateChange(true);
-    }
+    onModalStateChange?.(true);
   };
 
   const handleCloseModal = () => {
@@ -56,41 +54,25 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       currency: 'ILS',
       manualAddress: ''
     });
-    setUseCurrentLocation(true); // Reset to GPS default
+    setUseCurrentLocation(true);
     setErrorMessage('');
     resetImage();
     resetLocation();
-    // Notify parent component that modal is closed
-    if (onModalStateChange) {
-      onModalStateChange(false);
-    }
+    onModalStateChange?.(false);
   };
 
   const handleLocationMethodChange = (useGPS) => {
     setUseCurrentLocation(useGPS);
     setLocationError('');
     resetLocation();
-    
-    // If user chooses GPS, request it immediately
-    if (useGPS) {
-      requestCurrentLocation();
-    }
+    if (useGPS) requestCurrentLocation();
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear relevant error messages
-    if (name === 'manualAddress') {
-      setLocationError('');
-    }
-    if (name === 'problemType') {
-      setErrorMessage('');
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'manualAddress') setLocationError('');
+    if (name === 'problemType') setErrorMessage('');
   };
 
   const handleSubmit = async (e) => {
@@ -104,37 +86,29 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       return;
     }
 
-    // Validate and get location
     let location;
     try {
       if (useCurrentLocation) {
-        // Use GPS location, or fallback to map's current position (IP-based or cached)
         if (!currentLocation && !fallbackLocation) {
           setLocationError('GPS location is not available. Please wait or enter address manually.');
           return;
         }
-        
         const locationToUse = currentLocation || fallbackLocation;
         location = {
           lat: locationToUse.lat,
           lng: locationToUse.lng,
           address: '',
           accuracy: currentLocation ? currentLocation.accuracy : 'approximate',
-          precision: currentLocation ? currentLocation.precision : undefined
+          precision: currentLocation?.precision
         };
       } else {
-        // Use manual address
-        if (!formData.manualAddress || !formData.manualAddress.trim()) {
+        if (!formData.manualAddress?.trim()) {
           setLocationError('Please enter a valid address');
           return;
         }
-        
         setIsSubmitting(true);
         const geocoded = await geocodeAddress(formData.manualAddress);
-        location = {
-          ...geocoded,
-          accuracy: 'manual'
-        };
+        location = { ...geocoded, accuracy: 'manual' };
       }
     } catch (error) {
       setLocationError(error.message);
@@ -142,16 +116,13 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       return;
     }
 
-    // Validate required fields
     if (!formData.problemType) {
       setErrorMessage('Please select a problem type');
       setIsSubmitting(false);
       return;
     }
 
-    if (!isSubmitting) {
-      setIsSubmitting(true);
-    }
+    setIsSubmitting(true);
 
     try {
       const requestData = {
@@ -160,32 +131,22 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
         description: formData.description || 'No description provided'
       };
 
-      // Add optional payment if provided
       if (formData.offeredAmount && parseFloat(formData.offeredAmount) > 0) {
         requestData.offeredAmount = parseFloat(formData.offeredAmount);
         requestData.currency = formData.currency;
       }
 
-      // Handle image upload if provided
       if (selectedImage) {
         const photoData = await convertImageToBase64(selectedImage);
         requestData.photos = [photoData];
       }
 
       const result = await createHelpRequest(requestData, token);
-
-      // Notify parent component
-      if (onRequestCreated) {
-        onRequestCreated(result);
-      }
-
+      onRequestCreated?.(result);
       handleCloseModal();
     } catch (error) {
       console.error('Error creating request:', error);
-      
-      // Display user-friendly error message
-      const errorMsg = error.message || 'Failed to create help request. Please try again.';
-      setErrorMessage(errorMsg);
+      setErrorMessage(error.message || 'Failed to create help request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -193,15 +154,29 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
 
   return (
     <>
-      {/* Help Button - positioned at bottom center */}
       <button
         onClick={handleOpenModal}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 backdrop-blur-md bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-200/40 font-semibold text-xl px-14 py-5 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-3"
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-1000 flex items-center gap-3 font-semibold text-xl px-14 py-5 transition-all"
+        style={{
+          backgroundColor: 'var(--glass-bg-strong)',
+          backdropFilter: 'blur(var(--glass-blur))',
+          WebkitBackdropFilter: 'blur(var(--glass-blur))',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 'var(--rounded-xl)',
+          boxShadow: 'var(--glass-shadow)',
+          color: 'var(--danger)',
+          transitionDuration: 'var(--transition-slow)'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.45)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--glass-bg-strong)';
+        }}
       >
        Request Help
       </button>
 
-      {/* Modal */}
       <HelpRequestModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
