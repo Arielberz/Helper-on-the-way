@@ -1,0 +1,83 @@
+/* ================================ */
+/*  GLOBAL THEME VARIABLES          */
+/*  Roadside Assistance App         */
+/* ================================ */
+
+:root {
+  /* BRAND COLORS */
+  --primary: #3b82f6;            /* Main blue (buttons, icons) */
+  --primary-dark: #1e40af;       /* Darker blue */
+  --primary-light: #93c5fd;      /* Light blue for hovers */
+  --danger: #ef4444;             /* For error, warnings */
+  --success: #22c55e;            /* For helper on the way */
+  --warning: #f59e0b;            /* Yellow accents */
+  --info: #0ea5e9;               /* Secondary info blue */
+
+  /* BACKGROUNDS */
+  --background: #f5f9ff;         /* Light blue/white hybrid */
+  --background-dark: #eaf2ff;    /* Slightly darker container bg */
+  --map-overlay-bg: rgba(255, 255, 255, 0.25); /* For small map overlays */
+
+  /* GLASSMORPHISM */
+  --glass-bg: rgba(255, 255, 255, 0.2);
+  --glass-bg-strong: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-blur: 12px;            /* Blur depth */
+  --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  /* TEXT COLORS */
+  --text-main: rgba(15, 23, 42, 1);    /* Slate-900 */
+  --text-secondary: rgba(15, 23, 42, 0.65);
+  --text-light: rgba(15, 23, 42, 0.45);
+  --text-inverted: #ffffff;
+
+  /* ICON COLORS (each request type gets its own color) */
+  --icon-flat-tire: #f97316;      /* Orange */
+  --icon-dead-battery: #eab308;   /* Yellow */
+  --icon-out-of-fuel: #dc2626;    /* Red */
+  --icon-engine-problem: #9333ea; /* Purple */
+  --icon-locked-out: #0d9488;     /* Teal */
+  --icon-accident: #ef4444;       /* Strong red */
+  --icon-towing: #1d4ed8;         /* Deep blue */
+  --icon-other: #6b7280;          /* Neutral gray */
+
+  /* USER LOCATION */
+  --user-location-blue: #3b82f6;  
+  --user-location-ring: #ffffff;
+
+  /* SHADOWS */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
+
+  /* BORDER RADIUS */
+  --rounded-sm: 8px;
+  --rounded-md: 12px;
+  --rounded-lg: 16px;
+  --rounded-xl: 20px;
+  --rounded-full: 999px;
+
+  /* SPACING SCALE */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+
+  /* TRANSITIONS */
+  --transition-fast: 120ms ease;
+  --transition-mid: 200ms ease;
+  --transition-slow: 350ms ease;
+}
+
+
+/* Optional: glass utility class */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--glass-shadow);
+}

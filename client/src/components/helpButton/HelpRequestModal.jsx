@@ -1,3 +1,5 @@
+// Multi-step modal component that guides users through the help request creation process
+// with steps for location, problem details, photos, and payment offering.
 import React, { useState } from 'react';
 import { ErrorMessage } from './ErrorMessage';
 import LocationSection from './LocationSection';
@@ -37,43 +39,31 @@ export default function HelpRequestModal({
   ];
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      // Validation logic per step
-      if (currentStep === 0) {
-        if (useCurrentLocation && !currentLocation) {
-          setLocationError('Please wait for GPS location or enter address manually');
-          return;
-        }
-        if (!useCurrentLocation && (!formData.manualAddress || !formData.manualAddress.trim())) {
-          setLocationError('Please enter a valid address');
-          return;
-        }
+    if (currentStep >= steps.length - 1) return;
+    
+    if (currentStep === 0) {
+      if (useCurrentLocation && !currentLocation) {
+        setLocationError('Please wait for GPS location or enter address manually');
+        return;
       }
-      if (currentStep === 1) {
-        if (!formData.problemType) {
-          // Assuming there's a way to set error message from parent or local state
-          // For now, we rely on the parent's validation or just block
-          return; 
-        }
+      if (!useCurrentLocation && !formData.manualAddress?.trim()) {
+        setLocationError('Please enter a valid address');
+        return;
       }
-      setCurrentStep(prev => prev + 1);
     }
+    if (currentStep === 1 && !formData.problemType) return;
+    
+    setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
+    if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
   const isStepValid = () => {
-    if (currentStep === 0) {
-      return useCurrentLocation ? !!currentLocation : (formData.manualAddress && formData.manualAddress.trim().length > 0);
-    }
-    if (currentStep === 1) {
-      return !!formData.problemType;
-    }
-    return true; // Other steps are optional
+    if (currentStep === 0) return useCurrentLocation ? !!currentLocation : !!formData.manualAddress?.trim();
+    if (currentStep === 1) return !!formData.problemType;
+    return true;
   };
 
   const renderStepContent = () => {
@@ -123,32 +113,51 @@ export default function HelpRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-1001 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-white px-8 py-6 border-b border-slate-100">
+    <div className="fixed inset-0 z-1001 flex items-center justify-center p-4 backdrop-blur-sm transition-all"
+         style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)' }}>
+      <div className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+           style={{
+             backgroundColor: 'white',
+             borderRadius: 'var(--rounded-xl)',
+             boxShadow: 'var(--shadow-lg)'
+           }}>
+        <div className="bg-white px-8 py-6 border-b"
+             style={{ borderColor: 'rgba(0, 0, 0, 0.05)' }}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">Request Assistance</h2>
-              <p className="text-slate-500 text-sm mt-1">Step {currentStep + 1} of {steps.length}: {steps[currentStep].description}</p>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-main)' }}>Request Assistance</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Step {currentStep + 1} of {steps.length}: {steps[currentStep].description}</p>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <button onClick={onClose} className="transition-colors"
+                    style={{
+                      color: 'var(--text-light)',
+                      transitionDuration: 'var(--transition-mid)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-light)'}>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div className="w-full h-2 overflow-hidden"
+               style={{
+                 backgroundColor: 'var(--background-dark)',
+                 borderRadius: 'var(--rounded-full)'
+               }}>
             <div 
-              className="bg-blue-600 h-full transition-all duration-300 ease-out rounded-full"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+              className="h-full transition-all ease-out"
+              style={{
+                width: `${((currentStep + 1) / steps.length) * 100}%`,
+                backgroundColor: 'var(--primary)',
+                borderRadius: 'var(--rounded-full)',
+                transitionDuration: 'var(--transition-slow)'
+              }}
             />
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-8 overflow-y-auto flex-1">
           <ErrorMessage message={errorMessage} />
           <div className="animate-fadeIn">
@@ -156,11 +165,28 @@ export default function HelpRequestModal({
           </div>
         </div>
 
-        {/* Footer / Actions */}
-        <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+        <div className="px-8 py-6 border-t flex justify-between items-center"
+             style={{
+               backgroundColor: 'var(--background)',
+               borderColor: 'rgba(0, 0, 0, 0.05)'
+             }}>
           <button
             onClick={currentStep === 0 ? onClose : handleBack}
-            className="px-6 py-2.5 text-slate-600 font-medium hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition-colors"
+            className="font-medium transition-colors"
+            style={{
+              padding: 'var(--space-md) var(--space-lg)',
+              color: 'var(--text-secondary)',
+              borderRadius: 'var(--rounded-md)',
+              transitionDuration: 'var(--transition-mid)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text-main)';
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
             disabled={isSubmitting}
           >
             {currentStep === 0 ? 'Cancel' : 'Back'}
@@ -170,7 +196,25 @@ export default function HelpRequestModal({
             <button
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{
+                padding: 'var(--space-md) var(--space-xl)',
+                backgroundColor: 'var(--primary)',
+                color: 'var(--text-inverted)',
+                borderRadius: 'var(--rounded-md)',
+                boxShadow: 'var(--shadow-md)',
+                transitionDuration: 'var(--transition-mid)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = 'var(--primary-dark)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -188,7 +232,25 @@ export default function HelpRequestModal({
             <button
               onClick={handleNext}
               disabled={!isStepValid()}
-              className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                padding: 'var(--space-md) var(--space-xl)',
+                backgroundColor: 'var(--primary)',
+                color: 'var(--text-inverted)',
+                borderRadius: 'var(--rounded-md)',
+                boxShadow: 'var(--shadow-md)',
+                transitionDuration: 'var(--transition-mid)'
+              }}
+              onMouseEnter={(e) => {
+                if (isStepValid()) {
+                  e.currentTarget.style.backgroundColor = 'var(--primary-dark)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--primary)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+              }}
             >
               Next Step
             </button>
