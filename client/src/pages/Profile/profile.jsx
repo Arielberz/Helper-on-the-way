@@ -4,6 +4,7 @@ import { clearAuthData, getToken } from '../../utils/authUtils';
 import RatingModal from "../../components/RatingModal/RatingModal";
 import { useRating } from "../../context/RatingContext";
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Profile = () => {
   const { openRatingModal } = useRating();
@@ -56,7 +57,7 @@ const Profile = () => {
 
       try {
         console.log("Fetching user profile...");
-        const response = await fetch("http://localhost:3001/api/users/me", {
+        const response = await fetch(`${API_BASE}/api/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -85,7 +86,7 @@ const Profile = () => {
         // Fetch user's ratings (as helper)
         if (userId && typeof userId === 'string' && userId.length > 0) {
           try {
-            const ratingsResponse = await fetch(`http://localhost:3001/api/users/${userId}/ratings`, {
+            const ratingsResponse = await fetch(`${API_BASE}/api/users/${userId}/ratings`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -103,7 +104,7 @@ const Profile = () => {
         }
         
         // Fetch user's requests (help asked for)
-        const requestsResponse = await fetch("http://localhost:3001/api/requests/my-requests", {
+        const requestsResponse = await fetch(`${API_BASE}/api/requests/my-requests`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -115,7 +116,7 @@ const Profile = () => {
         if (userId && typeof userId === 'string' && userId.length > 0) {
           console.log("Fetching helper requests for user ID:", userId);
           try {
-            helperResponse = await fetch(`http://localhost:3001/api/requests?helperId=${userId}`, {
+            helperResponse = await fetch(`${API_BASE}/api/requests?helperId=${userId}`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -251,7 +252,7 @@ const Profile = () => {
   const checkIfRequestRated = async (requestId) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:3001/api/ratings/${requestId}/check`, {
+      const response = await fetch(`${API_BASE}/api/ratings/${requestId}/check`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -269,7 +270,7 @@ const Profile = () => {
   const handleUpdateRequestStatus = async (requestId, newStatus) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+      const response = await fetch(`${API_BASE}/api/requests/${requestId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -295,7 +296,7 @@ const Profile = () => {
   const handleHelperMarkCompleted = async (requestId) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/status`, {
+      const response = await fetch(`${API_BASE}/api/requests/${requestId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -321,7 +322,7 @@ const Profile = () => {
   const handleRequesterConfirmCompletion = async (action) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:3001/api/requests/${action.requestId}/status`, {
+      const response = await fetch(`${API_BASE}/api/requests/${action.requestId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -349,7 +350,7 @@ const Profile = () => {
   const handleConfirmHelper = async (requestId, helperId, helperName) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:3001/api/requests/${requestId}/confirm-helper`, {
+      const response = await fetch(`${API_BASE}/api/requests/${requestId}/confirm-helper`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -361,7 +362,7 @@ const Profile = () => {
       if (response.ok) {
         // Get or create conversation with the confirmed helper
         try {
-          const chatResponse = await fetch(`http://localhost:3001/api/chat/conversation/request/${requestId}`, {
+          const chatResponse = await fetch(`${API_BASE}/api/chat/conversation/request/${requestId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },

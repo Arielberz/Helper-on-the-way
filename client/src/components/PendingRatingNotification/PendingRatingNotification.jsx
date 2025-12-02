@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useRating } from '../../context/RatingContext';
 import { getToken } from '../../utils/authUtils';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const PendingRatingNotification = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const { openRatingModal } = useRating();
@@ -20,7 +22,7 @@ const PendingRatingNotification = () => {
       const token = getToken();
       if (!token) return;
 
-      const response = await fetch("http://localhost:3001/api/requests/my-requests", {
+      const response = await fetch(`${API_BASE}/api/requests/my-requests`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -37,7 +39,7 @@ const PendingRatingNotification = () => {
           if (req.status === 'completed' && req.requesterConfirmedAt) {
             // Check if already rated
             const ratingCheckResponse = await fetch(
-              `http://localhost:3001/api/ratings/${req._id}/check`,
+              `${API_BASE}/api/ratings/${req._id}/check`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,

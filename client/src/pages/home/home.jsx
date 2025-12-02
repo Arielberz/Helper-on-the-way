@@ -6,6 +6,8 @@ import { useRating } from "../../context/RatingContext";
 import PendingRatingNotification from "../../components/PendingRatingNotification/PendingRatingNotification";
 import { getToken } from "../../utils/authUtils";
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export default function Home() {
   const { openRatingModal } = useRating();
 
@@ -17,7 +19,7 @@ export default function Home() {
         if (!token) return;
 
         // Fetch user's requests to check if any need rating
-        const response = await fetch("http://localhost:3001/api/requests/my-requests", {
+        const response = await fetch(`${API_BASE}/api/requests/my-requests`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -40,7 +42,7 @@ export default function Home() {
             
             // Check if already rated
             const ratingCheckResponse = await fetch(
-              `http://localhost:3001/api/ratings/${requestToRate._id}/check`,
+              `${API_BASE}/api/ratings/${requestToRate._id}/check`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
