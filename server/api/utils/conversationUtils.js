@@ -14,10 +14,28 @@ function isConversationParticipant(conversation, userId) {
   
   const userIdStr = userId.toString();
   
-  return (
-    conversation.user.toString() === userIdStr ||
-    conversation.helper.toString() === userIdStr
-  );
+  // Helper function to extract ID from either ObjectId or populated object
+  const extractId = (field) => {
+    if (!field) return null;
+    // If populated, field will have _id property
+    if (field._id) return field._id.toString();
+    // If not populated, it's the ObjectId itself
+    return field.toString();
+  };
+  
+  // Check if user is the requester
+  const conversationUserId = extractId(conversation.user);
+  if (conversationUserId === userIdStr) {
+    return true;
+  }
+  
+  // Check if user is the helper (handle null/undefined helper)
+  const conversationHelperId = extractId(conversation.helper);
+  if (conversationHelperId === userIdStr) {
+    return true;
+  }
+  
+  return false;
 }
 
 module.exports = {
