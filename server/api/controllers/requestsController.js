@@ -1,4 +1,5 @@
 const Request = require('../models/requestsModel');
+const REQUEST_STATUS = require('../constants/requestStatus');
 
 // Helper: sanitize a request document for real-time broadcasts
 const sanitizeRequest = (reqDoc) => {
@@ -76,7 +77,7 @@ exports.createRequest = async (req, res) => {
       problemType,
       description,
       photos: photos || [],
-      status: 'pending'
+      status: REQUEST_STATUS.PENDING
     };
 
     // Add payment info if amount is offered
@@ -154,7 +155,7 @@ exports.getRequests = async (req, res) => {
 exports.getActiveRequests = async (req, res) => {
   try {
     const requests = await Request.find({
-      status: { $in: ['pending', 'assigned', 'in_progress'] }
+      status: { $in: [REQUEST_STATUS.PENDING, REQUEST_STATUS.ASSIGNED, REQUEST_STATUS.IN_PROGRESS] }
     })
       .populate('user', 'username phone')
       .populate('helper', 'username phone averageRating ratingCount')
@@ -272,7 +273,7 @@ exports.updateRequestStatus = async (req, res) => {
         });
       }
       updateData.helperCompletedAt = Date.now();
-      updateData.status = 'in_progress'; // Keep in_progress until requester confirms
+      updateData.status = REQUEST_STATUS.IN_PROGRESS; // Keep in_progress until requester confirms
       console.log(`Helper marked request ${id} as completed, waiting for requester confirmation`);
     }
 
@@ -293,14 +294,20 @@ exports.updateRequestStatus = async (req, res) => {
         });
       }
       updateData.requesterConfirmedAt = Date.now();
-      updateData.status = 'completed';
+      updateData.status = REQUEST_STATUS.COMPLETED;
       updateData.completedAt = Date.now();
       console.log(`Requester confirmed completion of request ${id}`);
     }
 
     // Handle normal status updates
     if (status) {
-      const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+      const validStatuses = [
+        REQUEST_STATUS.PENDING,
+        REQUEST_STATUS.ASSIGNED,
+        REQUEST_STATUS.IN_PROGRESS,
+        REQUEST_STATUS.COMPLETED,
+        REQUEST_STATUS.CANCELLED
+      ];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
           success: false,
@@ -309,7 +316,7 @@ exports.updateRequestStatus = async (req, res) => {
       }
       updateData.status = status;
       
-      if (status === 'completed' && !updateData.completedAt) {
+      if (status === REQUEST_STATUS.COMPLETED && !updateData.completedAt) {
         updateData.completedAt = Date.now();
       }
     }
@@ -377,7 +384,7 @@ exports.requestToHelp = async (req, res) => {
       });
     }
 
-    if (request.status !== 'pending') {
+    if (request.status !== REQUEST_STATUS.PENDING) {
       return res.status(400).json({
         success: false,
         message: 'Request is not available - already assigned or completed'
@@ -505,7 +512,7 @@ exports.confirmHelper = async (req, res) => {
       });
     }
 
-    if (request.status !== 'pending') {
+    if (request.status !== REQUEST_STATUS.PENDING) {
       return res.status(400).json({
         success: false,
         message: 'Request is not available for assignment'
@@ -526,7 +533,7 @@ exports.confirmHelper = async (req, res) => {
 
     // Assign helper and update status
     request.helper = helperId;
-    request.status = 'assigned';
+    request.status = REQUEST_STATUS.ASSIGNED;
     request.assignedAt = Date.now();
     await request.save();
 
@@ -652,7 +659,7 @@ exports.assignHelper = async (req, res) => {
       });
     }
 
-    if (request.status !== 'pending') {
+    if (request.status !== REQUEST_STATUS.PENDING) {
       return res.status(400).json({
         success: false,
         message: 'Request is not available for assignment'

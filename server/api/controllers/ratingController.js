@@ -1,10 +1,7 @@
 const Rating = require('../models/ratingModel');
 const Request = require('../models/requestsModel');
 const User = require('../models/userModel');
-
-function sendResponse(res, status, success, message, data = null) {
-    res.status(status).json({ success, message, data });
-}
+const sendResponse = require('../utils/sendResponse');
 
 /**
  * Helper function to recalculate and update a helper's average rating

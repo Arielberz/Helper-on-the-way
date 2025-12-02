@@ -1,9 +1,8 @@
 const Conversation = require('../models/chatModel');
 const Request = require('../models/requestsModel');
-
-function sendResponse(res, status, success, message, data = null) {
-  res.status(status).json({ success, message, data });
-}
+const sendResponse = require('../utils/sendResponse');
+const chatService = require('../services/chatService');
+const { isConversationParticipant } = require('../utils/conversationUtils');
 
 // Get all conversations for a user (both as requester and helper)
 exports.getUserConversations = async (req, res) => {
@@ -42,10 +41,7 @@ exports.getConversationById = async (req, res) => {
     }
 
     // Check if user is part of this conversation
-    if (
-      conversation.user._id.toString() !== userId &&
-      conversation.helper._id.toString() !== userId
-    ) {
+    if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
 
@@ -128,27 +124,12 @@ exports.sendMessage = async (req, res) => {
       return sendResponse(res, 400, false, 'message content is required');
     }
 
-    const conversation = await Conversation.findById(conversationId);
-    if (!conversation) {
-      return sendResponse(res, 404, false, 'conversation not found');
-    }
-
-    // Verify user is part of conversation
-    if (
-      conversation.user.toString() !== userId &&
-      conversation.helper.toString() !== userId
-    ) {
-      return sendResponse(res, 403, false, 'access denied');
-    }
-
-    // Add message
-    conversation.messages.push({
-      sender: userId,
-      content: content.trim(),
-      timestamp: new Date()
+    // Use chat service to append message
+    const { conversation, message } = await chatService.appendMessage({
+      conversationId,
+      senderId: userId,
+      content: content.trim()
     });
-
-    await conversation.save();
 
     const updatedConversation = await Conversation.findById(conversationId)
       .populate('user', 'username email')
@@ -157,6 +138,12 @@ exports.sendMessage = async (req, res) => {
 
     sendResponse(res, 201, true, 'message sent successfully', { conversation: updatedConversation });
   } catch (error) {
+    if (error.code === 'CONVERSATION_NOT_FOUND') {
+      return sendResponse(res, 404, false, 'conversation not found');
+    }
+    if (error.code === 'NOT_PARTICIPANT') {
+      return sendResponse(res, 403, false, 'access denied');
+    }
     console.error(error);
     sendResponse(res, 500, false, 'server error');
   }
@@ -168,27 +155,11 @@ exports.markMessagesAsRead = async (req, res) => {
     const { conversationId } = req.params;
     const userId = req.user.id;
 
-    const conversation = await Conversation.findById(conversationId);
-    if (!conversation) {
-      return sendResponse(res, 404, false, 'conversation not found');
-    }
-
-    // Verify user is part of conversation
-    if (
-      conversation.user.toString() !== userId &&
-      conversation.helper.toString() !== userId
-    ) {
-      return sendResponse(res, 403, false, 'access denied');
-    }
-
-    // Mark all messages not sent by this user as read
-    conversation.messages.forEach(message => {
-      if (message.sender.toString() !== userId) {
-        message.read = true;
-      }
+    // Use chat service to mark messages as read
+    const conversation = await chatService.markConversationRead({
+      conversationId,
+      userId
     });
-
-    await conversation.save();
 
     // Emit socket notification to the other user as well
     try {
@@ -206,6 +177,12 @@ exports.markMessagesAsRead = async (req, res) => {
 
     sendResponse(res, 200, true, 'messages marked as read');
   } catch (error) {
+    if (error.code === 'CONVERSATION_NOT_FOUND') {
+      return sendResponse(res, 404, false, 'conversation not found');
+    }
+    if (error.code === 'NOT_PARTICIPANT') {
+      return sendResponse(res, 403, false, 'access denied');
+    }
     console.error(error);
     sendResponse(res, 500, false, 'server error');
   }
@@ -249,10 +226,7 @@ exports.archiveConversation = async (req, res) => {
     }
 
     // Verify user is part of conversation
-    if (
-      conversation.user.toString() !== userId &&
-      conversation.helper.toString() !== userId
-    ) {
+    if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
 
@@ -278,10 +252,7 @@ exports.deleteConversation = async (req, res) => {
     }
 
     // Verify user is part of conversation
-    if (
-      conversation.user.toString() !== userId &&
-      conversation.helper.toString() !== userId
-    ) {
+    if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
 

@@ -1,10 +1,8 @@
 const Report = require('../models/reportModel');
 const User = require('../models/userModel');
 const Conversation = require('../models/chatModel');
-
-function sendResponse(res, status, success, message, data = null) {
-  res.status(status).json({ success, message, data });
-}
+const sendResponse = require('../utils/sendResponse');
+const { isConversationParticipant } = require('../utils/conversationUtils');
 
 // Create a new report
 exports.createReport = async (req, res) => {
@@ -36,10 +34,7 @@ exports.createReport = async (req, res) => {
       }
 
       // Verify reporter is part of the conversation
-      if (
-        conversation.user.toString() !== reportedBy &&
-        conversation.helper.toString() !== reportedBy
-      ) {
+      if (!isConversationParticipant(conversation, reportedBy)) {
         return sendResponse(res, 403, false, 'You are not part of this conversation');
       }
     }

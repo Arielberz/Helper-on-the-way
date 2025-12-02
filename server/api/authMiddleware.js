@@ -1,42 +1,48 @@
-const jwt = require('jsonwebtoken');
+const verifyToken = require('./utils/verifyToken');
 
 const authMiddleware = async (req, res, next) => {
     try {
+        const rawToken = req.header('Authorization') || '';
+        const { decoded, userId } = verifyToken(rawToken);
         
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-
-        
-        if (!token) {
-            return res.status(401).json({
-                success: false,
-                message: 'Access denied. No token provided.'
-            });
-        }
-
-    
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-       
+        // Attach decoded token and userId to request
         req.user = decoded;
-        req.userId = decoded.userId || decoded.id;
+        req.userId = userId;
 
         next();
     } catch (error) {
+        // Handle NO_TOKEN error
+        if (error.code === 'NO_TOKEN') {
+            return res.status(401).json({
+                success: false,
+                message: 'Access denied. No token provided.',
+                data: null
+            });
+        }
+        
+        // Handle JWT-specific errors
         if (error.name === 'JsonWebTokenError') {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid token.'
+                message: 'Invalid token.',
+                data: null
             });
         }
+        
         if (error.name === 'TokenExpiredError') {
             return res.status(401).json({
                 success: false,
-                message: 'Token has expired.'
+                message: 'Token has expired.',
+                data: null
             });
         }
+        
+        // Generic server error
+        console.error('Authentication error:', error);
         return res.status(500).json({
             success: false,
             message: 'Server error during authentication.',
+            data: null,
             error: error.message
         });
     }
