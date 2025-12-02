@@ -101,7 +101,11 @@ export default function Chat() {
   // Load a specific conversation
   const loadConversation = async (conversationId) => {
     const token = getToken();
-    if (!token) return;
+    if (!token) {
+      console.error("No token found, redirecting to login");
+      navigate("/login");
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/chat/conversation/${conversationId}`, {
@@ -124,6 +128,17 @@ export default function Chat() {
             Authorization: `Bearer ${token}`,
           },
         });
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to load conversation:", errorData);
+        
+        // If unauthorized, redirect to login
+        if (response.status === 401 || response.status === 403) {
+          console.error("Authentication failed, clearing auth data");
+          clearAuthData();
+          navigate("/login");
+        }
+        setLoading(false);
       }
     } catch (error) {
       console.error("Error loading conversation:", error);
