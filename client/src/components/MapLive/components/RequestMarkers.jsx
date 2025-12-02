@@ -16,6 +16,7 @@ export default function RequestMarkers({
     <>
       {sharedMarkers
         .filter((m) => m.location?.lat && m.location?.lng)
+        .filter((m) => m.status !== 'cancelled' && m.status !== 'completed')
         .map((m) => {
           // Check if current user is the requester
           const isMyRequest =
