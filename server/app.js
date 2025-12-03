@@ -30,8 +30,16 @@ const corsOptions = {
 const io = new Server(server, { cors: corsOptions });
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ limit: '8mb', extended: true }));
+
+// Handle oversized payloads gracefully
+app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.too.large') {
+        return res.status(413).json({ success: false, message: 'Payload too large. Max 8MB.' });
+    }
+    next(err);
+});
 
 // Make io accessible to routes
 app.set('io', io);

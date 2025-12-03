@@ -13,6 +13,7 @@ import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal"
 import { HelperRequestProvider } from "./context/HelperRequestContext";
 import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
 import HelperConfirmedNotification from "./components/HelperConfirmedNotification/HelperConfirmedNotification";
+import NotFound from "./pages/notfound/NotFound";
 
 
 function App() {
@@ -43,7 +44,7 @@ function App() {
           }
         />
         <Route
-          path="/Rating"
+          path="/rating"
           element={
             <ProtectedRoute>
               <Rating />
@@ -66,41 +67,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-         <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Landing />} />
-       
-      </Routes>
+         <Route path="*" element={<NotFound />} />      </Routes>
       </HelperRequestProvider>
     </RatingProvider>
-  );
-}
-
-// Placeholder components
-
-function About() {
-  return (
-    <div className="container mx-auto px-6 py-8">
-      <h1 className="text-4xl font-bold">About</h1>
-    </div>
-  );
-}
-
-function Services() {
-  return (
-    <div className="container mx-auto px-6 py-8">
-      <h1 className="text-4xl font-bold">Services</h1>
-    </div>
-  );
-}
-
-function Contact() {
-  return (
-    <div className="container mx-auto px-6 py-8">
-      <h1 className="text-4xl font-bold">Contact</h1>
-    </div>
   );
 }
 

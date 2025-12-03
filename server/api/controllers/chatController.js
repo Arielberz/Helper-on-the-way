@@ -7,7 +7,7 @@ const { isConversationParticipant } = require('../utils/conversationUtils');
 // Get all conversations for a user (both as requester and helper)
 exports.getUserConversations = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const conversations = await Conversation.find({
       $or: [{ user: userId }, { helper: userId }],
@@ -29,7 +29,7 @@ exports.getUserConversations = async (req, res) => {
 exports.getConversationById = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const conversation = await Conversation.findById(conversationId)
       .populate('user', 'username email')
@@ -56,7 +56,7 @@ exports.getConversationById = async (req, res) => {
 exports.getOrCreateConversation = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     // Find the request
     const request = await Request.findById(requestId);
@@ -118,7 +118,7 @@ exports.sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { content } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     if (!content || !content.trim()) {
       return sendResponse(res, 400, false, 'message content is required');
@@ -153,7 +153,7 @@ exports.sendMessage = async (req, res) => {
 exports.markMessagesAsRead = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     // Use chat service to mark messages as read
     const conversation = await chatService.markConversationRead({
@@ -191,7 +191,7 @@ exports.markMessagesAsRead = async (req, res) => {
 // Get unread message count
 exports.getUnreadCount = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const conversations = await Conversation.find({
       $or: [{ user: userId }, { helper: userId }],
@@ -218,7 +218,7 @@ exports.getUnreadCount = async (req, res) => {
 exports.archiveConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {
@@ -244,7 +244,7 @@ exports.archiveConversation = async (req, res) => {
 exports.deleteConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const conversation = await Conversation.findById(conversationId);
     if (!conversation) {

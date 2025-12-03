@@ -11,7 +11,19 @@ export default function ProfileMenu({
     <div className="fixed top-6 right-6 z-1000">
       <button
         onClick={() => setShowProfileMenu(!showProfileMenu)}
-        className="relative h-12 w-12 backdrop-blur-md bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl border border-white/30"
+        className="relative h-12 w-12 flex items-center justify-center transition-all"
+        style={{
+          backgroundColor: 'var(--glass-bg-strong)',
+          backdropFilter: 'blur(var(--glass-blur))',
+          WebkitBackdropFilter: 'blur(var(--glass-blur))',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 'var(--rounded-xl)',
+          boxShadow: 'var(--glass-shadow)',
+          color: 'var(--text-main)',
+          transitionDuration: 'var(--transition-slow)'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.45)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--glass-bg-strong)'; }}
         aria-label="Profile Menu"
       >
         {/* Notification dot */}
@@ -39,13 +51,26 @@ export default function ProfileMenu({
             className="fixed inset-0 z-[-1]"
             onClick={() => setShowProfileMenu(false)}
           />
-          <div className="absolute top-14 right-0 backdrop-blur-md bg-white/10 rounded-xl shadow-xl border border-white/30 overflow-hidden min-w-40 animate-fade-in">
+          <div
+            className="absolute top-14 right-0 overflow-hidden min-w-40 animate-fade-in"
+            style={{
+              backgroundColor: 'var(--glass-bg-strong)',
+              backdropFilter: 'blur(var(--glass-blur))',
+              WebkitBackdropFilter: 'blur(var(--glass-blur))',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 'var(--rounded-xl)',
+              boxShadow: 'var(--glass-shadow)'
+            }}
+          >
             <button
               onClick={() => {
                 navigate("/profile");
                 setShowProfileMenu(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 text-slate-700 hover:bg-white/20 transition-colors text-left"
+              className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors"
+              style={{ color: 'var(--text-main)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.20)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               <svg
                 className="w-5 h-5"
@@ -73,7 +98,10 @@ export default function ProfileMenu({
                 navigate("/chat");
                 setShowProfileMenu(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 text-slate-700 hover:bg-white/20 transition-colors text-left border-t border-white/20"
+              className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t"
+              style={{ color: 'var(--text-main)', borderColor: 'rgba(255,255,255,0.2)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.20)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               <svg
                 className="w-5 h-5"
@@ -99,7 +127,10 @@ export default function ProfileMenu({
                 navigate("/login");
                 setShowProfileMenu(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 text-red-600 hover:bg-white/20 transition-colors text-left border-t border-white/20"
+              className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t"
+              style={{ color: 'var(--danger)', borderColor: 'rgba(255,255,255,0.2)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.20)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               <svg
                 className="w-5 h-5"

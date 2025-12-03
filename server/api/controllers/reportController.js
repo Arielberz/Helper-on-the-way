@@ -8,7 +8,7 @@ const { isConversationParticipant } = require('../utils/conversationUtils');
 exports.createReport = async (req, res) => {
   try {
     const { reportedUserId, conversationId, reason, description } = req.body;
-    const reportedBy = req.user.id;
+    const reportedBy = req.userId;
 
     // Validate required fields
     if (!reportedUserId || !reason || !description) {
@@ -79,7 +79,7 @@ exports.getAllReports = async (req, res) => {
 // Get reports created by user
 exports.getUserReports = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
 
     const reports = await Report.find({ reportedBy: userId })
       .populate('reportedUser', 'username')

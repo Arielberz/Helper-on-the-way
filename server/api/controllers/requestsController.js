@@ -1025,6 +1025,11 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
+    // If location is being updated, keep geo in sync for 2dsphere queries
+    if (updates && updates.location && typeof updates.location.lat === 'number' && typeof updates.location.lng === 'number') {
+      updates.geo = { type: 'Point', coordinates: [updates.location.lng, updates.location.lat] };
+    }
+
     // Update the request
     const updatedRequest = await Request.findByIdAndUpdate(
       id,
