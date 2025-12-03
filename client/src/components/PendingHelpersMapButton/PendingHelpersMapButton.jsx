@@ -72,7 +72,7 @@ export default function PendingHelpersMapButton() {
   return (
     <button
       onClick={handleClick}
-      className="absolute bottom-24 right-6 z-[1000] bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 animate-bounce"
+      className="absolute bottom-24 right-6 z-1000 bg-linear-to-br from-blue-500 to-blue-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 animate-bounce"
       title={`${pendingCount} ${pendingCount === 1 ? 'helper' : 'helpers'} waiting`}
     >
       {/* Icon */}

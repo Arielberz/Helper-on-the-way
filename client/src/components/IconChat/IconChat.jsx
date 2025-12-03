@@ -51,12 +51,33 @@ export default function IconChat() {
             if (me && sender && String(sender) === String(me)) {
                 return; // don't count own messages
             }
-            setUnreadCount((prev) => prev + 1);
+            // Re-fetch unread count for accuracy across conversations
+            (async () => {
+                const token = getToken();
+                if (!token) return;
+                try {
+                    const resp = await fetch(`${API_BASE}/api/chat/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        setUnreadCount(data.data?.unreadCount || 0);
+                    }
+                } catch {}
+            })();
         };
 
         // Listen for messages marked as read
         const handleMessagesRead = () => {
-            setUnreadCount(0);
+            (async () => {
+                const token = getToken();
+                if (!token) return;
+                try {
+                    const resp = await fetch(`${API_BASE}/api/chat/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        setUnreadCount(data.data?.unreadCount || 0);
+                    }
+                } catch {}
+            })();
         };
 
         socket.on("new_message", handleNewMessage);

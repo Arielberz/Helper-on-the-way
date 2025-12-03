@@ -17,12 +17,24 @@ export const HelperRequestProvider = ({ children }) => {
   const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
 
+  // Track auth token reactively (updates on storage changes)
+  const [authToken, setAuthToken] = useState(getToken())
+
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (!e || e.key === 'token') {
+        setAuthToken(getToken())
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   // Initialize Socket.IO connection
-  const token = getToken()
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-    if (!token) {
+    if (!authToken) {
       // Close any existing socket when logging out / no token
       if (socket) {
         try { socket.close() } catch {}
@@ -32,7 +44,7 @@ export const HelperRequestProvider = ({ children }) => {
     }
 
     const newSocket = io(API_BASE, {
-      auth: { token },
+      auth: { token: authToken },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -78,7 +90,7 @@ export const HelperRequestProvider = ({ children }) => {
     return () => {
       newSocket.close()
     }
-  }, [token])
+  }, [authToken])
 
   const clearPendingRequest = () => {
     setPendingRequest(null)

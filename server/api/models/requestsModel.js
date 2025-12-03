@@ -23,6 +23,18 @@ const requestSchema = new Schema({
       default: '',
     }
   },
+  geo: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      index: '2dsphere',
+      default: undefined
+    }
+  },
   problemType: {
     type: String,
     required: true,
@@ -155,6 +167,9 @@ const requestSchema = new Schema({
 // Update the updatedAt timestamp on save
 requestSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
+  if (this.location && typeof this.location.lat === 'number' && typeof this.location.lng === 'number') {
+    this.geo = { type: 'Point', coordinates: [this.location.lng, this.location.lat] };
+  }
   next();
 });
 
@@ -163,5 +178,6 @@ requestSchema.index({ 'location.lat': 1, 'location.lng': 1 });
 requestSchema.index({ status: 1, createdAt: -1 });
 requestSchema.index({ user: 1, createdAt: -1 });
 requestSchema.index({ helper: 1, createdAt: -1 });
+requestSchema.index({ geo: '2dsphere' });
 
 module.exports = mongoose.model('Request', requestSchema);

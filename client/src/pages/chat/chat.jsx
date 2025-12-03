@@ -10,18 +10,17 @@ export default function Chat() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const { socket } = useHelperRequest(); // Use shared socket from context
+  const { socket } = useHelperRequest();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportDescription, setReportDescription] = useState('');
+  const [reportReason, setReportReason] = useState("");
+  const [reportDescription, setReportDescription] = useState("");
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -38,14 +37,12 @@ export default function Chat() {
       return;
     }
 
-    // Use getUserId utility
     const userId = getUserId();
     if (userId) {
       setCurrentUserId(userId);
     } else {
-      // Fallback: decode token to get user ID
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         setCurrentUserId(payload.id || payload.userId);
       } catch (error) {
         console.error("Error decoding token:", error);
@@ -70,16 +67,17 @@ export default function Chat() {
           const data = await response.json();
           const conversationsArray = data.data?.conversations || [];
           setConversations(conversationsArray);
-          
-          // Check if there's a specific conversation to load from navigation state
+
           const targetConversationId = location.state?.conversationId;
-          
+
           if (targetConversationId) {
-            // Load the specific conversation
             loadConversation(targetConversationId);
           } else if (conversationsArray.length > 0) {
-            // Select first conversation by default
-            loadConversation(conversationsArray[0]._id);
+            if (window.innerWidth >= 768) {
+              loadConversation(conversationsArray[0]._id);
+            } else {
+              setLoading(false);
+            }
           } else {
             setLoading(false);
           }
@@ -98,43 +96,54 @@ export default function Chat() {
     fetchConversations();
   }, [navigate, location.state]);
 
-  // Load a specific conversation
+  // Load conversation
   const loadConversation = async (conversationId) => {
     const token = getToken();
     if (!token) {
-      console.error("No token found, redirecting to login");
       navigate("/login");
       return;
     }
 
+    // Find the conversation in the current list for instant UI update
+    const conversation = conversations.find(conv => conv._id === conversationId);
+    if (conversation) {
+      setSelectedConversation(conversation);
+      setMessages(conversation?.messages || []);
+      setIsMobileMenuOpen(false);
+    }
+
     try {
-      const response = await fetch(`${API_BASE}/api/chat/conversation/${conversationId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const conversation = data.data?.conversation || data.data;
-        setSelectedConversation(conversation);
-        setMessages(conversation?.messages || []);
-        setLoading(false);
-
-        // Mark messages as read
-        await fetch(`${API_BASE}/api/chat/conversation/${conversationId}/read`, {
-          method: 'PATCH',
+      const response = await fetch(
+        `${API_BASE}/api/chat/conversation/${conversationId}`,
+        {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const fullConversation = data.data?.conversation || data.data;
+        setSelectedConversation(fullConversation);
+        setMessages(fullConversation?.messages || []);
+        setLoading(false);
+
+        // Mark as read
+        await fetch(
+          `${API_BASE}/api/chat/conversation/${conversationId}/read`,
+          {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
       } else {
         const errorData = await response.json();
         console.error("Failed to load conversation:", errorData);
-        
-        // If unauthorized, redirect to login
+
         if (response.status === 401 || response.status === 403) {
-          console.error("Authentication failed, clearing auth data");
           clearAuthData();
           navigate("/login");
         }
@@ -146,38 +155,33 @@ export default function Chat() {
     }
   };
 
-  // Setup Socket.IO event listeners
+  // Socket listeners
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
-    // Join current conversation
-    socket.emit('join_conversation', selectedConversation._id);
+    socket.emit("join_conversation", selectedConversation._id);
 
-    // Listen for new messages
     const handleNewMessage = (data) => {
-      // Only update if it's for the current conversation
       if (data.conversationId === selectedConversation._id) {
         setMessages((prev) => [...prev, data.message]);
       }
     };
 
-    socket.on('new_message', handleNewMessage);
+    socket.on("new_message", handleNewMessage);
 
     return () => {
-      socket.off('new_message', handleNewMessage);
-      socket.emit('leave_conversation', selectedConversation._id);
+      socket.off("new_message", handleNewMessage);
+      socket.emit("leave_conversation", selectedConversation._id);
     };
   }, [socket, selectedConversation]);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!input.trim() || !selectedConversation || !socket) return;
 
     const messageContent = input.trim();
-    
-    // Use socket-only approach for real-time messaging
-    socket.emit('send_message', {
+    socket.emit("send_message", {
       conversationId: selectedConversation._id,
-      content: messageContent
+      content: messageContent,
     });
 
     setInput("");
@@ -189,34 +193,30 @@ export default function Chat() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
   const handleDeleteConversation = async (conversationId, e) => {
     e?.stopPropagation();
-    
-    if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה הזו?")) {
-      return;
-    }
+
+    if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה הזו?")) return;
 
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/chat/conversation/${conversationId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${API_BASE}/api/chat/conversation/${conversationId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.ok) {
-        // Remove from conversations list
-        setConversations(conversations.filter(conv => conv._id !== conversationId));
-        
-        // Clear selected conversation if it was deleted
+        setConversations((prev) =>
+          prev.filter((conv) => conv._id !== conversationId)
+        );
+
         if (selectedConversation?._id === conversationId) {
           setSelectedConversation(null);
           setMessages([]);
@@ -239,30 +239,31 @@ export default function Chat() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const reportedUserId = currentUserId === selectedConversation.user?._id 
-      ? selectedConversation.helper?._id 
-      : selectedConversation.user?._id;
+    const reportedUserId =
+      currentUserId === selectedConversation.user?._id
+        ? selectedConversation.helper?._id
+        : selectedConversation.user?._id;
 
     try {
       const response = await fetch(`${API_BASE}/api/reports/report`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           reportedUserId,
           conversationId: selectedConversation._id,
           reason: reportReason,
-          description: reportDescription
+          description: reportDescription,
         }),
       });
 
       if (response.ok) {
         alert("הדיווח נשלח בהצלחה. אנו נבדוק את הנושא בהקדם.");
         setShowReportModal(false);
-        setReportReason('');
-        setReportDescription('');
+        setReportReason("");
+        setReportDescription("");
       } else {
         const data = await response.json();
         alert(data.message || "שגיאה בשליחת הדיווח");
@@ -275,348 +276,389 @@ export default function Chat() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600">טוען שיחות...</p>
+      <div className="flex items-center justify-center h-screen bg-[var(--background)]">
+        <div className="h-10 w-10 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
       </div>
     );
   }
 
-  if (conversations.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  const renderSidebar = () => (
+    <div className="flex h-full flex-col border-l border-[var(--background-dark)] bg-[var(--background-dark)] w-72">
+      {/* Profile */}
+      <div 
+        onClick={() => navigate("/profile")}
+        className="glass m-4 flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors"
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-light)] text-[var(--text-inverted)]">
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">אין שיחות</h3>
-          <p className="mt-1 text-sm text-gray-500">התחל לעזור או לבקש עזרה כדי לפתוח שיחות</p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      {/* Desktop Navigation Buttons - Hidden on mobile, positioned at bottom right */}
-      <div className="hidden md:flex fixed bottom-6 right-4 z-50 flex-row gap-3">
-        <button
-          onClick={() => navigate("/home")}
-          className="h-12 w-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-          title="Home"
-        >
-          <img src="/helper-logo.jpeg" alt="Home" className="h-10 w-10 rounded-full object-cover" />
-        </button>
-        
-        <button
-          onClick={() => navigate("/profile")}
-          className="h-12 w-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-          title="Profile"
-        >
-          <svg className="h-6 w-6 text-gray-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-        </button>
-
-        <button
-          onClick={handleLogout}
-          className="h-12 w-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-red-50 transition-colors duration-200 cursor-pointer"
-          title="Logout"
-        >
-          <svg className="h-6 w-6 text-red-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-            <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-          </svg>
-        </button>
-      </div>
-
-      {/* Mobile Navigation - Bottom bar with menu */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg z-50 border-t border-gray-200">
-        <div className="flex items-center justify-around py-2">
-          <button
-            onClick={() => navigate("/home")}
-            className="flex flex-col items-center p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <img src="/helper-logo.jpeg" alt="Home" className="h-8 w-8 rounded-full object-cover" />
-            <span className="text-xs text-gray-600 mt-1">בית</span>
-          </button>
-
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex flex-col items-center p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg className="h-8 w-8 text-gray-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-            </svg>
-            <span className="text-xs text-gray-600 mt-1">שיחות</span>
-          </button>
-
-          <button
-            onClick={() => navigate("/profile")}
-            className="flex flex-col items-center p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg className="h-8 w-8 text-gray-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-            </svg>
-            <span className="text-xs text-gray-600 mt-1">פרופיל</span>
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center p-2 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <svg className="h-8 w-8 text-red-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-            </svg>
-            <span className="text-xs text-red-600 mt-1">יציאה</span>
-          </button>
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-main)]">
+            הפרופיל שלי
+          </p>
         </div>
       </div>
 
-      {/* Mobile Conversations Menu Overlay */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setMobileMenuOpen(false)}>
-          <div className="fixed bottom-16 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-96 overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800">השיחות שלי</h3>
-              <button onClick={() => setMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto flex-1">
-              {conversations.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>אין שיחות עדיין</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200">
-                  {conversations.map((conv) => (
-                    <div
-                      key={conv._id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${
-                        selectedConversation?._id === conv._id ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          onClick={() => {
-                            loadConversation(conv._id);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="flex-1 text-right"
-                        >
-                          <p className="font-semibold text-gray-900">
-                            {conv.user?.username === conv.helper?.username 
-                              ? 'שיחה'
-                              : currentUserId === conv.user?._id 
-                                ? conv.helper?.username 
-                                : conv.user?.username}
-                          </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {conv.request?.problemType || 'בקשת עזרה'}
-                          </p>
-                        </button>
-                        <div className="flex items-center gap-2">
-                          {conv.messages?.some(m => !m.read && m.sender.toString() !== currentUserId) && (
-                            <span className="h-3 w-3 bg-red-500 rounded-full"></span>
-                          )}
-                          <button
-                            onClick={(e) => handleDeleteConversation(conv._id, e)}
-                            className="p-1.5 hover:bg-red-100 rounded-full transition-colors"
-                            title="מחק שיחה"
-                          >
-                            <svg className="h-5 w-5 text-red-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Chats list */}
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-1">
+        <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">
+          שיחות אחרונות
+        </p>
 
-      <div className="flex h-screen bg-gray-50 pb-16 md:pb-0" dir="rtl">
-        {/* Conversations list */}
-        <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">שיחות</h2>
+        {conversations.length === 0 ? (
+          <div className="mt-8 text-center text-sm text-[var(--text-light)]">
+            אין שיחות פעילות
           </div>
-          <div className="divide-y divide-gray-200">
-            {conversations.map((conv) => (
-              <div
-                key={conv._id}
-                onClick={() => loadConversation(conv._id)}
-                className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedConversation?._id === conv._id ? 'bg-blue-50' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">
-                      {conv.user?.username === conv.helper?.username 
-                        ? 'שיחה'
-                        : currentUserId === conv.user?._id 
-                          ? conv.helper?.username 
-                          : conv.user?.username}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {conv.request?.problemType || 'בקשת עזרה'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {conv.messages?.some(m => !m.read && m.sender.toString() !== currentUserId) && (
-                      <span className="h-3 w-3 bg-red-500 rounded-full"></span>
-                    )}
-                    <button
-                      onClick={(e) => handleDeleteConversation(conv._id, e)}
-                      className="p-1.5 hover:bg-red-100 rounded-full transition-colors"
-                      title="מחק שיחה"
-                    >
-                      <svg className="h-5 w-5 text-red-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        ) : (
+          <div className="space-y-2">
+            {conversations.map((conv) => {
+              const isSelected = selectedConversation?._id === conv._id;
+              const hasUnread = conv.messages?.some(
+                (m) => !m.read && m.sender.toString() !== currentUserId
+              );
 
-        {/* Chat area */}
-        <div className="flex-1 flex flex-col">
-          {selectedConversation ? (
-            <>
-              {/* Chat header */}
-              <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {currentUserId === selectedConversation.user?._id 
-                        ? selectedConversation.helper?.username 
-                        : selectedConversation.user?.username}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {selectedConversation.request?.problemType || 'בקשת עזרה'}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Report Button */}
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className="p-2 hover:bg-red-50 rounded-full transition-colors"
-                  title="דווח על משתמש"
+              const partnerName =
+                conv.user?.username === conv.helper?.username
+                  ? "שיחה"
+                  : currentUserId === conv.user?._id
+                  ? conv.helper?.username
+                  : conv.user?.username;
+
+              return (
+                <div
+                  key={conv._id}
+                  onClick={() => loadConversation(conv._id)}
+                  className={`flex w-full items-start justify-between rounded-lg px-3 py-2 text-right text-sm transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-white text-[var(--text-main)]"
+                      : "bg-transparent hover:bg-white/60"
+                  }`}
                 >
-                  <svg className="h-6 w-6 text-red-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-                {messages.length === 0 ? (
-                  <div className="text-center text-gray-500 mt-10">
-                    <p>עדיין אין הודעות בשיחה הזו</p>
-                    <p className="text-sm mt-2">שלח הודעה כדי להתחיל את השיחה</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate font-medium">{partnerName}</p>
+                      {hasUnread && (
+                        <span className="h-2 w-2 rounded-full bg-[var(--danger)]" />
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-[var(--text-secondary)]">
+                      {conv.request?.problemType || "בקשת עזרה"}
+                    </p>
                   </div>
-                ) : (
-                  messages.map((msg, idx) => {
-                    const isMe = msg.sender?.toString() === currentUserId || msg.sender?._id?.toString() === currentUserId;
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            isMe
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-white text-gray-900 border border-gray-200'
-                          }`}
-                        >
-                          <p>{msg.content}</p>
-                          <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500'}`}>
-                            {new Date(msg.timestamp).toLocaleTimeString('he-IL', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input area */}
-              <div className="bg-white border-t border-gray-200 p-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="הקלד הודעה..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
                   <button
-                    onClick={handleSend}
-                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+                    onClick={(e) => handleDeleteConversation(conv._id, e)}
+                    className="ml-2 text-xs text-[var(--text-light)] hover:text-[var(--danger)]"
+                    title="מחק שיחה"
                   >
-                    שלח
+                    ✕
                   </button>
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              בחר שיחה כדי להתחיל
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Return Home */}
+      <div className="border-t border-[var(--background)] p-4">
+        <button
+          onClick={() => navigate("/home")}
+          className="glass flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-[var(--primary-dark)]"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
+          </svg>
+          חזרה לבית
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className="flex h-screen bg-[var(--background)] font-sans text-[var(--text-main)]"
+      dir="rtl"
+    >
+      {/* Mobile overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`
+          fixed inset-y-0 right-0 z-50 w-72 transform bg-[var(--background-dark)] transition-transform md:relative md:translate-x-0
+          ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+        `}
+      >
+        <div className="h-full">
+          {/* Close (mobile) */}
+          <div className="flex items-center justify-between px-4 pt-4 md:hidden">
+            <span className="text-sm font-medium text-[var(--text-secondary)]">
+              השיחות שלי
+            </span>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-[var(--text-light)]"
+            >
+              ✕
+            </button>
+          </div>
+          {renderSidebar()}
         </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex flex-1 flex-col">
+        {selectedConversation ? (
+          <>
+            {/* Header */}
+            <div className="flex h-16 items-center justify-between border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:px-6">
+              <div className="flex items-center gap-3">
+                {/* Hamburger (mobile) */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="md:hidden"
+                >
+                  <svg
+                    className="h-6 w-6 text-[var(--text-main)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--primary-light)]/50 text-[var(--primary)]">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold md:text-base">
+                    {currentUserId === selectedConversation.user?._id
+                      ? selectedConversation.helper?.username
+                      : selectedConversation.user?.username}
+                  </p>
+                  <p className="truncate text-xs text-[var(--text-secondary)]">
+                    {selectedConversation.request?.problemType || "בקשת עזרה"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="text-sm text-[var(--text-light)] hover:text-[var(--danger)]"
+              >
+                דווח
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+              {messages.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-[var(--text-secondary)]">
+                  <p className="mb-1 text-lg">השיחה ריקה</p>
+                  <p className="text-sm">שלח הודעה כדי להתחיל</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {messages.map((msg, idx) => {
+                      const senderId =
+                        msg.sender?._id?.toString() ||
+                        msg.sender?.toString() ||
+                        "";
+                      const isMe = senderId === currentUserId;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex ${
+                            isMe ? "justify-start" : "justify-end"
+                          }`}
+                        >
+                          <div
+                            className={`
+                              max-w-[72%] rounded-2xl px-3 py-2 text-sm
+                              ${
+                                isMe
+                                  ? "rounded-br-none bg-[var(--primary)] text-white"
+                                  : "rounded-bl-none bg-[var(--primary-light)] text-[var(--text-main)]"
+                              }
+                            `}
+                          >
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            <p className="mt-1 text-[10px] text-left opacity-80">
+                              {new Date(msg.timestamp).toLocaleTimeString(
+                                "he-IL",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="border-t border-[var(--background-dark)] bg-[var(--background)] px-4 py-3 md:px-6 md:py-4">
+              <div className="mx-auto flex max-w-3xl items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="הקלד הודעה..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="flex-1 rounded-lg border border-[var(--background-dark)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                  className={`flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-opacity ${
+                    !input.trim()
+                      ? "bg-[var(--primary)] text-white opacity-50 cursor-not-allowed"
+                      : "bg-[var(--primary)] text-white hover:opacity-90"
+                  }`}
+                >
+                  שליחה
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          // Empty state
+          <div className="flex flex-1 flex-col items-center justify-center text-[var(--text-secondary)]">
+            {/* Mobile header with hamburger when no conversation */}
+            <div className="absolute top-0 left-0 right-0 flex h-12 items-center border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="mr-2"
+              >
+                <svg
+                  className="h-6 w-6 text-[var(--text-main)]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </button>
+              <span className="text-sm font-semibold text-[var(--text-main)]">
+                השיחות שלי
+              </span>
+            </div>
+
+            <div className="mt-10 text-center md:mt-0">
+              <p className="mb-1 text-lg font-semibold">בחר שיחה</p>
+              <p className="mb-4 text-sm text-[var(--text-light)]">
+                בחר שיחה מהתפריט כדי להתחיל לשוחח
+              </p>
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="glass mt-2 px-4 py-2 text-sm font-medium text-[var(--primary-dark)] md:hidden"
+              >
+                פתח תפריט שיחות
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Report Modal */}
       {showReportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowReportModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">דיווח על משתמש</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-gray-500 hover:text-gray-700">
-                <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                  <path d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white shadow-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+              <p className="text-sm font-semibold text-gray-800">
+                דיווח על משתמש
+              </p>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
               </button>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
-              דיווח על: <strong>{currentUserId === selectedConversation?.user?._id 
-                ? selectedConversation?.helper?.username 
-                : selectedConversation?.user?.username}</strong>
-            </p>
+            <div className="space-y-4 px-4 py-4">
+              <p className="text-xs text-gray-600">
+                דיווח על:{" "}
+                <strong className="text-gray-900">
+                  {currentUserId === selectedConversation?.user?._id
+                    ? selectedConversation?.helper?.username
+                    : selectedConversation?.user?.username}
+                </strong>
+              </p>
 
-            <div className="space-y-4">
-              {/* Reason Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">סיבת הדיווח</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  סיבת הדיווח
+                </label>
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm outline-none focus:border-[var(--primary)]"
                 >
                   <option value="">בחר סיבה</option>
                   <option value="illegal_activity">פעילות בלתי חוקית</option>
@@ -628,38 +670,33 @@ export default function Chat() {
                 </select>
               </div>
 
-              {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">תיאור הבעיה</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  תיאור הבעיה
+                </label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
-                  placeholder="אנא תאר בפירוט את הבעיה..."
                   rows="4"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
                   maxLength="1000"
+                  className="w-full resize-none rounded-md border border-gray-300 bg-white px-2 py-2 text-sm outline-none focus:border-[var(--primary)]"
+                  placeholder="אנא תאר בקצרה את הבעיה..."
                 />
-                <p className="text-xs text-gray-500 mt-1">{reportDescription.length}/1000</p>
-              </div>
-
-              {/* Warning */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-xs text-yellow-800">
-                  ⚠️ דיווחים כוזבים עלולים להוביל לחסימת החשבון שלך. אנא דווח רק על בעיות אמיתיות.
+                <p className="mt-1 text-right text-[10px] text-gray-400">
+                  {reportDescription.length}/1000
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setShowReportModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
                 >
                   ביטול
                 </button>
                 <button
                   onClick={handleSubmitReport}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  className="flex-1 rounded-md bg-[var(--danger)] px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                 >
                   שלח דיווח
                 </button>
