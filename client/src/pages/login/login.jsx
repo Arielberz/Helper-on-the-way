@@ -40,7 +40,10 @@ export default function Login() {
       let msg = "שגיאה בהתחברות. נסה שוב.";
       switch (serverMsg) {
         case "identifier and password are required":
-          msg = "יש לספק מזהה (אימייל/טלפון/שם משתמש) וסיסמה";
+          msg = "יש לספק מזהה (אימייל/טלפון) וסיסמה";
+          break;
+        case "please use email or phone to login":
+          msg = "אנא השתמש באימייל או בטלפון להתחברות";
           break;
         case "invalid credentials":
           msg = "פרטי ההתחברות שגויים";
@@ -87,14 +90,15 @@ export default function Login() {
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm">{error}</div>}
 
-        {/* אימייל/טלפון/שם משתמש */}
+        {/* אימייל/טלפון */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">אימייל / טלפון / שם משתמש</label>
+          <label className="block text-sm font-medium text-gray-700">אימייל / טלפון</label>
           <input 
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none" 
             type="text" 
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="example@email.com או 0501234567"
             required
           />
         </div>
