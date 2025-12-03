@@ -7,10 +7,15 @@ async function connectDB() {
 		process.exit(1);
 	}
 	try {
-		await mongoose.connect(uri, { dbName: process.env.MONGO_DB || undefined });
-		console.log('MongoDB connected');
+		await mongoose.connect(uri, {
+			dbName: process.env.MONGO_DB || undefined,
+			serverSelectionTimeoutMS: 5000,
+			socketTimeoutMS: 45000,
+		});
+		console.log('MongoDB connected successfully');
 	} catch (err) {
 		console.error('MongoDB connection error:', err.message);
+		console.error('Full error:', err);
 		process.exit(1);
 	}
 }
