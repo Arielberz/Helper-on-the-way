@@ -66,9 +66,9 @@ exports.register = async (req, res) => {
             return sendResponse(res, 400, false, "password must be at least 8 characters");
         }
 
-        const existingUser = await User.findOne({ $or: [ { username }, { email }, { phone } ] });
+        const existingUser = await User.findOne({ $or: [ { email }, { phone } ] });
         if (existingUser) {
-            return sendResponse(res, 409, false, "username, email, or phone already in use");
+            return sendResponse(res, 409, false, "email or phone already in use");
         }
 
         const saltRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
@@ -111,7 +111,7 @@ exports.login = async (req, res) => {
         } else if (isValidPhone(normalizePhone(identifier))) {
             query = { phone: normalizePhone(identifier) };
         } else {
-            query = { username: normalizeUsername(identifier) };
+            return sendResponse(res, 400, false, "please use email or phone to login");
         }
 
         const user = await User.findOne(query);
