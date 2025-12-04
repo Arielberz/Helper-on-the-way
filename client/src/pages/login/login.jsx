@@ -19,8 +19,14 @@ export default function Login() {
     const API_URL = import.meta.env.VITE_API_URL;
 
     try {
+      // Auto-convert phone numbers starting with 05 to +9725 format
+      let identifierToSend = identifier.trim();
+      if (identifierToSend.startsWith('05') && /^05\d{8}$/.test(identifierToSend)) {
+        identifierToSend = '+972' + identifierToSend.substring(1);
+      }
+      
       const response = await axios.post(`${API_URL}/api/users/login`, {
-        identifier,
+        identifier: identifierToSend,
         password
       });
 
