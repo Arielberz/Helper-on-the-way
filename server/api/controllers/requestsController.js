@@ -59,6 +59,20 @@ exports.createRequest = async (req, res) => {
       });
     }
 
+    // Check if user already has an open request
+    const existingOpenRequest = await Request.findOne({
+      user: req.userId,
+      status: { $in: [REQUEST_STATUS.PENDING, REQUEST_STATUS.ASSIGNED] }
+    });
+
+    if (existingOpenRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have an open request. Please complete or cancel it before creating a new one.',
+        existingRequestId: existingOpenRequest._id
+      });
+    }
+
     // Validate payment amount if provided
     if (offeredAmount !== undefined && (typeof offeredAmount !== 'number' || offeredAmount < 0)) {
       return res.status(400).json({

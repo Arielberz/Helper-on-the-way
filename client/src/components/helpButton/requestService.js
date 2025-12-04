@@ -50,16 +50,20 @@ export async function createHelpRequest(requestData, token) {
       throw new Error('Server error. Please try again later.');
     }
 
-    if (!response.ok) {
-      throw new Error('Network error. Please check your connection and try again.');
-    }
-
-    // Try to parse JSON response
+    // Try to parse JSON response for both success and error cases
     let result;
     try {
       result = await response.json();
     } catch (parseError) {
+      if (!response.ok) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
       throw new Error('Unable to process server response. Please try again.');
+    }
+
+    // Handle error responses (400, etc.) with server message
+    if (!response.ok) {
+      throw new Error(result.message || 'Network error. Please check your connection and try again.');
     }
 
     if (!result.success) {
@@ -73,7 +77,8 @@ export async function createHelpRequest(requestData, token) {
         error.message.includes('session has expired') ||
         error.message.includes('Server error') ||
         error.message.includes('Network error') ||
-        error.message.includes('Unable to process')) {
+        error.message.includes('Unable to process') ||
+        error.message.includes('already have an open request')) {
       throw error;
     }
     

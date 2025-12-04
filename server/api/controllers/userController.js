@@ -12,8 +12,20 @@ function normalizeUsername(username) {
 }
 
 function normalizePhone(phone) {
-    const s = String(phone || '').trim();
-    return s.replace(/[^\d+]/g, '');
+    let s = String(phone || '').trim();
+    // Remove all non-digit characters except +
+    s = s.replace(/[^\d+]/g, '');
+    
+    // If starts with 05, convert to +9725
+    if (s.startsWith('05')) {
+        s = '+972' + s.substring(1);
+    }
+    // If starts with 9725, add +
+    else if (s.startsWith('9725')) {
+        s = '+' + s;
+    }
+    
+    return s;
 }
 
 function isValidEmail(email) {
@@ -27,8 +39,8 @@ function isValidUsername(username) {
 }
 
 function isValidPhone(phone) {
-    // E.164-like: optional +, 8-15 digits total
-    return /^\+?[1-9]\d{7,14}$/.test(phone);
+    // Israeli mobile number: must be +9725XXXXXXXX (10 digits total after +972)
+    return /^\+9725\d{8}$/.test(phone);
 }
 
 function sanitizeUser(user) {
@@ -108,10 +120,14 @@ exports.login = async (req, res) => {
         const idLower = identifier.toLowerCase();
         if (isValidEmail(idLower)) {
             query = { email: idLower };
-        } else if (isValidPhone(normalizePhone(identifier))) {
-            query = { phone: normalizePhone(identifier) };
         } else {
-            return sendResponse(res, 400, false, "please use email or phone to login");
+            // Try to normalize and validate phone
+            const normalizedPhone = normalizePhone(identifier);
+            if (isValidPhone(normalizedPhone)) {
+                query = { phone: normalizedPhone };
+            } else {
+                return sendResponse(res, 400, false, "please use email or phone to login");
+            }
         }
 
         const user = await User.findOne(query);

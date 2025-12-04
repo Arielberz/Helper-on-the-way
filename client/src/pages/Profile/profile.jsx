@@ -29,6 +29,15 @@ const Profile = () => {
     return `${"*".repeat(username.length)}@${domain}`;
   };
 
+  const formatPhoneForDisplay = (phone) => {
+    if (!phone) return "לא זמין";
+    // Convert +9725XXXXXXXX to 05XXXXXXXX for display
+    if (phone.startsWith('+9725')) {
+      return '0' + phone.substring(4);
+    }
+    return phone;
+  };
+
   const maskPhone = (phone) => {
     if (!phone) return "לא זמין";
     return "*".repeat(phone.length);
@@ -516,7 +525,7 @@ const Profile = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm text-gray-500 font-medium">טלפון</p>
                 <p className="text-base sm:text-lg text-gray-800 font-semibold truncate">
-                  {showPhone ? (user?.phone || "לא זמין") : maskPhone(user?.phone)}
+                  {showPhone ? formatPhoneForDisplay(user?.phone) : maskPhone(user?.phone)}
                 </p>
               </div>
               <button

@@ -20,9 +20,17 @@ export default function Register() {
 
 
   const handleChange = (e) => {
+    let value = e.target.value;
+    
+    // Auto-format phone number as user types
+    if (e.target.name === 'phone') {
+      // Remove all non-digit characters except +
+      value = value.replace(/[^\d+]/g, '');
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
     setError("");
   };
@@ -59,15 +67,29 @@ export default function Register() {
       setError("פורמט האימייל אינו תקין");
       return;
     }
-    const phoneOk = /^\+?[1-9]\d{7,14}$/.test(String(formData.phone).trim());
-    if (!phoneOk) {
-      setError("פורמט הטלפון אינו תקין");
+    
+    // Validate Israeli mobile number: must start with 05 or +9725
+    let phone = String(formData.phone).trim();
+    if (!phone.startsWith('05') && !phone.startsWith('+9725')) {
+      setError("מספר טלפון חייב להתחיל ב-05 (לדוגמה: 0521234567)");
+      return;
+    }
+    // Check length: 05XXXXXXXX (10 digits) or +9725XXXXXXXX (13 chars)
+    if ((phone.startsWith('05') && phone.length !== 10) || 
+        (phone.startsWith('+9725') && phone.length !== 13)) {
+      setError("מספר טלפון נייד ישראלי חייב להכיל 10 ספרות (05XXXXXXXX)");
       return;
     }
 
     setLoading(true);
 
     try {
+      // Auto-convert phone to international format before sending
+      let phoneToSend = formData.phone.trim();
+      if (phoneToSend.startsWith('05')) {
+        phoneToSend = '+972' + phoneToSend.substring(1);
+      }
+      
       const response = await fetch(`${API_URL}/api/users/register`, {
         method: "POST",
         headers: {
@@ -75,7 +97,7 @@ export default function Register() {
         },
         body: JSON.stringify({
           username: formData.username,
-          phone: formData.phone,
+          phone: phoneToSend,
           email: formData.email,
           password: formData.password
         }),
