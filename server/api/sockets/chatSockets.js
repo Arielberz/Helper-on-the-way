@@ -1,4 +1,5 @@
 const Conversation = require('../models/chatModel');
+const Request = require('../models/requestsModel');
 const verifyToken = require('../utils/verifyToken');
 const chatService = require('../services/chatService');
 const { isConversationParticipant } = require('../utils/conversationUtils');
@@ -144,6 +145,64 @@ const initializeChatSockets = (io) => {
       });
     });
 
+    // ========== ETA FEATURE ==========
+    // Helper sends location updates for ETA calculation
+    socket.on('helperLocationUpdate', async (data) => {
+      try {
+        console.log('📍 Received helperLocationUpdate from socket:', socket.userId, 'Data:', data);
+        const { requestId, latitude, longitude } = data;
+        
+        if (!requestId || typeof latitude !== 'number' || typeof longitude !== 'number') {
+          console.warn('⚠️ Invalid location data:', data);
+          return socket.emit('eta:error', { message: 'Invalid location data' });
+        }
+        
+        // Validate coordinates
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+          return socket.emit('eta:error', { message: 'Invalid coordinates' });
+        }
+        
+        // Fetch the request
+        const request = await Request.findById(requestId).populate('user', 'username');
+        
+        if (!request) {
+          return socket.emit('eta:error', { message: 'Request not found' });
+        }
+        
+        // Verify helper is assigned to this request
+        if (request.helper?.toString() !== socket.userId) {
+          return socket.emit('eta:error', { message: 'Not authorized' });
+        }
+        
+        // Only calculate ETA for assigned requests
+        if (request.status !== 'assigned') {
+          return;
+        }
+        
+        // Calculate ETA using OSRM
+        const etaSeconds = await calculateETA(
+          latitude,
+          longitude,
+          request.location.lat,
+          request.location.lng
+        );
+        
+        // Emit ETA to requester's personal room
+        io.to(`user:${request.user._id}`).emit('etaUpdated', {
+          requestId,
+          etaSeconds,
+          helperLocation: { latitude, longitude },
+          timestamp: Date.now()
+        });
+        
+        console.log(`📍 ETA updated for request ${requestId}: ${Math.round(etaSeconds / 60)} minutes`);
+        
+      } catch (error) {
+        console.error('Error handling helper location update:', error);
+        socket.emit('eta:error', { message: 'Failed to update ETA' });
+      }
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.userId}`);
@@ -155,5 +214,37 @@ const initializeChatSockets = (io) => {
     });
   });
 };
+
+// Calculate ETA using OSRM routing service
+async function calculateETA(fromLat, fromLng, toLat, toLng) {
+  try {
+    const fetch = (await import('node-fetch')).default;
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
+    
+    const response = await fetch(url, { timeout: 5000 });
+    const data = await response.json();
+    
+    if (data.code === 'Ok' && data.routes?.[0]?.duration) {
+      return Math.round(data.routes[0].duration);
+    }
+    
+    throw new Error('OSRM routing failed');
+  } catch (error) {
+    console.warn('OSRM error, using fallback calculation:', error.message);
+    
+    // Fallback: Haversine distance with average city speed
+    const R = 6371; // Earth's radius in km
+    const dLat = (toLat - fromLat) * Math.PI / 180;
+    const dLon = (toLng - fromLng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) ** 2 + 
+              Math.cos(fromLat * Math.PI / 180) * Math.cos(toLat * Math.PI / 180) * 
+              Math.sin(dLon/2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distanceKm = R * c;
+    
+    // Assume 30 km/h average city speed
+    return Math.round((distanceKm / 30) * 3600);
+  }
+}
 
 module.exports = initializeChatSockets;

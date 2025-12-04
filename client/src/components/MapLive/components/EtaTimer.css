@@ -1,0 +1,102 @@
+/* ETA Timer - Glassmorphism Design */
+.eta-banner {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    /* Glassmorphism from theme */
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    
+    color: var(--text-main);
+    padding: var(--space-lg) var(--space-xl);
+    border-radius: var(--rounded-lg);
+    z-index: 1001;
+    animation: slideUp 0.3s ease-out;
+    max-width: 90%;
+    width: 400px;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.eta-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.eta-icon {
+    font-size: 24px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.eta-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    flex: 1;
+}
+
+.eta-status {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.eta-time {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-main);
+}
+
+.eta-time strong {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--primary);
+}
+
+@media (max-width: 480px) {
+    .eta-banner {
+        width: calc(100% - 32px);
+        padding: var(--space-md) var(--space-lg);
+        bottom: 110px;
+    }
+    
+    .eta-icon {
+        font-size: 20px;
+    }
+    
+    .eta-status {
+        font-size: 12px;
+    }
+    
+    .eta-time {
+        font-size: 14px;
+    }
+    
+    .eta-time strong {
+        font-size: 18px;
+    }
+}
