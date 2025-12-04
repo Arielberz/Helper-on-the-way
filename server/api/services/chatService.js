@@ -10,10 +10,13 @@ const Conversation = require('../models/chatModel');
  * @param {String} params.conversationId - Conversation ID
  * @param {String} params.senderId - User ID of the sender
  * @param {String} params.content - Message content
+ * @param {Boolean} params.isSystemMessage - Whether this is a system message
+ * @param {String} params.systemMessageType - Type of system message (e.g., 'end_treatment')
+ * @param {String} params.requestId - Request ID for system messages
  * @returns {Object} { conversation, message } - Updated conversation and the new message
  * @throws {Error} With code property for specific error handling
  */
-async function appendMessage({ conversationId, senderId, content }) {
+async function appendMessage({ conversationId, senderId, content, isSystemMessage, systemMessageType, requestId }) {
   const conversation = await Conversation.findById(conversationId);
   
   if (!conversation) {
@@ -40,6 +43,17 @@ async function appendMessage({ conversationId, senderId, content }) {
     timestamp: new Date(),
     read: false
   };
+
+  // Add system message properties if applicable
+  if (isSystemMessage) {
+    message.isSystemMessage = true;
+    if (systemMessageType) {
+      message.systemMessageType = systemMessageType;
+    }
+    if (requestId) {
+      message.requestId = requestId;
+    }
+  }
 
   conversation.messages.push(message);
   await conversation.save();

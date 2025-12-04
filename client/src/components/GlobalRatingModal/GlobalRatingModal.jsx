@@ -7,10 +7,7 @@ const GlobalRatingModal = () => {
 
   const handleSuccess = () => {
     closeRatingModal();
-    // Optionally show a success message
-    alert('✅ תודה על הדירוג!');
-    // Refresh to update profile data
-    window.location.reload();
+    // Don't reload - just close the modal to preserve chat state
   };
 
   if (!showRatingModal || !requestToRate) {
