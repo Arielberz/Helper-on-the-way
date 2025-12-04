@@ -68,7 +68,7 @@ const initializeChatSockets = (io) => {
     // Send a message
     socket.on('send_message', async (data) => {
       try {
-        const { conversationId, content } = data;
+        const { conversationId, content, isSystemMessage, systemMessageType, requestId } = data;
 
         if (!content || !content.trim()) {
           return socket.emit('chat:error', { message: 'Message content is required' });
@@ -78,7 +78,10 @@ const initializeChatSockets = (io) => {
         const { conversation, message } = await chatService.appendMessage({
           conversationId,
           senderId: socket.userId,
-          content: content.trim()
+          content: content.trim(),
+          isSystemMessage,
+          systemMessageType,
+          requestId
         });
 
         // Emit to all users in this conversation

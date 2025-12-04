@@ -267,31 +267,7 @@ const Profile = () => {
     return false;
   };
 
-  const handleUpdateRequestStatus = async (requestId, newStatus) => {
-    try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
 
-      if (response.ok) {
-        alert(`✅ סטטוס עודכן ל: ${getStatusLabel(newStatus)}`);
-        // Refresh the page to show updated status
-        window.location.reload();
-      } else {
-        const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לעדכן סטטוס'}`);
-      }
-    } catch (error) {
-      console.error("Error updating request status:", error);
-      alert('❌ שגיאה בעדכון סטטוס');
-    }
-  };
 
   const handleHelperMarkCompleted = async (requestId) => {
     try {
@@ -793,22 +769,13 @@ const Profile = () => {
                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
                       <p className="text-xs text-gray-600 mb-2">עדכן סטטוס:</p>
                       <div className="flex gap-2">
-                        {action.status === 'assigned' && (
-                          <button
-                            onClick={() => handleUpdateRequestStatus(action.requestId, 'in_progress')}
-                            className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs sm:text-sm"
-                          >
-                            <span>🔄</span>
-                            <span>התחל טיפול</span>
-                          </button>
-                        )}
-                        {action.status === 'in_progress' && (
+                        {(action.status === 'assigned' || action.status === 'in_progress') && (
                           <button
                             onClick={() => handleHelperMarkCompleted(action.requestId)}
                             className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-2 sm:px-3 rounded-lg transition-colors flex items-center justify-center gap-1 text-xs sm:text-sm"
                           >
                             <span>✅</span>
-                            <span>סיימתי!</span>
+                            <span>סיים טיפול</span>
                           </button>
                         )}
                         {(action.status === 'assigned' || action.status === 'in_progress') && (

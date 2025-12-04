@@ -273,7 +273,7 @@ exports.updateRequestStatus = async (req, res) => {
         });
       }
       updateData.helperCompletedAt = Date.now();
-      updateData.status = REQUEST_STATUS.IN_PROGRESS; // Keep in_progress until requester confirms
+      updateData.status = REQUEST_STATUS.ASSIGNED; // Keep assigned until requester confirms
       console.log(`Helper marked request ${id} as completed, waiting for requester confirmation`);
     }
 

@@ -20,6 +20,20 @@ const messageSchema = new Schema({
   read: {
     type: Boolean,
     default: false
+  },
+  isSystemMessage: {
+    type: Boolean,
+    default: false
+  },
+  systemMessageType: {
+    type: String,
+    enum: ['end_treatment', 'helper_assigned', 'payment_sent', 'payment_pending', 'payment_accepted', 'other'],
+    required: false
+  },
+  requestId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Request',
+    required: false
   }
 });
 

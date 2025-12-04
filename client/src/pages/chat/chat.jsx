@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useHelperRequest } from "../../context/HelperRequestContext";
+import { useRating } from "../../context/RatingContext";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -11,12 +12,18 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const { socket } = useHelperRequest();
+  const { openRatingModal } = useRating();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportDescription, setReportDescription] = useState("");
+  const [isEndingTreatment, setIsEndingTreatment] = useState(false);
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [paymentRequestId, setPaymentRequestId] = useState(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isAcceptingPayment, setIsAcceptingPayment] = useState(false);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,7 +112,9 @@ export default function Chat() {
     }
 
     // Find the conversation in the current list for instant UI update
-    const conversation = conversations.find(conv => conv._id === conversationId);
+    const conversation = conversations.find(
+      (conv) => conv._id === conversationId
+    );
     if (conversation) {
       setSelectedConversation(conversation);
       setMessages(conversation?.messages || []);
@@ -164,6 +173,17 @@ export default function Chat() {
     const handleNewMessage = (data) => {
       if (data.conversationId === selectedConversation._id) {
         setMessages((prev) => [...prev, data.message]);
+
+        // If payment was accepted, show rating modal to requester
+        if (data.message?.systemMessageType === "payment_accepted") {
+          const isRequester = currentUserId === selectedConversation.user?._id;
+          if (isRequester && selectedConversation.request) {
+            // Open rating modal for the requester
+            setTimeout(() => {
+              openRatingModal(selectedConversation.request);
+            }, 500);
+          }
+        }
       }
     };
 
@@ -274,6 +294,198 @@ export default function Chat() {
     }
   };
 
+  // Check if current user is the helper
+  const isHelper = currentUserId === selectedConversation?.helper?._id;
+
+  // Handle end treatment (helper only)
+  const handleEndTreatment = async () => {
+    if (!selectedConversation?.request?._id) return;
+
+    setIsEndingTreatment(true);
+    const token = getToken();
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/requests/${selectedConversation.request._id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ helperCompleted: true }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Send a system message via socket with end treatment notification
+        if (socket) {
+          socket.emit("send_message", {
+            conversationId: selectedConversation._id,
+            content: "🏁 העוזר סיים את הטיפול וממתין לאישור שלך",
+            isSystemMessage: true,
+            systemMessageType: "end_treatment",
+            requestId: selectedConversation.request._id,
+          });
+        }
+
+        alert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
+      } else {
+        const responseData = await response.json();
+        alert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
+      }
+    } catch (error) {
+      console.error("Error ending treatment:", error);
+      alert("❌ שגיאה בעדכון סטטוס");
+    } finally {
+      setIsEndingTreatment(false);
+    }
+  };
+
+  // Handle requester confirmation (from chat message)
+  const handleConfirmCompletion = async (requestId) => {
+    const token = getToken();
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/requests/${requestId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ requesterConfirmed: true }),
+        }
+      );
+
+      if (response.ok) {
+        // Show payment popup instead of alerting
+        setPaymentRequestId(requestId);
+        setShowPaymentPopup(true);
+      } else {
+        const data = await response.json();
+        alert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
+      }
+    } catch (error) {
+      console.error("Error confirming completion:", error);
+      alert("❌ שגיאה באישור השלמה");
+    }
+  };
+
+  // Handle payment confirmation
+  const handlePaymentConfirm = async () => {
+    if (!paymentRequestId || !selectedConversation) return;
+
+    setIsProcessingPayment(true);
+
+    try {
+      const isRequester = currentUserId === selectedConversation.user?._id;
+
+      if (socket) {
+        // Send message for the requester (payment sent)
+        socket.emit("send_message", {
+          conversationId: selectedConversation._id,
+          content: "💰 התשלום שלך נשלח בהצלחה!",
+          isSystemMessage: true,
+          systemMessageType: "payment_sent",
+          requestId: paymentRequestId,
+          recipientRole: "requester",
+        });
+
+        // Send message for the helper (payment pending - with accept button)
+        socket.emit("send_message", {
+          conversationId: selectedConversation._id,
+          content: "💰 המשתמש שלח לך תשלום. אנא אשר את קבלת התשלום",
+          isSystemMessage: true,
+          systemMessageType: "payment_pending",
+          requestId: paymentRequestId,
+          recipientRole: "helper",
+        });
+      }
+
+      // Close popup
+      setShowPaymentPopup(false);
+      setPaymentRequestId(null);
+      alert("✅ תשלום בוצע בהצלחה!");
+
+      // Refresh to show updated state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      alert("❌ שגיאה בעיבוד התשלום");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Handle helper accepting payment
+  const handleAcceptPayment = async (requestId) => {
+    setIsAcceptingPayment(true);
+    const token = getToken();
+
+    try {
+      // Update payment status in database
+      const response = await fetch(
+        `${API_BASE}/api/requests/${requestId}/payment`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ isPaid: true }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update payment status");
+      }
+
+      const data = await response.json();
+
+      // Update local state immediately to hide the button
+      setSelectedConversation((prev) => ({
+        ...prev,
+        request: {
+          ...prev.request,
+          payment: {
+            ...prev.request?.payment,
+            isPaid: true,
+            paidAt: new Date(),
+          },
+        },
+      }));
+
+      // Send payment accepted message
+      if (socket) {
+        socket.emit("send_message", {
+          conversationId: selectedConversation._id,
+          content: "✅ התשלום אושר! תודה על ההעברה.",
+          isSystemMessage: true,
+          systemMessageType: "payment_accepted",
+          requestId: requestId,
+        });
+      }
+
+      alert("✅ התשלום אושר בהצלחה!");
+
+      // Refresh to show updated state
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error("Error accepting payment:", error);
+      alert("❌ שגיאה באישור התשלום");
+    } finally {
+      setIsAcceptingPayment(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[var(--background)]">
@@ -285,7 +497,7 @@ export default function Chat() {
   const renderSidebar = () => (
     <div className="flex h-full flex-col border-l border-[var(--background-dark)] bg-[var(--background-dark)] w-72">
       {/* Profile */}
-      <div 
+      <div
         onClick={() => navigate("/profile")}
         className="glass m-4 flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors"
       >
@@ -412,11 +624,15 @@ export default function Chat() {
       {/* Sidebar */}
       <div
         className={`
-          fixed inset-y-0 right-0 z-50 w-72 transform bg-[var(--background-dark)] transition-transform md:relative md:translate-x-0
-          ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+          fixed inset-y-0 right-0 z-50 w-72 transform bg-[var(--background-dark)] transition-transform md:relative md:translate-x-0 flex flex-col
+          ${
+            isMobileMenuOpen
+              ? "translate-x-0"
+              : "translate-x-full md:translate-x-0"
+          }
         `}
       >
-        <div className="h-full">
+        <div className="h-full flex flex-col">
           {/* Close (mobile) */}
           <div className="flex items-center justify-between px-4 pt-4 md:hidden">
             <span className="text-sm font-medium text-[var(--text-secondary)]">
@@ -429,7 +645,9 @@ export default function Chat() {
               ✕
             </button>
           </div>
-          {renderSidebar()}
+          <div className="flex-1 overflow-y-auto">
+            {renderSidebar()}
+          </div>
         </div>
       </div>
 
@@ -438,8 +656,8 @@ export default function Chat() {
         {selectedConversation ? (
           <>
             {/* Header */}
-            <div className="flex h-16 items-center justify-between border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:px-6">
-              <div className="flex items-center gap-3">
+            <div className="flex h-16 items-center border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:px-6">
+              <div className="flex items-center gap-3 flex-1">
                 {/* Hamburger (mobile) */}
                 <button
                   onClick={() => setIsMobileMenuOpen(true)}
@@ -488,12 +706,36 @@ export default function Chat() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="text-sm text-[var(--text-light)] hover:text-[var(--danger)]"
-              >
-                דווח
-              </button>
+              {/* End Treatment Button (Helper only) - Centered */}
+              {isHelper &&
+                selectedConversation.request?.status !== "completed" && (
+                  <button
+                    onClick={handleEndTreatment}
+                    disabled={isEndingTreatment}
+                    className="glass px-3 py-1.5 text-xs md:text-sm font-medium transition-all hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    style={{
+                      backgroundColor: "var(--glass-bg-strong)",
+                      backdropFilter: "blur(var(--glass-blur))",
+                      WebkitBackdropFilter: "blur(var(--glass-blur))",
+                      border: "1px solid var(--glass-border)",
+                      borderRadius: "var(--rounded-lg)",
+                      boxShadow: "var(--glass-shadow)",
+                      color: "var(--primary-dark)",
+                    }}
+                  >
+                    <span>🏁</span>
+                    <span>סיום טיפול</span>
+                  </button>
+                )}
+
+              <div className="flex items-center gap-2 flex-1 justify-end">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="text-sm text-[var(--text-light)] hover:text-[var(--danger)]"
+                >
+                  דווח
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
@@ -513,6 +755,115 @@ export default function Chat() {
                         "";
                       const isMe = senderId === currentUserId;
 
+                      // Check if this is a system message (end treatment notification or payment)
+                      const isSystemMessage =
+                        msg.isSystemMessage ||
+                        msg.systemMessageType === "end_treatment" ||
+                        msg.systemMessageType === "payment_sent" ||
+                        msg.systemMessageType === "payment_pending" ||
+                        msg.systemMessageType === "payment_accepted";
+                      const isRequester =
+                        currentUserId === selectedConversation.user?._id;
+                      const isHelper =
+                        currentUserId === selectedConversation.helper?._id;
+
+                      // System message for end treatment or payment
+                      if (isSystemMessage) {
+                        return (
+                          <div key={idx} className="flex justify-center my-4">
+                            <div
+                              className="max-w-[85%] px-4 py-3 rounded-xl text-center"
+                              style={{
+                                backgroundColor: "var(--glass-bg-strong)",
+                                backdropFilter: "blur(var(--glass-blur))",
+                                WebkitBackdropFilter: "blur(var(--glass-blur))",
+                                border: "1px solid var(--glass-border)",
+                                boxShadow: "var(--glass-shadow)",
+                              }}
+                            >
+                              <p
+                                className="text-sm font-medium mb-3"
+                                style={{ color: "var(--primary-dark)" }}
+                              >
+                                {msg.content}
+                              </p>
+
+                              {/* End treatment confirmation button - for requester */}
+                              {msg.systemMessageType === "end_treatment" &&
+                                isRequester &&
+                                selectedConversation.request?.status !==
+                                  "completed" && (
+                                  <button
+                                    onClick={() =>
+                                      handleConfirmCompletion(
+                                        msg.requestId ||
+                                          selectedConversation.request._id
+                                      )
+                                    }
+                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 w-full"
+                                    style={{
+                                      backgroundColor: "var(--primary)",
+                                      color: "white",
+                                    }}
+                                  >
+                                    ✅ אשר סיום
+                                  </button>
+                                )}
+
+                              {/* Accept payment button - for helper */}
+                              {msg.systemMessageType === "payment_pending" &&
+                                isHelper &&
+                                !selectedConversation.request?.payment
+                                  ?.isPaid && (
+                                  <button
+                                    onClick={() =>
+                                      handleAcceptPayment(
+                                        msg.requestId ||
+                                          selectedConversation.request._id
+                                      )
+                                    }
+                                    disabled={isAcceptingPayment}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                                    style={{
+                                      backgroundColor: "var(--primary)",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {isAcceptingPayment
+                                      ? "⏳ מעבד..."
+                                      : "✅ אשר תשלום"}
+                                  </button>
+                                )}
+
+                              {msg.systemMessageType === "end_treatment" &&
+                                selectedConversation.request?.status ===
+                                  "completed" && (
+                                  <p
+                                    className="text-xs"
+                                    style={{ color: "var(--text-secondary)" }}
+                                  >
+                                    ✓ אושר
+                                  </p>
+                                )}
+
+                              <p
+                                className="mt-2 text-[10px] opacity-70"
+                                style={{ color: "var(--text-secondary)" }}
+                              >
+                                {new Date(msg.timestamp).toLocaleTimeString(
+                                  "he-IL",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Regular message
                       return (
                         <div
                           key={idx}
@@ -701,6 +1052,104 @@ export default function Chat() {
                   שלח דיווח
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Popup */}
+      {showPaymentPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setShowPaymentPopup(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl shadow-xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "var(--glass-bg-strong)",
+              backdropFilter: "blur(var(--glass-blur))",
+              WebkitBackdropFilter: "blur(var(--glass-blur))",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--glass-shadow)",
+            }}
+          >
+            {/* Header */}
+            <div
+              className="px-6 py-4 border-b flex items-center justify-between"
+              style={{
+                borderColor: "var(--glass-border)",
+                backgroundColor: "var(--primary)",
+              }}
+            >
+              <h2 className="text-lg font-bold text-white">💳 תשלום</h2>
+              <button
+                onClick={() => setShowPaymentPopup(false)}
+                className="text-white/70 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              <div className="text-center">
+                <p
+                  className="text-sm mb-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  סכום לתשלום
+                </p>
+                <p
+                  className="text-4xl font-bold"
+                  style={{ color: "var(--primary)" }}
+                >
+                  {selectedConversation?.request?.payment?.offeredAmount || 0}₪
+                </p>
+              </div>
+
+              <div
+                className="p-4 rounded-lg text-sm"
+                style={{
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--primary)",
+                }}
+              >
+                <p className="flex items-center gap-2">
+                  <span>ℹ️</span>
+                  <span>העוזר יקבל את התגמול שלו לאחר אישור התשלום</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              className="px-6 py-4 border-t flex gap-3"
+              style={{ borderColor: "var(--glass-border)" }}
+            >
+              <button
+                onClick={() => setShowPaymentPopup(false)}
+                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm"
+                style={{
+                  backgroundColor: "transparent",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handlePaymentConfirm}
+                disabled={isProcessingPayment}
+                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: "var(--primary)",
+                  color: "white",
+                }}
+              >
+                {isProcessingPayment ? "עיבוד..." : "שלח תשלום"}
+              </button>
             </div>
           </div>
         </div>

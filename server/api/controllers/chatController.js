@@ -15,7 +15,7 @@ exports.getUserConversations = async (req, res) => {
     })
       .populate('user', 'username email')
       .populate('helper', 'username email')
-      .populate('request', 'problemType status location')
+      .populate('request', 'problemType status location payment')
       .sort({ lastMessageAt: -1 });
 
     sendResponse(res, 200, true, 'conversations retrieved successfully', { conversations });
@@ -34,7 +34,7 @@ exports.getConversationById = async (req, res) => {
     const conversation = await Conversation.findById(conversationId)
       .populate('user', 'username email')
       .populate('helper', 'username email')
-      .populate('request', 'problemType status location description');
+      .populate('request', 'problemType status location description payment');
 
     if (!conversation) {
       return sendResponse(res, 404, false, 'conversation not found');
@@ -76,7 +76,7 @@ exports.getOrCreateConversation = async (req, res) => {
     let conversation = await Conversation.findOne({ request: requestId })
       .populate('user', 'username email')
       .populate('helper', 'username email')
-      .populate('request', 'problemType status location description');
+      .populate('request', 'problemType status location description payment');
 
     if (!conversation) {
       // Determine helper - either the assigned helper or the current user (if they're trying to help)
@@ -103,7 +103,7 @@ exports.getOrCreateConversation = async (req, res) => {
       conversation = await Conversation.findById(conversation._id)
         .populate('user', 'username email')
         .populate('helper', 'username email')
-        .populate('request', 'problemType status location description');
+        .populate('request', 'problemType status location description payment');
     }
 
     sendResponse(res, 200, true, 'conversation retrieved successfully', { conversation });
@@ -134,7 +134,7 @@ exports.sendMessage = async (req, res) => {
     const updatedConversation = await Conversation.findById(conversationId)
       .populate('user', 'username email')
       .populate('helper', 'username email')
-      .populate('request', 'problemType status location');
+      .populate('request', 'problemType status location payment');
 
     sendResponse(res, 201, true, 'message sent successfully', { conversation: updatedConversation });
   } catch (error) {
