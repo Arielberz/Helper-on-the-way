@@ -24,6 +24,7 @@ import ConfirmationToast from "./components/ConfirmationToast";
 import UserMarker from "./components/UserMarker";
 import RequestMarkers from "./components/RequestMarkers";
 import RoutePolylines from "./components/RoutePolylines";
+import EtaTimer from "./components/EtaTimer";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -44,6 +45,16 @@ export default function MapLive() {
   const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
   const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
+  const [etaData, setEtaData] = useState(() => {
+    // Load ETA data from localStorage on mount
+    try {
+      const saved = localStorage.getItem('etaData');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  }); // ETA data: { requestId: { etaSeconds, updatedAt } }
+  const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -188,11 +199,36 @@ export default function MapLive() {
       setUnreadCount(0);
     };
 
+    // Listen for ETA updates
+    const handleEtaUpdated = (data) => {
+      const { requestId, etaSeconds, timestamp } = data;
+      console.log('🕐 ETA Update Received:', {
+        requestId,
+        etaMinutes: Math.round(etaSeconds / 60),
+        etaSeconds,
+        timestamp
+      });
+      setEtaData(prev => {
+        const newData = {
+          ...prev,
+          [requestId]: { etaSeconds, updatedAt: timestamp }
+        };
+        // Persist to localStorage
+        try {
+          localStorage.setItem('etaData', JSON.stringify(newData));
+        } catch (e) {
+          console.warn('Failed to save ETA to localStorage:', e);
+        }
+        return newData;
+      });
+    };
+
     socket.on("requestAdded", handleRequestAdded);
     socket.on("requestUpdated", handleRequestUpdated);
     socket.on("requestDeleted", handleRequestDeleted);
     socket.on("new_message", handleNewMessage);
     socket.on("messages_read", handleMessagesRead);
+    socket.on("etaUpdated", handleEtaUpdated);
 
     return () => {
       socket.off("requestAdded", handleRequestAdded);
@@ -200,8 +236,85 @@ export default function MapLive() {
       socket.off("requestDeleted", handleRequestDeleted);
       socket.off("new_message", handleNewMessage);
       socket.off("messages_read", handleMessagesRead);
+      socket.off("etaUpdated", handleEtaUpdated);
     };
   }, [socket]);
+
+  // Identify user's active request (as requester or helper) and send location updates if helper
+  useEffect(() => {
+    const userId = getUserId();
+    if (!userId || sharedMarkers.length === 0) return;
+
+    // Find active request where user is requester OR helper with status 'assigned'
+    const activeReq = sharedMarkers.find(
+      req => req.status === 'assigned' && 
+            (req.user?._id === userId || req.user === userId || 
+             req.helper?._id === userId || req.helper === userId)
+    );
+
+    console.log('🔍 Active Request Check:', {
+      userId,
+      totalRequests: sharedMarkers.length,
+      assignedRequests: sharedMarkers.filter(r => r.status === 'assigned').length,
+      foundActiveReq: !!activeReq,
+      activeReqId: activeReq?._id,
+      isRequester: activeReq?.user?._id === userId || activeReq?.user === userId,
+      isHelper: activeReq?.helper?._id === userId || activeReq?.helper === userId
+    });
+
+    setMyActiveRequest(activeReq || null);
+
+    // If user is the helper, send location updates every 30 seconds
+    if (activeReq && (activeReq.helper?._id === userId || activeReq.helper === userId) && socket) {
+      const sendLocationUpdate = () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const locationData = {
+                requestId: activeReq._id,
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+              };
+              socket.emit('helperLocationUpdate', locationData);
+              console.log('📍 Helper location sent to server:', locationData);
+            },
+            (error) => console.warn('❌ Geolocation error:', error.message)
+          );
+        }
+      };
+
+      // Send immediately on mount and then every 30 seconds
+      console.log('🚗 Starting helper location tracking for request:', activeReq._id);
+      sendLocationUpdate();
+      const interval = setInterval(sendLocationUpdate, 30000);
+      return () => {
+        console.log('🛑 Stopping helper location tracking');
+        clearInterval(interval);
+      };
+    }
+  }, [sharedMarkers, socket]);
+
+  // Clean up old ETA data when requests are completed/cancelled
+  useEffect(() => {
+    const currentEtaKeys = Object.keys(etaData);
+    if (currentEtaKeys.length > 0 && sharedMarkers.length > 0) {
+      const hasStaleData = currentEtaKeys.some(reqId => 
+        !sharedMarkers.find(r => r._id === reqId && r.status === 'assigned')
+      );
+      if (hasStaleData) {
+        const cleanedData = {};
+        currentEtaKeys.forEach(reqId => {
+          const req = sharedMarkers.find(r => r._id === reqId && r.status === 'assigned');
+          if (req) {
+            cleanedData[reqId] = etaData[reqId];
+          }
+        });
+        setEtaData(cleanedData);
+        localStorage.setItem('etaData', JSON.stringify(cleanedData));
+        console.log('🧹 Cleaned up old ETA data');
+      }
+    }
+  }, [sharedMarkers]);
 
   // 3. טעינת כל המיקומים מהשרת פעם אחת בהתחלה
   useEffect(() => {
@@ -524,6 +637,38 @@ export default function MapLive() {
       )}
 
       <ConfirmationToast message={confirmationMessage} />
+
+      {/* ETA Timer - Show only for requester when helper is assigned */}
+      {(() => {
+        const currentUserId = getUserId();
+        const isRequester = myActiveRequest && 
+          (myActiveRequest.user?._id === currentUserId || myActiveRequest.user === currentUserId);
+        const hasEtaData = myActiveRequest && etaData[myActiveRequest._id];
+        const shouldShow = isRequester && hasEtaData;
+        
+        // Debug logging every render
+        if (myActiveRequest || Object.keys(etaData).length > 0) {
+          console.log('🎯 ETA Timer Render Check:', {
+            currentUserId,
+            hasActiveRequest: !!myActiveRequest,
+            activeRequestId: myActiveRequest?._id,
+            activeRequestUser: myActiveRequest?.user?._id || myActiveRequest?.user,
+            activeRequestHelper: myActiveRequest?.helper?._id || myActiveRequest?.helper,
+            isRequester,
+            hasEtaData,
+            etaDataKeys: Object.keys(etaData),
+            etaDataForThisRequest: etaData[myActiveRequest?._id],
+            shouldShow
+          });
+        }
+
+        return shouldShow ? (
+          <EtaTimer 
+            etaSeconds={etaData[myActiveRequest._id].etaSeconds}
+            lastUpdated={etaData[myActiveRequest._id].updatedAt}
+          />
+        ) : null;
+      })()}
 
       {/* Pending Helpers Button - Floating (only when you have pending helpers) */}
       {!isNearbyModalOpen && <PendingHelpersMapButton />}
