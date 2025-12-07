@@ -17,6 +17,8 @@ const sanitizeRequest = (reqDoc) => {
     location: reqDoc.location ? { lat: reqDoc.location.lat, lng: reqDoc.location.lng } : null,
     problemType: reqDoc.problemType,
     description: reqDoc.description,
+    photos: reqDoc.photos || [],
+    payment: reqDoc.payment || null,
     status: reqDoc.status,
     user: normalizeUser(user),
     helper: normalizeUser(helper),

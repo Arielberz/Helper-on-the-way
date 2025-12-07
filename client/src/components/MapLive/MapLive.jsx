@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import "./leaflet-overrides.css";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
