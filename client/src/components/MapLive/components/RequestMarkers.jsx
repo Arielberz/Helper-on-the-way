@@ -12,6 +12,17 @@ export default function RequestMarkers({
 }) {
   const currentUserId = getUserId();
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "pending":
+        return "Pending";
+      case "assigned":
+        return "Assigned";
+      default:
+        return status;
+    }
+  };
+
   return (
     <>
       {sharedMarkers
@@ -28,38 +39,60 @@ export default function RequestMarkers({
               ph.user?._id === currentUserId || ph.user?.id === currentUserId
           );
 
+          const isAssignedHelper =
+            m.helper === currentUserId || m.helper?._id === currentUserId;
+
+          const routeInfo = routes[m._id || m.id];
+
           return (
             <Marker
               key={m._id || m.id}
               position={[m.location.lat, m.location.lng]}
               icon={getProblemIcon(m.problemType)}
             >
-              <Popup>
-                <strong>{m.user?.username || "משתמש לא ידוע"}</strong>
-                <br />
-                {m.problemType &&
-                  `בעיה: ${getProblemTypeLabel(m.problemType)}`}
-                <br />
-                {m.description && `תיאור: ${m.description}`}
-                <br />
-                סטטוס: {m.status || "pending"}
-                <br />
-                {/* Show route info if available */}
-                {routes[m._id || m.id] && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-                    🚗 מרחק:{" "}
-                    {(routes[m._id || m.id].distance / 1000).toFixed(2)} ק"מ
-                    <br />
-                    ⏱️ זמן: {Math.round(routes[m._id || m.id].duration / 60)}{" "}
-                    דק'
+              <Popup className="request-popup">
+                <div className="request-popup-content">
+                  {/* Requester Name */}
+                  <div className="popup-header">
+                    {m.user?.username || "Unknown User"}
                   </div>
-                )}
-                {/* Show route button - available for everyone except the requester */}
-                {!routes[m._id || m.id] &&
-                  !isMyRequest &&
-                  position &&
-                  position[0] &&
-                  position[1] && (
+
+                  {/* Image (only if exists) */}
+                  {m.photos && m.photos.length > 0 && m.photos[0] && (
+                    <img
+                      src={typeof m.photos[0] === 'string' ? m.photos[0] : m.photos[0].url}
+                      alt="Request"
+                      className="popup-image"
+                    />
+                  )}
+
+                  {/* Problem Type + Payment + Status */}
+                  <div className="popup-info">
+                    <span className="popup-type">
+                      {getProblemTypeLabel(m.problemType)}
+                      {m.payment?.offeredAmount > 0 && (
+                        <span className="popup-price"> {m.payment.offeredAmount}{m.payment.currency === 'ILS' ? '₪' : '$'}</span>
+                      )}
+                    </span>
+                    <span className={`popup-status ${m.status || 'pending'}`}>
+                      {getStatusLabel(m.status || 'pending')}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  {m.description && (
+                    <div className="popup-description">{m.description}</div>
+                  )}
+
+                  {/* Route Info */}
+                  {routeInfo && (
+                    <div className="popup-route-info">
+                      🚗 {(routeInfo.distance / 1000).toFixed(1)} km • ⏱️ {Math.round(routeInfo.duration / 60)} min
+                    </div>
+                  )}
+
+                  {/* Route Button */}
+                  {!routeInfo && !isMyRequest && position && position[0] && position[1] && (
                     <button
                       onClick={() =>
                         fetchRoute(
@@ -70,67 +103,65 @@ export default function RequestMarkers({
                           m.location.lng
                         )
                       }
-                      className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                      className="popup-btn primary"
                     >
-                      🗺️ הצג מסלול
+                      🗺️ Show Route
                     </button>
                   )}
-                {!isMyRequest && (
-                  <>
-                    {m.status === "pending" && !alreadyRequested && (
-                      <button
-                        onClick={() => openChat(m)}
-                        className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
-                      >
-                        🙋 אני רוצה לעזור
-                      </button>
-                    )}
-                    {m.status === "pending" && alreadyRequested && (
-                      <div className="mt-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-medium text-center">
-                        ⏳ ממתין לאישור
-                      </div>
-                    )}
-                    {m.status === "assigned" &&
-                      (m.helper === currentUserId ||
-                        m.helper?._id === currentUserId) && (
+
+                  {/* Action Buttons for non-requesters */}
+                  {!isMyRequest && (
+                    <>
+                      {m.status === "pending" && !alreadyRequested && (
+                        <button
+                          onClick={() => openChat(m)}
+                          className="popup-btn success"
+                        >
+                          🙋 I want to help
+                        </button>
+                      )}
+
+                      {m.status === "pending" && alreadyRequested && (
+                        <div className="popup-btn-waiting">
+                          ⏳ Waiting for approval
+                        </div>
+                      )}
+
+                      {m.status === "assigned" && isAssignedHelper && (
                         <>
                           <button
                             onClick={() => openChat(m)}
-                            className="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium w-full"
+                            className="popup-btn primary"
                           >
-                            💬 פתח צ'אט
+                            💬 Open Chat
                           </button>
-                          {/* Auto-show route for assigned helper */}
-                          {!routes[m._id || m.id] &&
-                            position &&
-                            position[0] &&
-                            position[1] && (
-                              <button
-                                onClick={() =>
-                                  fetchRoute(
-                                    m._id || m.id,
-                                    position[0],
-                                    position[1],
-                                    m.location.lat,
-                                    m.location.lng
-                                  )
-                                }
-                                className="mt-1 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm font-medium w-full"
-                              >
-                                🚗 הצג ניווט
-                              </button>
-                            )}
+                          {!routeInfo && position && position[0] && position[1] && (
+                            <button
+                              onClick={() =>
+                                fetchRoute(
+                                  m._id || m.id,
+                                  position[0],
+                                  position[1],
+                                  m.location.lat,
+                                  m.location.lng
+                                )
+                              }
+                              className="popup-btn success"
+                            >
+                              🚗 Navigate
+                            </button>
+                          )}
                         </>
                       )}
-                    {m.status === "assigned" &&
-                      m.helper !== currentUserId &&
-                      m.helper?._id !== currentUserId && (
-                        <div className="mt-2 px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium text-center">
-                          👤 כבר שובץ עוזר
+
+                      {m.status === "assigned" && !isAssignedHelper && (
+                        <div className="popup-btn-disabled">
+                          👤 Helper assigned
                         </div>
                       )}
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </Popup>
             </Marker>
           );
@@ -138,3 +169,4 @@ export default function RequestMarkers({
     </>
   );
 }
+
