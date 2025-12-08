@@ -13,8 +13,8 @@ exports.getUserConversations = async (req, res) => {
       $or: [{ user: userId }, { helper: userId }],
       isActive: true
     })
-      .populate('user', 'username email')
-      .populate('helper', 'username email')
+      .populate('user', 'username email avatar')
+      .populate('helper', 'username email avatar')
       .populate('request', 'problemType status location payment')
       .sort({ lastMessageAt: -1 });
 
@@ -32,8 +32,8 @@ exports.getConversationById = async (req, res) => {
     const userId = req.userId;
 
     const conversation = await Conversation.findById(conversationId)
-      .populate('user', 'username email')
-      .populate('helper', 'username email')
+      .populate('user', 'username email avatar')
+      .populate('helper', 'username email avatar')
       .populate('request', 'problemType status location description payment');
 
     if (!conversation) {
@@ -74,8 +74,8 @@ exports.getOrCreateConversation = async (req, res) => {
 
     // Check if a conversation already exists for this request
     let conversation = await Conversation.findOne({ request: requestId })
-      .populate('user', 'username email')
-      .populate('helper', 'username email')
+      .populate('user', 'username email avatar')
+      .populate('helper', 'username email avatar')
       .populate('request', 'problemType status location description payment');
 
     if (!conversation) {
@@ -101,8 +101,8 @@ exports.getOrCreateConversation = async (req, res) => {
       
       // Populate fields after saving
       conversation = await Conversation.findById(conversation._id)
-        .populate('user', 'username email')
-        .populate('helper', 'username email')
+        .populate('user', 'username email avatar')
+        .populate('helper', 'username email avatar')
         .populate('request', 'problemType status location description payment');
     }
 

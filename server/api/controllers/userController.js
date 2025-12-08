@@ -50,7 +50,8 @@ function sanitizeUser(user) {
         email: user.email,
         phone: user.phone,
         averageRating: user.averageRating || 0,
-        ratingCount: user.ratingCount || 0
+        ratingCount: user.ratingCount || 0,
+        avatar: user.avatar || null
     };
 }
 
@@ -286,5 +287,68 @@ exports.getLocationFromIP = async (req, res) => {
             ip: 'unknown',
             source: 'default'
         });
+    }
+};
+
+exports.uploadAvatar = async (req, res) => {
+    try {
+        const userId = req.userId; // Set by authMiddleware
+        
+        if (!userId) {
+            return sendResponse(res, 401, false, "unauthorized");
+        }
+
+        const { avatar } = req.body;
+
+        if (!avatar) {
+            return sendResponse(res, 400, false, "avatar data is required");
+        }
+
+        // Validate base64 image format
+        if (!avatar.startsWith('data:image/')) {
+            return sendResponse(res, 400, false, "invalid image format");
+        }
+
+        // Update user's avatar
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { avatar },
+            { new: true }
+        ).select('-password');
+
+        if (!user) {
+            return sendResponse(res, 404, false, "user not found");
+        }
+
+        sendResponse(res, 200, true, "avatar uploaded successfully", { user: sanitizeUser(user) });
+    } catch (error) {
+        console.error('Error uploading avatar:', error);
+        sendResponse(res, 500, false, "server error");
+    }
+};
+
+exports.deleteAvatar = async (req, res) => {
+    try {
+        const userId = req.userId; // Set by authMiddleware
+        
+        if (!userId) {
+            return sendResponse(res, 401, false, "unauthorized");
+        }
+
+        // Remove user's avatar
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { avatar: null },
+            { new: true }
+        ).select('-password');
+
+        if (!user) {
+            return sendResponse(res, 404, false, "user not found");
+        }
+
+        sendResponse(res, 200, true, "avatar deleted successfully", { user: sanitizeUser(user) });
+    } catch (error) {
+        console.error('Error deleting avatar:', error);
+        sendResponse(res, 500, false, "server error");
     }
 };
