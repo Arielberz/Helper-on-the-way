@@ -4,6 +4,7 @@ import { clearAuthData, getToken } from '../../utils/authUtils';
 import RatingModal from "../../components/RatingModal/RatingModal";
 import { useRating } from "../../context/RatingContext";
 import AvatarUpload from "../../components/AvatarUpload/AvatarUpload";
+import Wallet from "../../components/Wallet/Wallet";
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -485,6 +486,17 @@ const Profile = () => {
             currentAvatar={user?.avatar} 
             onAvatarUpdate={handleAvatarUpdate}
           />
+        </div>
+
+        {/* Wallet Card */}
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+            </svg>
+            הארנק שלי
+          </h2>
+          <Wallet />
         </div>
 
         {/* User Info Card */}

@@ -7,6 +7,8 @@ import Chat from "./pages/chat/chat";
 import Rating from "./pages/Rating/Rating";
 import Profile from "./pages/Profile/profile";
 import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
+import PayPalSuccess from "./pages/PayPal/PayPalSuccess";
+import PayPalCancel from "./pages/PayPal/PayPalCancel";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { RatingProvider } from "./context/RatingContext";
 import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
@@ -64,6 +66,22 @@ function App() {
           element={
             <ProtectedRoute>
               <PendingHelpers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/paypal/success"
+          element={
+            <ProtectedRoute>
+              <PayPalSuccess />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/paypal/cancel"
+          element={
+            <ProtectedRoute>
+              <PayPalCancel />
             </ProtectedRoute>
           }
         />
