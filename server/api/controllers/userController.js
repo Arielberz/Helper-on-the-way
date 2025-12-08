@@ -51,7 +51,10 @@ function sanitizeUser(user) {
         phone: user.phone,
         averageRating: user.averageRating || 0,
         ratingCount: user.ratingCount || 0,
-        avatar: user.avatar || null
+        avatar: user.avatar || null,
+        balance: user.balance || 0,
+        totalEarnings: user.totalEarnings || 0,
+        totalWithdrawals: user.totalWithdrawals || 0
     };
 }
 
@@ -349,6 +352,120 @@ exports.deleteAvatar = async (req, res) => {
         sendResponse(res, 200, true, "avatar deleted successfully", { user: sanitizeUser(user) });
     } catch (error) {
         console.error('Error deleting avatar:', error);
+        sendResponse(res, 500, false, "server error");
+    }
+};
+
+// Get user's wallet balance and transaction history
+exports.getWallet = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const Transaction = require('../models/transactionModel');
+        
+        if (!userId) {
+            return sendResponse(res, 401, false, "unauthorized");
+        }
+
+        const user = await User.findById(userId).select('balance totalEarnings totalWithdrawals');
+        
+        if (!user) {
+            return sendResponse(res, 404, false, "user not found");
+        }
+
+        // Initialize balance fields if they don't exist
+        if (user.balance === undefined || user.balance === null) {
+            user.balance = 0;
+        }
+        if (user.totalEarnings === undefined || user.totalEarnings === null) {
+            user.totalEarnings = 0;
+        }
+        if (user.totalWithdrawals === undefined || user.totalWithdrawals === null) {
+            user.totalWithdrawals = 0;
+        }
+        await user.save();
+
+        // Get recent transactions
+        const transactions = await Transaction.find({ user: userId })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .populate('request', 'problemType description');
+
+        console.log(`Wallet for user ${userId}: Balance=${user.balance}, Earnings=${user.totalEarnings}, Withdrawals=${user.totalWithdrawals}`);
+
+        sendResponse(res, 200, true, "wallet retrieved successfully", { 
+            balance: user.balance || 0,
+            totalEarnings: user.totalEarnings || 0,
+            totalWithdrawals: user.totalWithdrawals || 0,
+            transactions 
+        });
+    } catch (error) {
+        console.error('Error getting wallet:', error);
+        sendResponse(res, 500, false, "server error");
+    }
+};
+
+// Request withdrawal
+exports.requestWithdrawal = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { amount, method, accountInfo } = req.body;
+        const Transaction = require('../models/transactionModel');
+        
+        if (!userId) {
+            return sendResponse(res, 401, false, "unauthorized");
+        }
+
+        if (!amount || amount <= 0) {
+            return sendResponse(res, 400, false, "invalid withdrawal amount");
+        }
+
+        if (!method || !['bank_transfer', 'paypal', 'cash', 'other'].includes(method)) {
+            return sendResponse(res, 400, false, "invalid withdrawal method");
+        }
+
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return sendResponse(res, 404, false, "user not found");
+        }
+
+        if (user.balance < amount) {
+            return sendResponse(res, 400, false, "insufficient balance");
+        }
+
+        // Minimum withdrawal amount
+        if (amount < 10) {
+            return sendResponse(res, 400, false, "minimum withdrawal amount is 10 ILS");
+        }
+
+        // Create withdrawal transaction
+        const balanceBefore = user.balance;
+        user.balance -= amount;
+        user.totalWithdrawals += amount;
+        
+        await user.save();
+
+        const transaction = await Transaction.create({
+            user: userId,
+            type: 'withdrawal',
+            amount: -amount,
+            balanceBefore,
+            balanceAfter: user.balance,
+            description: `Withdrawal request via ${method}`,
+            status: 'pending',
+            withdrawalDetails: {
+                method,
+                accountInfo: accountInfo || '',
+                processedAt: null
+            }
+        });
+
+        sendResponse(res, 200, true, "withdrawal request submitted successfully", { 
+            transaction,
+            newBalance: user.balance 
+        });
+    } catch (error) {
+        console.error('Error requesting withdrawal:', error);
         sendResponse(res, 500, false, "server error");
     }
 };

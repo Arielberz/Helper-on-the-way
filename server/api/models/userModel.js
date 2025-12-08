@@ -40,6 +40,24 @@ const userSchema = new Schema({
         type: String,
         default: null
     },
+    balance: {
+        type: Number,
+        default: 0,
+        min: 0,
+        required: true
+    },
+    totalEarnings: {
+        type: Number,
+        default: 0,
+        min: 0,
+        required: true
+    },
+    totalWithdrawals: {
+        type: Number,
+        default: 0,
+        min: 0,
+        required: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

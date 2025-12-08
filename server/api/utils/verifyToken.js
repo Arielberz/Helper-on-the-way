@@ -18,13 +18,22 @@ function verifyToken(rawToken) {
   // Remove "Bearer " prefix if present (case-insensitive)
   const token = rawToken.replace(/^Bearer\s+/i, '');
   
-  // Verify token and decode payload
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  try {
+    // Verify token and decode payload
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  // Extract userId from either userId or id field (handle both patterns)
-  const userId = decoded.userId || decoded.id;
-  
-  return { decoded, userId };
+    // Extract userId from either userId or id field (handle both patterns)
+    const userId = decoded.userId || decoded.id;
+    
+    return { decoded, userId };
+  } catch (error) {
+    console.error('Token verification failed:', {
+      error: error.message,
+      tokenPreview: token.substring(0, 20) + '...',
+      secretExists: !!process.env.JWT_SECRET
+    });
+    throw error;
+  }
 }
 
 module.exports = verifyToken;

@@ -310,9 +310,17 @@ exports.updateRequestStatus = async (req, res) => {
         });
       }
       updateData.requesterConfirmedAt = Date.now();
-      updateData.status = REQUEST_STATUS.COMPLETED;
-      updateData.completedAt = Date.now();
-      console.log(`Requester confirmed completion of request ${id}`);
+      
+      // Only mark as completed if payment is already done
+      if (request.payment && request.payment.isPaid) {
+        updateData.status = REQUEST_STATUS.COMPLETED;
+        updateData.completedAt = Date.now();
+        console.log(`Requester confirmed completion of request ${id} - Payment already received, marking as completed`);
+      } else {
+        // Keep status as CONFIRMED, waiting for payment
+        updateData.status = REQUEST_STATUS.CONFIRMED;
+        console.log(`Requester confirmed completion of request ${id} - Waiting for payment`);
+      }
     }
 
     // Handle normal status updates
@@ -967,9 +975,44 @@ exports.updatePayment = async (req, res) => {
     }
 
     if (isPaid !== undefined) {
+      const wasUnpaid = !request.payment.isPaid;
       request.payment.isPaid = isPaid;
       if (isPaid) {
         request.payment.paidAt = Date.now();
+        
+        // Credit helper's wallet when payment is marked as paid
+        if (wasUnpaid && request.helper && request.payment.offeredAmount > 0) {
+          try {
+            const User = require('../models/userModel');
+            const Transaction = require('../models/transactionModel');
+            
+            const helper = await User.findById(request.helper);
+            if (helper) {
+              const balanceBefore = helper.balance || 0;
+              helper.balance = (helper.balance || 0) + request.payment.offeredAmount;
+              helper.totalEarnings = (helper.totalEarnings || 0) + request.payment.offeredAmount;
+              await helper.save();
+              
+              // Create transaction record
+              await Transaction.create({
+                user: helper._id,
+                type: 'earning',
+                amount: request.payment.offeredAmount,
+                balanceBefore,
+                balanceAfter: helper.balance,
+                currency: request.payment.currency || 'ILS',
+                description: `Payment received for helping with ${request.problemType}`,
+                request: request._id,
+                status: 'completed'
+              });
+              
+              console.log(`✅ Credited ${request.payment.offeredAmount} ${request.payment.currency || 'ILS'} to helper ${helper.username}'s wallet (Balance: ${balanceBefore} → ${helper.balance})`);
+            }
+          } catch (walletError) {
+            console.error('Error crediting helper wallet:', walletError);
+            // Don't fail the payment update if wallet credit fails
+          }
+        }
       }
     }
 
@@ -980,8 +1023,8 @@ exports.updatePayment = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone');
+      .populate('user', 'username email phone avatar')
+      .populate('helper', 'username email phone avatar');
 
     res.json({
       success: true,

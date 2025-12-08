@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getToken } from "../../../utils/authUtils";
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function PaymentModal({
   selectedConversation,
@@ -6,6 +9,124 @@ export default function PaymentModal({
   isProcessingPayment,
   setShowPaymentPopup,
 }) {
+  const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
+  const [isProcessingBalance, setIsProcessingBalance] = useState(false);
+  const [userBalance, setUserBalance] = useState(0);
+
+  useEffect(() => {
+    fetchUserBalance();
+  }, []);
+
+  const fetchUserBalance = async () => {
+    try {
+      const token = getToken();
+      const response = await fetch(`${API_BASE}/api/users/wallet`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setUserBalance(data.data.balance || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+    }
+  };
+
+  const handlePayPalPayment = async () => {
+    setIsProcessingPayPal(true);
+    try {
+      const token = getToken();
+      const requestId = selectedConversation?.request?._id;
+      const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
+      
+      console.log('Creating PayPal order:', { 
+        requestId, 
+        amount, 
+        selectedConversation,
+        hasToken: !!token 
+      });
+
+      if (!requestId) {
+        alert('לא נמצא מזהה בקשה');
+        setIsProcessingPayPal(false);
+        return;
+      }
+
+      if (!amount || amount <= 0) {
+        alert('סכום התשלום לא תקין');
+        setIsProcessingPayPal(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/payments/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          requestId,
+          amount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.data.approvalUrl) {
+        // Redirect to PayPal
+        window.location.href = data.data.approvalUrl;
+      } else {
+        alert(data.message || 'שגיאה ביצירת תשלום PayPal');
+        setIsProcessingPayPal(false);
+      }
+    } catch (error) {
+      console.error('Error creating PayPal order:', error);
+      alert('שגיאה ביצירת תשלום');
+      setIsProcessingPayPal(false);
+    }
+  };
+
+  const handleBalancePayment = async () => {
+    const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
+    
+    if (userBalance < amount) {
+      alert(`אין לך מספיק יתרה. יתרה נוכחית: ${userBalance}₪`);
+      return;
+    }
+
+    setIsProcessingBalance(true);
+    try {
+      const token = getToken();
+      const requestId = selectedConversation?.request?._id;
+
+      const response = await fetch(`${API_BASE}/api/payments/pay-with-balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ requestId }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('התשלום בוצע בהצלחה!');
+        setShowPaymentPopup(false);
+        window.location.reload();
+      } else {
+        alert(data.message || 'שגיאה בביצוע התשלום');
+      }
+    } catch (error) {
+      console.error('Error paying with balance:', error);
+      alert('שגיאה בביצוע התשלום');
+    } finally {
+      setIsProcessingBalance(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
@@ -63,16 +184,58 @@ export default function PaymentModal({
               <span>העוזר יקבל את התגמול שלו לאחר אישור התשלום</span>
             </p>
           </div>
+
+          <div
+            className="p-3 rounded-lg text-sm"
+            style={{
+              backgroundColor: "rgba(34, 197, 94, 0.1)",
+              color: "var(--text-main)",
+              border: "1px solid #22c55e",
+            }}
+          >
+            <p className="flex items-center justify-between">
+              <span>💰 היתרה שלך:</span>
+              <span className="font-bold text-lg">{userBalance}₪</span>
+            </p>
+          </div>
         </div>
 
         {/* Footer */}
         <div
-          className="px-6 py-4 border-t flex gap-3"
+          className="px-6 py-4 border-t space-y-3"
           style={{ borderColor: "var(--glass-border)" }}
         >
           <button
+            onClick={handleBalancePayment}
+            disabled={isProcessingBalance || userBalance < (selectedConversation?.request?.payment?.offeredAmount || 0)}
+            className="w-full px-4 py-3 rounded-lg font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "#22c55e",
+              color: "white",
+            }}
+          >
+            {isProcessingBalance ? "⏳ מבצע תשלום..." : "💰 שלם מהיתרה"}
+          </button>
+
+          <div className="text-center text-xs" style={{ color: "var(--text-secondary)" }}>
+            או
+          </div>
+
+          <button
+            onClick={handlePayPalPayment}
+            disabled={isProcessingPayPal}
+            className="w-full px-4 py-3 rounded-lg font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "#0070BA",
+              color: "white",
+            }}
+          >
+            {isProcessingPayPal ? "⏳ יוצר תשלום..." : "💳 שלם עם PayPal"}
+          </button>
+          
+          <button
             onClick={() => setShowPaymentPopup(false)}
-            className="flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm"
+            className="w-full px-4 py-2 rounded-lg font-medium transition-all text-sm"
             style={{
               backgroundColor: "transparent",
               color: "var(--text-main)",
@@ -80,17 +243,6 @@ export default function PaymentModal({
             }}
           >
             ביטול
-          </button>
-          <button
-            onClick={handlePaymentConfirm}
-            disabled={isProcessingPayment}
-            className="flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: "var(--primary)",
-              color: "white",
-            }}
-          >
-            {isProcessingPayment ? "עיבוד..." : "שלח תשלום"}
           </button>
         </div>
       </div>

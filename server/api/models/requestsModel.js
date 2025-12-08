@@ -150,7 +150,7 @@ const requestSchema = new Schema({
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'credit_card', 'paypal', 'bank_transfer', 'other'],
+      enum: ['cash', 'credit_card', 'paypal', 'bank_transfer', 'balance', 'other'],
       default: null,
     }
   },

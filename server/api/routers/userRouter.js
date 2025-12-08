@@ -13,6 +13,10 @@ router.get('/location/ip', userController.getLocationFromIP);
 router.post('/avatar', authMiddleware, userController.uploadAvatar);
 router.delete('/avatar', authMiddleware, userController.deleteAvatar);
 
+// Wallet routes
+router.get('/wallet', authMiddleware, userController.getWallet);
+router.post('/wallet/withdraw', authMiddleware, userController.requestWithdrawal);
+
 // Get all ratings for a specific helper
 router.get('/:id/ratings', getRatingsByHelper);
 
