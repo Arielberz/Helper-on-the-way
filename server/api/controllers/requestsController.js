@@ -108,7 +108,7 @@ exports.createRequest = async (req, res) => {
     const request = await Request.create(requestData);
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone');
+      .populate('user', 'username email phone avatar');
 
     res.status(201).json({
       success: true,
@@ -147,8 +147,8 @@ exports.getRequests = async (req, res) => {
     if (helperId) filter.helper = helperId;
 
     const requests = await Request.find(filter)
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone')
+      .populate('user', 'username email phone avatar')
+      .populate('helper', 'username email phone avatar')
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
@@ -173,9 +173,9 @@ exports.getActiveRequests = async (req, res) => {
     const requests = await Request.find({
       status: { $in: [REQUEST_STATUS.PENDING, REQUEST_STATUS.ASSIGNED, REQUEST_STATUS.IN_PROGRESS] }
     })
-      .populate('user', 'username phone')
-      .populate('helper', 'username phone averageRating ratingCount')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount')
+      .populate('user', 'username phone avatar')
+      .populate('helper', 'username phone averageRating ratingCount avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar')
       .sort({ createdAt: -1 })
       .limit(200);
 
@@ -200,9 +200,9 @@ exports.getRequestById = async (req, res) => {
     const { id } = req.params;
 
     const request = await Request.findById(id)
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone averageRating ratingCount')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+      .populate('user', 'username email phone avatar')
+      .populate('helper', 'username email phone averageRating ratingCount avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar');
 
     if (!request) {
       return res.status(404).json({
@@ -236,8 +236,8 @@ exports.getMyRequests = async (req, res) => {
     }
 
     const requests = await Request.find({ user: req.userId })
-      .populate('helper', 'username phone averageRating ratingCount')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount')
+      .populate('helper', 'username phone averageRating ratingCount avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -346,8 +346,8 @@ exports.updateRequestStatus = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone');
+      .populate('user', 'username email phone avatar')
+      .populate('helper', 'username email phone avatar');
 
     res.json({
       success: true,
@@ -391,7 +391,7 @@ exports.requestToHelp = async (req, res) => {
       });
     }
 
-    const request = await Request.findById(id).populate('user', 'username');
+    const request = await Request.findById(id).populate('user', 'username avatar');
 
     if (!request) {
       return res.status(404).json({
@@ -439,8 +439,8 @@ exports.requestToHelp = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+      .populate('user', 'username email phone avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar');
 
     // Emit socket event to the requester
     const io = req.app.get('io');
@@ -554,8 +554,8 @@ exports.confirmHelper = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone')
-      .populate('helper', 'username email phone averageRating ratingCount');
+      .populate('user', 'username email phone avatar')
+      .populate('helper', 'username email phone averageRating ratingCount avatar');
 
     // Emit Socket.IO event to notify the helper that they were confirmed
     const io = req.app.get('io');
@@ -699,8 +699,8 @@ exports.cancelHelperAssignment = async (req, res) => {
     await request.save();
 
     const updatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+      .populate('user', 'username email phone avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar');
 
     // Emit Socket.IO event to notify the requester
     const io = req.app.get('io');
@@ -779,8 +779,8 @@ exports.assignHelper = async (req, res) => {
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
-      .populate('user', 'username email phone')
-      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount');
+      .populate('user', 'username email phone avatar')
+      .populate('pendingHelpers.user', 'username email phone averageRating ratingCount avatar');
 
     // Emit Socket.IO event to notify the requester that a helper wants to help
     const io = req.app.get('io');

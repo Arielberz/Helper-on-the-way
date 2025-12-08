@@ -9,6 +9,10 @@ router.post('/login', userController.login);
 router.get('/me', authMiddleware, userController.getMe);
 router.get('/location/ip', userController.getLocationFromIP);
 
+// Avatar routes
+router.post('/avatar', authMiddleware, userController.uploadAvatar);
+router.delete('/avatar', authMiddleware, userController.deleteAvatar);
+
 // Get all ratings for a specific helper
 router.get('/:id/ratings', getRatingsByHelper);
 

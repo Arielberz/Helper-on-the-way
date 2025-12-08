@@ -231,21 +231,39 @@ export default function PendingHelpers() {
             </h2>
             
             <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="mb-4">
-                <p className="text-xl font-bold text-gray-900 mb-2">
-                  {request.helper.username}
-                </p>
-                {request.helper.averageRating && (
-                  <div className="inline-flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
-                    <span className="text-yellow-600 font-bold text-lg">
-                      {request.helper.averageRating.toFixed(1)}
-                    </span>
-                    <span className="text-yellow-500 text-lg">⭐</span>
-                    <span className="text-sm text-gray-500 ml-1">
-                      ({request.helper.ratingCount || 0})
-                    </span>
-                  </div>
-                )}
+              <div className="flex items-center gap-4 mb-4">
+                {/* Helper Avatar */}
+                <div className="flex-shrink-0">
+                  {request.helper.avatar ? (
+                    <img 
+                      src={request.helper.avatar} 
+                      alt={request.helper.username}
+                      className="h-20 w-20 rounded-full object-cover shadow-md border-2 border-green-200"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-md">
+                      {request.helper.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Helper Info */}
+                <div className="flex-1">
+                  <p className="text-xl font-bold text-gray-900 mb-2">
+                    {request.helper.username}
+                  </p>
+                  {request.helper.averageRating && (
+                    <div className="inline-flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
+                      <span className="text-yellow-600 font-bold text-lg">
+                        {request.helper.averageRating.toFixed(1)}
+                      </span>
+                      <span className="text-yellow-500 text-lg">⭐</span>
+                      <span className="text-sm text-gray-500 ml-1">
+                        ({request.helper.ratingCount || 0})
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
@@ -336,9 +354,17 @@ export default function PendingHelpers() {
                       <div className="flex items-start gap-4 mb-4">
                         {/* Avatar */}
                         <div className="flex-shrink-0">
-                          <div className="h-16 w-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md">
-                            {pendingHelper.user.username.charAt(0).toUpperCase()}
-                          </div>
+                          {pendingHelper.user.avatar ? (
+                            <img 
+                              src={pendingHelper.user.avatar} 
+                              alt={pendingHelper.user.username}
+                              className="h-16 w-16 rounded-full object-cover shadow-md border-2 border-blue-200"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                              {pendingHelper.user.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
 
                         {/* Info */}
