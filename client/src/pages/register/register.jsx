@@ -16,6 +16,11 @@ export default function Register() {
   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState("");
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const navigate = useNavigate();
 
 
@@ -33,6 +38,73 @@ export default function Register() {
       [e.target.name]: value
     });
     setError("");
+  };
+
+  const handleVerification = async (e) => {
+    e.preventDefault();
+    setVerificationError("");
+
+    if (!verificationCode || verificationCode.length !== 6) {
+      setVerificationError("נא להזין קוד בן 6 ספרות");
+      return;
+    }
+
+    setVerificationLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/users/verify-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: registeredEmail,
+          code: verificationCode
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
+        if (data.data.user && data.data.user.id) {
+          localStorage.setItem("userId", data.data.user.id);
+        }
+        
+        // Navigate to home page
+        navigate("/home");
+      } else {
+        // Translate error messages to Hebrew
+        const serverMsg = data.message;
+        let errorMessage = "אימות נכשל";
+        switch (serverMsg) {
+          case "email and code are required":
+            errorMessage = "אימייל וקוד נדרשים";
+            break;
+          case "verification code not found":
+            errorMessage = "קוד האימות לא נמצא";
+            break;
+          case "verification code expired":
+            errorMessage = "קוד האימות פג תוקף. נא להירשם שוב";
+            break;
+          case "invalid verification code":
+            errorMessage = "קוד אימות שגוי";
+            break;
+          default:
+            if (typeof serverMsg === "string" && serverMsg.trim()) {
+              errorMessage = serverMsg;
+            }
+        }
+        setVerificationError(errorMessage);
+      }
+    } catch (err) {
+      console.error(err);
+      setVerificationError("שגיאת שרת. אנא נסה שוב מאוחר יותר");
+    } finally {
+      setVerificationLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -106,16 +178,10 @@ export default function Register() {
       const data = await response.json();
 
       if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem("token", data.data.token);
-        localStorage.setItem("user", JSON.stringify(data.data.user));
-        // Store userId for Socket.IO room management
-        if (data.data.user && data.data.user.id) {
-          localStorage.setItem("userId", data.data.user.id);
-        }
-        
-        // Navigate to home page
-        navigate("/home");
+        // Registration successful - show verification modal
+        setRegisteredEmail(formData.email);
+        setShowVerification(true);
+        setError("");
       } else {
         // Translate error messages to Hebrew
         const serverMsg = data.message;
@@ -171,6 +237,62 @@ export default function Register() {
       >
         ← חזרה
       </button>
+
+      {/* Verification Modal */}
+      {showVerification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="text-center mb-6">
+              <div className="text-3xl mb-2">📧</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">אימות אימייל</h2>
+              <p className="text-gray-600">
+                שלחנו קוד אימות בן 6 ספרות לכתובת:
+              </p>
+              <p className="text-blue-600 font-semibold mt-1">{registeredEmail}</p>
+            </div>
+
+            {verificationError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm mb-4">
+                {verificationError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerification} className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">קוד אימות</label>
+                <input
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none text-center text-2xl tracking-widest disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength="6"
+                  value={verificationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setVerificationCode(value);
+                    setVerificationError("");
+                  }}
+                  disabled={verificationLoading}
+                  placeholder="000000"
+                  autoFocus
+                />
+              </div>
+
+              <button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                type="submit"
+                disabled={verificationLoading}
+              >
+                {verificationLoading ? "מאמת..." : "אמת ומשך"}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center text-sm text-gray-600">
+              לא קיבלת את הקוד? בדוק בתיקיית הספאם או נסה להירשם שוב
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
 

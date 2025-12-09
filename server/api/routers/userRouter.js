@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post('/register', userController.register);
 router.post('/login', userController.login);
+router.post('/verify-email', userController.verifyEmail);
 router.get('/me', authMiddleware, userController.getMe);
 router.get('/location/ip', userController.getLocationFromIP);
 

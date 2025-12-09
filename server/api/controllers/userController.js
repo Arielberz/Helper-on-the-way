@@ -1,7 +1,10 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const sendResponse = require('../utils/sendResponse');
+const { sendEmail } = require('../utils/email');
+const generateCode = require('../utils/generateCode');
 
 function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -54,7 +57,8 @@ function sanitizeUser(user) {
         avatar: user.avatar || null,
         balance: user.balance || 0,
         totalEarnings: user.totalEarnings || 0,
-        totalWithdrawals: user.totalWithdrawals || 0
+        totalWithdrawals: user.totalWithdrawals || 0,
+        emailVerified: user.emailVerified || false
     };
 }
 
@@ -91,22 +95,34 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, isNaN(saltRounds) ? 10 : saltRounds);
 
         const newUser = new User({ username, email, password: hashedPassword, phone });
+        
+        // Generate verification code
+        const verificationCode = generateCode(6);
+        const hashedCode = crypto.createHash('sha256').update(verificationCode).digest('hex');
+        
+        // Set verification fields
+        newUser.emailVerificationCode = hashedCode;
+        newUser.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+        newUser.emailVerified = false;
+        
         await newUser.save();
-        if (!process.env.JWT_SECRET) {
-            return sendResponse(res, 500, false, "server misconfiguration: missing JWT secret");
-        }
-        const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-        const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn });
-
-        if (String(process.env.JWT_COOKIE).toLowerCase() === 'true') {
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax'
+        
+        // Send verification email
+        try {
+            await sendEmail({
+                to: email,
+                subject: 'Verify your email',
+                text: `Your verification code is: ${verificationCode}`,
+                html: `<p>Your verification code is: <b>${verificationCode}</b></p>`
             });
+            console.log('Verification email sent successfully to:', email);
+        } catch (emailError) {
+            console.error('Failed to send verification email:', emailError);
+            // Continue with registration even if email fails
         }
 
-        sendResponse(res, 201, true, "user registered successfully", { token, user: sanitizeUser(newUser) }); 
+        // Do NOT return a token - user must verify email first
+        sendResponse(res, 201, true, "User registered. Verification email sent. Please check your inbox and enter the code.", { user: sanitizeUser(newUser) }); 
     } catch (error) {
         console.error(error);
         sendResponse(res, 500, false, "server error");
@@ -142,6 +158,12 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return sendResponse(res, 400, false, "invalid credentials");
         }
+        
+        // Check if email is verified
+        if (!user.emailVerified) {
+            return sendResponse(res, 403, false, "Please verify your email before logging in. Check your inbox for the verification code.");
+        }
+        
         if (!process.env.JWT_SECRET) {
             return sendResponse(res, 500, false, "server misconfiguration: missing JWT secret");
         }
@@ -157,6 +179,63 @@ exports.login = async (req, res) => {
         }
 
         sendResponse(res, 200, true, "login successful", { token, user: sanitizeUser(user) });
+    } catch (error) {
+        console.error(error);
+        sendResponse(res, 500, false, "server error");
+    }
+};
+
+exports.verifyEmail = async (req, res) => {
+    try {
+        const { email: rawEmail, code } = req.body || {};
+        
+        if (!rawEmail || !code) {
+            return sendResponse(res, 400, false, "email and code are required");
+        }
+        
+        const email = normalizeEmail(rawEmail);
+        
+        // Find user by email
+        const user = await User.findOne({ email });
+        
+        if (!user || !user.emailVerificationCode) {
+            return sendResponse(res, 400, false, "verification code not found");
+        }
+        
+        // Check if verification code has expired
+        if (!user.emailVerificationExpires || user.emailVerificationExpires < Date.now()) {
+            return sendResponse(res, 400, false, "verification code expired");
+        }
+        
+        // Hash the provided code and compare with stored hash
+        const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+        
+        if (hashedCode !== user.emailVerificationCode) {
+            return sendResponse(res, 400, false, "invalid verification code");
+        }
+        
+        // Verification successful - update user
+        user.emailVerified = true;
+        user.emailVerificationCode = undefined;
+        user.emailVerificationExpires = undefined;
+        await user.save();
+        
+        // Generate JWT token for immediate login after verification
+        if (!process.env.JWT_SECRET) {
+            return sendResponse(res, 500, false, "server misconfiguration: missing JWT secret");
+        }
+        const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn });
+
+        if (String(process.env.JWT_COOKIE).toLowerCase() === 'true') {
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax'
+            });
+        }
+        
+        sendResponse(res, 200, true, "email verified successfully", { token, user: sanitizeUser(user) });
     } catch (error) {
         console.error(error);
         sendResponse(res, 500, false, "server error");
