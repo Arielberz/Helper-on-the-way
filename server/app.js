@@ -24,7 +24,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO with proper CORS settings
 const allowedOrigins = (process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '').split(',').filter(Boolean);
 const corsOptions = {
-    origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5173', 'http://localhost:5174'],
+    origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true
 };

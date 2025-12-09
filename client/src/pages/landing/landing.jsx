@@ -216,7 +216,7 @@ const Landing = () => {
                         </div>
                         <div>
                             <h3 className="text-xl font-bold mb-4">צור קשר</h3>
-                            <p className="text-gray-400">info@helperontheway.com</p>
+                            <p className="text-gray-400">info.helperontheway@gmail.com</p>
                             <p className="text-gray-400">054-123-4567</p>
                         </div>
                     </div>
