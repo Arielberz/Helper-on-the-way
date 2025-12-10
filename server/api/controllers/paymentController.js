@@ -288,7 +288,7 @@ exports.payWithBalance = async (req, res) => {
         }
 
         const amount = request.payment?.offeredAmount || 0;
-        if (amount <= 0) {
+        if (amount < 0) {
             return sendResponse(res, 400, false, "invalid payment amount");
         }
 
@@ -298,75 +298,83 @@ exports.payWithBalance = async (req, res) => {
             return sendResponse(res, 404, false, "user not found");
         }
 
-        // Check if requester has enough balance
-        if ((requester.balance || 0) < amount) {
-            return sendResponse(res, 400, false, "insufficient balance");
+        // Only process balance transfer if amount > 0
+        if (amount > 0) {
+            // Check if requester has enough balance
+            if ((requester.balance || 0) < amount) {
+                return sendResponse(res, 400, false, "insufficient balance");
+            }
+
+            // Deduct from requester's balance
+            requesterBalanceBefore = requester.balance || 0;
+            requester.balance -= amount;
+            await requester.save();
+            console.log('Deducted from requester balance');
         }
 
-        // Deduct from requester's balance
-        requesterBalanceBefore = requester.balance || 0;
-        requester.balance -= amount;
-        await requester.save();
-        console.log('Deducted from requester balance');
-
         try {
-            // Create deduction transaction for requester
-            await Transaction.create({
-                user: requester._id,
-                type: 'payment',
-                amount: -amount,
-                balanceBefore: requesterBalanceBefore,
-                balanceAfter: requester.balance,
-                currency: request.payment?.currency || 'ILS',
-                description: `Payment for help request: ${request.problemType}`,
-                request: request._id,
-                status: 'completed'
-            });
-            console.log('Created requester transaction');
+            // Only create transactions and transfer money if amount > 0
+            if (amount > 0) {
+                // Create deduction transaction for requester
+                await Transaction.create({
+                    user: requester._id,
+                    type: 'payment',
+                    amount: -amount,
+                    balanceBefore: requesterBalanceBefore,
+                    balanceAfter: requester.balance,
+                    currency: request.payment?.currency || 'ILS',
+                    description: `Payment for help request: ${request.problemType}`,
+                    request: request._id,
+                    status: 'completed'
+                });
+                console.log('Created requester transaction');
+
+                // Credit helper's wallet
+                const helper = await User.findById(request.helper);
+                if (helper) {
+                    const helperBalanceBefore = helper.balance || 0;
+                    helper.balance = (helper.balance || 0) + amount;
+                    helper.totalEarnings = (helper.totalEarnings || 0) + amount;
+                    await helper.save();
+                    console.log('Credited helper balance');
+
+                    // Create earning transaction for helper
+                    await Transaction.create({
+                        user: helper._id,
+                        type: 'earning',
+                        amount: amount,
+                        balanceBefore: helperBalanceBefore,
+                        balanceAfter: helper.balance,
+                        currency: request.payment?.currency || 'ILS',
+                        description: `Payment received for helping with ${request.problemType}`,
+                        request: request._id,
+                        status: 'completed'
+                    });
+                    console.log('Created helper transaction');
+
+                    console.log(`✅ Balance payment: ${amount} transferred from ${requester.username} to ${helper.username}`);
+                }
+            } else {
+                console.log('✅ Free help confirmed - no payment transfer needed');
+            }
 
             // Update request payment status
             request.payment = request.payment || {};
             request.payment.isPaid = true;
             request.payment.paidAt = Date.now();
-            request.payment.paymentMethod = 'balance';
+            request.payment.paymentMethod = amount > 0 ? 'balance' : 'free';
             
             // Mark request as completed if requester has confirmed
             if (request.requesterConfirmedAt) {
                 request.status = 'completed';
                 request.completedAt = Date.now();
-                console.log(`✅ Request ${request._id} marked as completed after balance payment`);
+                console.log(`✅ Request ${request._id} marked as completed`);
             }
             
             await request.save();
             console.log('Updated request payment status');
 
-            // Credit helper's wallet
-            const helper = await User.findById(request.helper);
-            if (helper) {
-                const helperBalanceBefore = helper.balance || 0;
-                helper.balance = (helper.balance || 0) + amount;
-                helper.totalEarnings = (helper.totalEarnings || 0) + amount;
-                await helper.save();
-                console.log('Credited helper balance');
-
-                // Create earning transaction for helper
-                await Transaction.create({
-                    user: helper._id,
-                    type: 'earning',
-                    amount: amount,
-                    balanceBefore: helperBalanceBefore,
-                    balanceAfter: helper.balance,
-                    currency: request.payment?.currency || 'ILS',
-                    description: `Payment received for helping with ${request.problemType}`,
-                    request: request._id,
-                    status: 'completed'
-                });
-                console.log('Created helper transaction');
-
-                console.log(`✅ Balance payment: ${amount} transferred from ${requester.username} to ${helper.username}`);
-            }
-
-            sendResponse(res, 200, true, "payment successful", {
+            sendResponse(res, 200, true, amount > 0 ? "payment successful" : "help completion confirmed", {
                 amount,
                 currency: request.payment?.currency || 'ILS',
                 newBalance: requester.balance

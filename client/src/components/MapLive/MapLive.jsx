@@ -9,12 +9,11 @@ import { useHelperRequest } from "../../context/HelperRequestContext";
 import HelpButton from "../helpButton/helpButton";
 import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
 import PendingHelpersMapButton from "../PendingHelpersMapButton/PendingHelpersMapButton";
-import {
-  getInitialLocation,
-  getPreciseLocation,
-  cacheLocation,
-} from "../../utils/locationUtils";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
+import { useUnreadCount } from "../../hooks/useUnreadCount";
+import { useMapLocation } from "../../hooks/useMapLocation";
+import { API_BASE } from "../../utils/apiConfig";
+import { apiFetch } from "../../utils/apiFetch";
 
 // Subcomponents
 import MapRefSetter from "./components/MapRefSetter";
@@ -27,23 +26,24 @@ import RequestMarkers from "./components/RequestMarkers";
 import RoutePolylines from "./components/RoutePolylines";
 import EtaTimer from "./components/EtaTimer";
 
-const API_BASE = import.meta.env.VITE_API_URL;
-
 export default function MapLive() {
-  // Default location: Center of Israel (Tel Aviv area)
-  const DEFAULT_LOCATION = [32.0853, 34.7818];
-
-  const [position, setPosition] = useState(DEFAULT_LOCATION); // המיקום שלך
-  const [locationAccuracy, setLocationAccuracy] = useState("loading"); // 'loading', 'approximate', 'precise', 'default'
-  const [showAccuracyBanner, setShowAccuracyBanner] = useState(false);
-  const [locationError, setLocationError] = useState(null); // Error message for location issues
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
-  const { socket } = useHelperRequest(); // Use shared socket from context
+  const { socket, setEtaForRequest } = useHelperRequest(); // Use shared socket from context
 
   const [confirmationMessage, setConfirmationMessage] = useState(null);
   const [mapRef, setMapRef] = useState(null); // התייחסות למפה
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown menu
-  const [unreadCount, setUnreadCount] = useState(0); // Unread messages count
+  const unreadCount = useUnreadCount(); // Unread messages count from shared hook
+  
+  // Use location hook
+  const {
+    position,
+    locationAccuracy,
+    locationError,
+    showAccuracyBanner,
+    refreshLocation,
+    dismissAccuracyBanner,
+  } = useMapLocation(mapRef);
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
   const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
   const [etaData, setEtaData] = useState(() => {
@@ -61,27 +61,6 @@ export default function MapLive() {
   const location = useLocation();
   const token = getToken(); // Secure token retrieval
 
-  // Fetch unread messages count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!token) return;
-      try {
-        const response = await fetch(`${API_BASE}/api/chat/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUnreadCount(data.data?.unreadCount || 0);
-        }
-      } catch (error) {
-        console.error("Error fetching unread count:", error);
-      }
-    };
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [token]);
-
   // Handle focus location from navigation (when helper clicks "View on Map")
   useEffect(() => {
     const { focusLocation } = location.state || {};
@@ -94,77 +73,7 @@ export default function MapLive() {
     }
   }, [location.state, mapRef]);
 
-  // 1. Get initial location using IP-based geolocation (no permission needed)
-  useEffect(() => {
-    const initializeLocation = async () => {
-      try {
-        // Step 1: Get IP-based location first (instant, no permission)
-        const location = await getInitialLocation();
-        setPosition([location.lat, location.lng]);
-        setLocationAccuracy(location.accuracy);
-
-        // Center map on user's location
-        if (mapRef) {
-          mapRef.setView(
-            [location.lat, location.lng],
-            location.accuracy === "precise" ? 15 : 12
-          );
-        }
-
-        console.log(
-          `Location initialized: ${location.city || "Unknown"}, ${
-            location.country || "Unknown"
-          } (${location.accuracy})`
-        );
-
-        // Step 2: After IP location is set, automatically request GPS permission
-        if (location.accuracy !== "precise") {
-          setShowAccuracyBanner(true);
-
-          // Auto-request precise location after a short delay
-          setTimeout(() => {
-            requestPreciseLocation();
-          }, 1000);
-        }
-      } catch (error) {
-        console.error("Failed to get initial location:", error);
-        setPosition(DEFAULT_LOCATION);
-        setLocationAccuracy("default");
-        setShowAccuracyBanner(true);
-      }
-    };
-
-    initializeLocation();
-  }, [mapRef]);
-
-  // Request precise GPS location (only when user clicks button)
-  const requestPreciseLocation = async () => {
-    try {
-      setLocationAccuracy("loading");
-      const preciseLocation = await getPreciseLocation();
-      setPosition([preciseLocation.lat, preciseLocation.lng]);
-      setLocationAccuracy("precise");
-      setShowAccuracyBanner(false);
-
-      // Center map on precise location
-      if (mapRef) {
-        mapRef.flyTo([preciseLocation.lat, preciseLocation.lng], 15, {
-          duration: 1.5,
-        });
-      }
-
-      // Cache the GPS location for future use
-      cacheLocation(preciseLocation);
-
-      console.log("Precise GPS location acquired");
-    } catch (error) {
-      console.error("GPS location denied or unavailable:", error);
-      setLocationAccuracy("approximate");
-      // Keep showing banner
-    }
-  };
-
-  // 2. Listen to Socket.IO events for real-time updates
+  // Listen to Socket.IO events for real-time updates
   useEffect(() => {
     if (!socket) return;
 
@@ -190,16 +99,6 @@ export default function MapLive() {
       setSharedMarkers((prev) => prev.filter((m) => (m._id || m.id) !== _id));
     };
 
-    // Listen for new chat messages to update unread count
-    const handleNewMessage = (data) => {
-      setUnreadCount((prev) => prev + 1);
-    };
-
-    // Listen for messages being read to reset count
-    const handleMessagesRead = () => {
-      setUnreadCount(0);
-    };
-
     // Listen for ETA updates
     const handleEtaUpdated = (data) => {
       const { requestId, etaSeconds, timestamp } = data;
@@ -209,6 +108,9 @@ export default function MapLive() {
         etaSeconds,
         timestamp
       });
+      
+      const etaMinutes = etaSeconds / 60;
+      
       setEtaData(prev => {
         const newData = {
           ...prev,
@@ -222,21 +124,23 @@ export default function MapLive() {
         }
         return newData;
       });
+      
+      // Also push to context for chat to access
+      // Note: We don't have distance here from socket, but we can get it from routes
+      if (setEtaForRequest) {
+        setEtaForRequest(requestId, { etaMinutes, etaSeconds });
+      }
     };
 
     socket.on("requestAdded", handleRequestAdded);
     socket.on("requestUpdated", handleRequestUpdated);
     socket.on("requestDeleted", handleRequestDeleted);
-    socket.on("new_message", handleNewMessage);
-    socket.on("messages_read", handleMessagesRead);
     socket.on("etaUpdated", handleEtaUpdated);
 
     return () => {
       socket.off("requestAdded", handleRequestAdded);
       socket.off("requestUpdated", handleRequestUpdated);
       socket.off("requestDeleted", handleRequestDeleted);
-      socket.off("new_message", handleNewMessage);
-      socket.off("messages_read", handleMessagesRead);
       socket.off("etaUpdated", handleEtaUpdated);
     };
   }, [socket]);
@@ -323,18 +227,7 @@ export default function MapLive() {
 
     const fetchRequests = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/requests`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        // Check if token expired
-        if (res.status === 401) {
-          clearAuthData();
-          window.location.href = "/login";
-          return;
-        }
+        const res = await apiFetch(`${API_BASE}/api/requests`, {}, navigate);
 
         const json = await res.json();
         console.log("Initial locations loaded:", json.data?.length || 0);
@@ -352,12 +245,15 @@ export default function MapLive() {
         
         setSharedMarkers(uniqueRequests);
       } catch (err) {
+        if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
+          return;
+        }
         // Failed to fetch locations
       }
     };
 
     fetchRequests();
-  }, [token]);
+  }, [token, navigate]);
 
   // 4. Fetch route from OSRM
   const fetchRoute = async (requestId, fromLat, fromLng, toLat, toLng) => {
@@ -384,6 +280,14 @@ export default function MapLive() {
             duration: route.duration
           }
         }));
+        
+        // Push ETA/distance to context for chat
+        const distanceKm = route.distance / 1000; // Convert meters to km
+        const etaMinutes = route.duration / 60; // Convert seconds to minutes
+        
+        if (setEtaForRequest) {
+          setEtaForRequest(requestId, { distanceKm, etaMinutes });
+        }
       }
     } catch (error) {
       console.error('Error fetching route:', error);
@@ -581,8 +485,8 @@ export default function MapLive() {
         showAccuracyBanner={showAccuracyBanner}
         locationAccuracy={locationAccuracy}
         locationError={locationError}
-        requestPreciseLocation={requestPreciseLocation}
-        setShowAccuracyBanner={setShowAccuracyBanner}
+        requestPreciseLocation={refreshLocation}
+        setShowAccuracyBanner={dismissAccuracyBanner}
       />
 
       <MapContainer

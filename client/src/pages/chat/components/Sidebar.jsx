@@ -89,6 +89,10 @@ export default function Sidebar({
                     ? conv.helper?.username
                     : conv.user?.username;
 
+                // Check if request is still open (not completed or cancelled)
+                const requestStatus = conv.request?.status;
+                const isRequestOpen = requestStatus && requestStatus !== 'completed' && requestStatus !== 'cancelled';
+
                 return (
                   <div
                     key={conv._id}
@@ -110,13 +114,15 @@ export default function Sidebar({
                         {conv.request?.problemType || "בקשת עזרה"}
                       </p>
                     </div>
-                    <button
-                      onClick={(e) => handleDeleteConversation(conv._id, e)}
-                      className="ml-2 text-xs text-[var(--text-light)] hover:text-[var(--danger)]"
-                      title="מחק שיחה"
-                    >
-                      ✕
-                    </button>
+                    {!isRequestOpen && (
+                      <button
+                        onClick={(e) => handleDeleteConversation(conv._id, e)}
+                        className="ml-2 text-xs text-[var(--text-light)] hover:text-[var(--danger)]"
+                        title="מחק שיחה"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 );
               })}

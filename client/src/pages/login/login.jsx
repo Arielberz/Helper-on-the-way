@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { setAuthData } from "../../utils/authUtils";
+import { API_BASE } from "../../utils/apiConfig";
 
 
 
@@ -16,7 +17,6 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const API_URL = import.meta.env.VITE_API_URL;
 
     try {
       // Auto-convert phone numbers starting with 05 to +9725 format
@@ -25,7 +25,7 @@ export default function Login() {
         identifierToSend = '+972' + identifierToSend.substring(1);
       }
       
-      const response = await axios.post(`${API_URL}/api/users/login`, {
+      const response = await axios.post(`${API_BASE}/api/users/login`, {
         identifier: identifierToSend,
         password
       });

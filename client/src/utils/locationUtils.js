@@ -1,6 +1,6 @@
 // Location utility functions with IP-based geolocation
 
-const API_BASE = import.meta.env.VITE_API_URL;
+import { API_BASE } from './apiConfig';
 const LOCATION_CACHE_KEY = 'userLocation';
 const LOCATION_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 

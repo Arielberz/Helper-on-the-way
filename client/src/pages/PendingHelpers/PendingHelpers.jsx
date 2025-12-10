@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getToken } from '../../utils/authUtils'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
+import { API_BASE } from '../../utils/apiConfig'
+import { apiFetch } from '../../utils/apiFetch'
+import { PendingHelpersHeader } from './PendingHelpersHeader'
+import { ConfirmedHelper } from './ConfirmedHelper'
+import { HelpersList } from './HelpersList'
 
 export default function PendingHelpers() {
   const [searchParams] = useSearchParams()
@@ -26,12 +28,7 @@ export default function PendingHelpers() {
 
   const fetchRequest = async () => {
     try {
-      const token = getToken()
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
+      const response = await apiFetch(`${API_BASE}/api/requests/${requestId}`, {}, navigate)
 
       if (!response.ok) {
         throw new Error('Failed to fetch request')
@@ -41,6 +38,9 @@ export default function PendingHelpers() {
       setRequest(data.data)
       setLoading(false)
     } catch (err) {
+      if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
+        return;
+      }
       console.error('Error fetching request:', err)
       setError(err.message)
       setLoading(false)
@@ -49,18 +49,18 @@ export default function PendingHelpers() {
 
   const handleConfirmHelper = async (helperId) => {
     setProcessingHelperId(helperId)
+    const token = getToken()
     try {
-      const token = getToken()
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE}/api/requests/${requestId}/confirm-helper`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({ helperId })
-        }
+        },
+        navigate
       )
 
       const data = await response.json()
@@ -180,278 +180,27 @@ export default function PendingHelpers() {
   }
 
   const isAssigned = request.status === 'assigned' || request.status === 'in_progress' || request.status === 'completed'
-  const hasPendingHelpers = request.pendingHelpers && request.pendingHelpers.length > 0
 
   return (
     <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Request Info Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Your Help Request
-          </h1>
-          
-          <div className="space-y-2">
-            <p className="text-gray-700">
-              <span className="font-semibold">Problem:</span>{' '}
-              {request.problemType?.replace(/_/g, ' ') || 'N/A'}
-            </p>
-            <p className="text-gray-700">
-              <span className="font-semibold">Description:</span>{' '}
-              {request.description || 'N/A'}
-            </p>
-            {request.location?.address && (
-              <p className="text-gray-700">
-                <span className="font-semibold">Location:</span>{' '}
-                {request.location.address}
-              </p>
-            )}
-            <p className="text-gray-700">
-              <span className="font-semibold">Status:</span>{' '}
-              <span className={`
-                inline-block px-3 py-1 rounded-full text-sm font-semibold
-                ${request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                ${request.status === 'assigned' ? 'bg-blue-100 text-blue-800' : ''}
-                ${request.status === 'in_progress' ? 'bg-green-100 text-green-800' : ''}
-                ${request.status === 'completed' ? 'bg-gray-100 text-gray-800' : ''}
-              `}>
-                {request.status}
-              </span>
-            </p>
-          </div>
-        </div>
+        <PendingHelpersHeader request={request} />
 
         {/* Confirmed Helper Section */}
-        {isAssigned && request.helper && (
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow-md p-6 mb-6 border-2 border-green-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span className="text-2xl">✅</span>
-              Confirmed Helper
-            </h2>
-            
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="flex items-center gap-4 mb-4">
-                {/* Helper Avatar */}
-                <div className="flex-shrink-0">
-                  {request.helper.avatar ? (
-                    <img 
-                      src={request.helper.avatar} 
-                      alt={request.helper.username}
-                      className="h-20 w-20 rounded-full object-cover shadow-md border-2 border-green-200"
-                    />
-                  ) : (
-                    <div className="h-20 w-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-md">
-                      {request.helper.username.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Helper Info */}
-                <div className="flex-1">
-                  <p className="text-xl font-bold text-gray-900 mb-2">
-                    {request.helper.username}
-                  </p>
-                  {request.helper.averageRating && (
-                    <div className="inline-flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
-                      <span className="text-yellow-600 font-bold text-lg">
-                        {request.helper.averageRating.toFixed(1)}
-                      </span>
-                      <span className="text-yellow-500 text-lg">⭐</span>
-                      <span className="text-sm text-gray-500 ml-1">
-                        ({request.helper.ratingCount || 0})
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={async () => {
-                  const token = localStorage.getItem('token')
-                  try {
-                    // Get or create conversation for this request
-                    const response = await fetch(
-                      `${API_BASE}/api/chat/conversation/request/${request._id}`,
-                      {
-                        headers: {
-                          Authorization: `Bearer ${token}`
-                        }
-                      }
-                    )
-
-                    if (response.ok) {
-                      const chatData = await response.json()
-                      const conversationId = chatData.data?.conversation?._id || chatData.data?._id
-
-                      if (conversationId) {
-                        navigate('/chat', { state: { conversationId } })
-                      } else {
-                        alert('Unable to open chat. Please try again.')
-                      }
-                    } else {
-                      alert('Unable to open chat. Please try again.')
-                    }
-                  } catch (error) {
-                    console.error('Error opening chat:', error)
-                    alert('Unable to open chat. Please try again.')
-                  }
-                }}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-              >
-                💬 Open Chat
-              </button>
-            </div>
-          </div>
-        )}
+        {isAssigned && <ConfirmedHelper request={request} />}
 
         {/* Pending Helpers Section */}
         {!isAssigned && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span className="text-2xl">🤝</span>
-              People Who Want to Help
-              {hasPendingHelpers && (
-                <span className="bg-blue-600 text-white text-sm px-3 py-1 rounded-full">
-                  {request.pendingHelpers.length}
-                </span>
-              )}
-            </h2>
-
-            {!hasPendingHelpers ? (
-              <div className="text-center py-12">
-                <p className="text-6xl mb-4">⏳</p>
-                <p className="text-gray-600 text-lg mb-2">
-                  No helpers yet
-                </p>
-                <p className="text-gray-500 text-sm">
-                  Waiting for someone to respond to your request...
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {request.pendingHelpers.map((pendingHelper) => {
-                  // Safety check for user data
-                  if (!pendingHelper.user || !pendingHelper.user.username) {
-                    return null
-                  }
-
-                  // Calculate distance if helper location is available
-                  const distance = pendingHelper.location && request.location
-                    ? calculateDistance(
-                        request.location.lat,
-                        request.location.lng,
-                        pendingHelper.location.lat,
-                        pendingHelper.location.lng
-                      )
-                    : null
-
-                  return (
-                    <div
-                      key={pendingHelper.user._id}
-                      className="border-2 border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-blue-300 transition-all bg-white"
-                    >
-                      <div className="flex items-start gap-4 mb-4">
-                        {/* Avatar */}
-                        <div className="flex-shrink-0">
-                          {pendingHelper.user.avatar ? (
-                            <img 
-                              src={pendingHelper.user.avatar} 
-                              alt={pendingHelper.user.username}
-                              className="h-16 w-16 rounded-full object-cover shadow-md border-2 border-blue-200"
-                            />
-                          ) : (
-                            <div className="h-16 w-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md">
-                              {pendingHelper.user.username.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">
-                            {pendingHelper.user.username}
-                          </h3>
-                          
-                          {/* Rating */}
-                          {pendingHelper.user.averageRating ? (
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
-                                <span className="text-yellow-600 font-bold text-lg">
-                                  {pendingHelper.user.averageRating.toFixed(1)}
-                                </span>
-                                <span className="text-yellow-500 text-lg">⭐</span>
-                              </div>
-                              <span className="text-sm text-gray-500">
-                                ({pendingHelper.user.ratingCount || 0} reviews)
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-500 mb-2">
-                              No ratings yet
-                            </div>
-                          )}
-
-                          {/* Distance */}
-                          {distance !== null && (
-                            <div className="flex items-center gap-1 text-blue-600 font-medium text-sm mb-2">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                              <span>{distance.toFixed(1)} km away</span>
-                            </div>
-                          )}
-
-                          {/* Request Time */}
-                          <p className="text-gray-400 text-xs">
-                            🕐 Requested {new Date(pendingHelper.requestedAt).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Buttons */}
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleConfirmHelper(pendingHelper.user._id)}
-                          disabled={processingHelperId === pendingHelper.user._id}
-                          className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                          {processingHelperId === pendingHelper.user._id ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Confirming...
-                            </span>
-                          ) : (
-                            '✅ Confirm & Chat'
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleRejectHelper(pendingHelper.user._id)}
-                          disabled={processingHelperId === pendingHelper.user._id}
-                          className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                          {processingHelperId === pendingHelper.user._id ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              Rejecting...
-                            </span>
-                          ) : (
-                            '❌ Reject'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <HelpersList
+            helpers={request.pendingHelpers}
+            requestLocation={request.location}
+            processingHelperId={processingHelperId}
+            onConfirmHelper={handleConfirmHelper}
+            onRejectHelper={handleRejectHelper}
+            calculateDistance={calculateDistance}
+          />
         )}
 
         {/* Back Button */}

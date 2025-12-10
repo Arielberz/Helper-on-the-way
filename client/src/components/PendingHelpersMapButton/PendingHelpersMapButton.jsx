@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useHelperRequest } from '../../context/HelperRequestContext'
 import { getToken } from '../../utils/authUtils'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { API_BASE } from '../../utils/apiConfig'
 
 export default function PendingHelpersMapButton() {
   const [pendingCount, setPendingCount] = useState(0)

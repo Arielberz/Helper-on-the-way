@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRating } from '../../context/RatingContext';
 import { getToken } from '../../utils/authUtils';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE } from '../../utils/apiConfig';
 
 const PendingRatingNotification = () => {
   const [pendingCount, setPendingCount] = useState(0);

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import { getToken } from '../utils/authUtils'
+import { API_BASE } from '../utils/apiConfig'
 
 const HelperRequestContext = createContext()
 
@@ -16,6 +17,7 @@ export const HelperRequestProvider = ({ children }) => {
   const [pendingRequest, setPendingRequest] = useState(null)
   const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
+  const [etaByRequestId, setEtaByRequestId] = useState({})
 
   // Track auth token reactively (updates on storage changes)
   const [authToken, setAuthToken] = useState(getToken())
@@ -32,8 +34,6 @@ export const HelperRequestProvider = ({ children }) => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
     if (!authToken) {
       // Close any existing socket when logging out / no token
       if (socket) {
@@ -100,6 +100,13 @@ export const HelperRequestProvider = ({ children }) => {
     setHelperConfirmed(null)
   }
 
+  const setEtaForRequest = (requestId, etaData) => {
+    setEtaByRequestId(prev => ({
+      ...prev,
+      [requestId]: etaData,
+    }))
+  }
+
   return (
     <HelperRequestContext.Provider 
       value={{ 
@@ -107,7 +114,9 @@ export const HelperRequestProvider = ({ children }) => {
         clearPendingRequest,
         helperConfirmed,
         clearHelperConfirmed,
-        socket
+        socket,
+        etaByRequestId,
+        setEtaForRequest
       }}
     >
       {children}
