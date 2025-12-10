@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHelperRequest } from '../../context/HelperRequestContext'
 import { useNavigate } from 'react-router-dom'
-
-const API_BASE = import.meta.env.VITE_API_URL
+import { API_BASE } from '../../utils/apiConfig'
 
 export default function HelperConfirmedNotification() {
   const { helperConfirmed, clearHelperConfirmed } = useHelperRequest()

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { getToken } from '../../utils/authUtils';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE } from '../../utils/apiConfig';
 
 export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
   const [imagePreview, setImagePreview] = useState(currentAvatar);

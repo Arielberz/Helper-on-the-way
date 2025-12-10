@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { setAuthData } from "../../utils/authUtils";
-
-
+import { API_BASE } from "../../utils/apiConfig";
+import { RegisterForm } from "./RegisterForm";
+import { EmailVerificationModal } from "./EmailVerificationModal";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -12,7 +13,6 @@ export default function Register() {
     password: "",
     confirmPassword: ""
   });
-  const API_URL = import.meta.env.VITE_API_URL;
   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function Register() {
     setVerificationLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/users/verify-email`, {
+      const response = await fetch(`${API_BASE}/api/users/verify-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +162,7 @@ export default function Register() {
         phoneToSend = '+972' + phoneToSend.substring(1);
       }
       
-      const response = await fetch(`${API_URL}/api/users/register`, {
+      const response = await fetch(`${API_BASE}/api/users/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -239,60 +239,20 @@ export default function Register() {
       </button>
 
       {/* Verification Modal */}
-      {showVerification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <div className="text-center mb-6">
-              <div className="text-3xl mb-2">📧</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">אימות אימייל</h2>
-              <p className="text-gray-600">
-                שלחנו קוד אימות בן 6 ספרות לכתובת:
-              </p>
-              <p className="text-blue-600 font-semibold mt-1">{registeredEmail}</p>
-            </div>
-
-            {verificationError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm mb-4">
-                {verificationError}
-              </div>
-            )}
-
-            <form onSubmit={handleVerification} className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">קוד אימות</label>
-                <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none text-center text-2xl tracking-widest disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength="6"
-                  value={verificationCode}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
-                    setVerificationCode(value);
-                    setVerificationError("");
-                  }}
-                  disabled={verificationLoading}
-                  placeholder="000000"
-                  autoFocus
-                />
-              </div>
-
-              <button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                type="submit"
-                disabled={verificationLoading}
-              >
-                {verificationLoading ? "מאמת..." : "אמת ומשך"}
-              </button>
-            </form>
-
-            <div className="mt-4 text-center text-sm text-gray-600">
-              לא קיבלת את הקוד? בדוק בתיקיית הספאם או נסה להירשם שוב
-            </div>
-          </div>
-        </div>
-      )}
+      <EmailVerificationModal
+        isOpen={showVerification}
+        email={registeredEmail}
+        verificationCode={verificationCode}
+        onChangeCode={(e) => {
+          const value = e.target.value.replace(/\D/g, '');
+          setVerificationCode(value);
+          setVerificationError("");
+        }}
+        onSubmit={handleVerification}
+        onCancel={() => setShowVerification(false)}
+        error={verificationError}
+        loading={verificationLoading}
+      />
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
 
@@ -307,87 +267,13 @@ export default function Register() {
 
         <div className="text-3xl font-bold text-center text-gray-800 mb-6">הרשמה</div>
 
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm mb-4">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* שם מלא */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">שם מלא</label>
-            <input 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              type="text" 
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          {/* מספר טלפון */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">מספר טלפון</label>
-            <input 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              type="tel" 
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          {/* אימייל */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">אימייל</label>
-            <input 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              type="email" 
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          {/* סיסמה */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">סיסמה</label>
-            <input 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              type="password" 
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          {/* אימות סיסמה */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">אימות סיסמה</label>
-            <input 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed" 
-              type="password" 
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              disabled={loading}
-            />
-          </div>
-
-          <button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-6" 
-            type="submit" 
-            disabled={loading}
-          >
-            {loading ? "מבצע הרשמה..." : "צור חשבון"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-gray-600">
-          כבר יש לך חשבון?{" "}
-          <Link to="/login" className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors duration-200">להתחברות</Link>
-        </div>
+        <RegisterForm
+          formData={formData}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          error={error}
+          loading={loading}
+        />
 
       </div>
     </div>

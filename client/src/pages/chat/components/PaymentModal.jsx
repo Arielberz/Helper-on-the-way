@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../utils/authUtils";
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_BASE } from '../../../utils/apiConfig';
 
 export default function PaymentModal({
   selectedConversation,
@@ -55,7 +54,7 @@ export default function PaymentModal({
       }
 
       if (!amount || amount <= 0) {
-        alert('סכום התשלום לא תקין');
+        alert('לא ניתן להשתמש ב-PayPal עבור עזרה חינמית. השתמש בכפתור "אשר סיום העזרה"');
         setIsProcessingPayPal(false);
         return;
       }
@@ -91,7 +90,7 @@ export default function PaymentModal({
   const handleBalancePayment = async () => {
     const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
     
-    if (userBalance < amount) {
+    if (amount > 0 && userBalance < amount) {
       alert(`אין לך מספיק יתרה. יתרה נוכחית: ${userBalance}₪`);
       return;
     }
@@ -151,7 +150,9 @@ export default function PaymentModal({
             backgroundColor: "var(--primary)",
           }}
         >
-          <h2 className="text-lg font-bold text-white">💳 תשלום</h2>
+          <h2 className="text-lg font-bold text-white">
+            {(selectedConversation?.request?.payment?.offeredAmount || 0) > 0 ? "💳 תשלום" : "✅ אישור סיום"}
+          </h2>
           <button
             onClick={() => setShowPaymentPopup(false)}
             className="text-white/70 hover:text-white"
@@ -181,7 +182,11 @@ export default function PaymentModal({
           >
             <p className="flex items-center gap-2">
               <span>ℹ️</span>
-              <span>העוזר יקבל את התגמול שלו לאחר אישור התשלום</span>
+              <span>
+                {(selectedConversation?.request?.payment?.offeredAmount || 0) > 0 
+                  ? "העוזר יקבל את התגמול שלו לאחר אישור התשלום"
+                  : "אשר שהעזרה הושלמה בהצלחה"}
+              </span>
             </p>
           </div>
 
@@ -207,14 +212,14 @@ export default function PaymentModal({
         >
           <button
             onClick={handleBalancePayment}
-            disabled={isProcessingBalance || userBalance < (selectedConversation?.request?.payment?.offeredAmount || 0)}
+            disabled={isProcessingBalance || ((selectedConversation?.request?.payment?.offeredAmount || 0) > 0 && userBalance < (selectedConversation?.request?.payment?.offeredAmount || 0))}
             className="w-full px-4 py-3 rounded-lg font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{
               backgroundColor: "#22c55e",
               color: "white",
             }}
           >
-            {isProcessingBalance ? "⏳ מבצע תשלום..." : "💰 שלם מהיתרה"}
+            {isProcessingBalance ? "⏳ מעבד..." : (selectedConversation?.request?.payment?.offeredAmount || 0) > 0 ? "💰 שלם מהיתרה" : "✅ אשר סיום העזרה"}
           </button>
 
           <div className="text-center text-xs" style={{ color: "var(--text-secondary)" }}>

@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 import { useRating } from "../../context/RatingContext";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
+import { API_BASE } from "../../utils/apiConfig";
+import { apiFetch } from "../../utils/apiFetch";
 
 // Components
 import Sidebar from "./components/Sidebar";
@@ -13,14 +15,12 @@ import EmptyState from "./components/EmptyState";
 import ReportModal from "./components/ReportModal";
 import PaymentModal from "./components/PaymentModal";
 
-const API_BASE = import.meta.env.VITE_API_URL;
-
 export default function Chat() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const { socket } = useHelperRequest();
+  const { socket, etaByRequestId } = useHelperRequest();
   const { openRatingModal } = useRating();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,15 +60,8 @@ export default function Chat() {
   // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
-      const token = getToken();
-      if (!token) return;
-
       try {
-        const response = await fetch(`${API_BASE}/api/chat/conversations`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch(`${API_BASE}/api/chat/conversations`, {}, navigate);
 
         if (response.ok) {
           const data = await response.json();
@@ -88,13 +81,13 @@ export default function Chat() {
           } else {
             setLoading(false);
           }
-        } else if (response.status === 401) {
-          clearAuthData();
-          navigate("/login");
         } else {
           setLoading(false);
         }
       } catch (error) {
+        if (error.message === 'NO_TOKEN' || error.message === 'UNAUTHORIZED') {
+          return;
+        }
         console.error("Error fetching conversations:", error);
         setLoading(false);
       }
@@ -215,6 +208,17 @@ export default function Chat() {
 
   const handleDeleteConversation = async (conversationId, e) => {
     e?.stopPropagation();
+
+    // Find the conversation to check request status
+    const conversation = conversations.find(conv => conv._id === conversationId);
+    if (conversation?.request) {
+      const requestStatus = conversation.request.status;
+      // Prevent deletion if request is still open (not completed or cancelled)
+      if (requestStatus !== 'completed' && requestStatus !== 'cancelled') {
+        alert("לא ניתן למחוק שיחה כאשר בקשת העזרה עדיין פעילה. אנא המתן עד להשלמת הבקשה.");
+        return;
+      }
+    }
 
     if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה הזו?")) return;
 
@@ -532,6 +536,29 @@ export default function Chat() {
               setShowReportModal={setShowReportModal}
               setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
+
+            {/* ETA Info Banner */}
+            {(() => {
+              const requestId = selectedConversation?.request?._id;
+              const eta = requestId ? etaByRequestId[requestId] : null;
+              
+              if (eta && eta.etaMinutes !== undefined) {
+                return (
+                  <div className="mx-4 mb-3 mt-3 rounded-xl bg-sky-50 text-sky-800 px-4 py-2 text-sm flex items-center gap-2 shadow-sm border border-sky-100">
+                    <span className="text-lg">🚗</span>
+                    <span className="leading-relaxed">
+                      העוזר נמצא במרחק של כ-
+                      {eta.distanceKm !== undefined && (
+                        <span className="font-semibold"> {eta.distanceKm.toFixed(1)} ק"מ</span>
+                      )}
+                      {eta.distanceKm !== undefined && ', '}
+                      זמן הגעה משוער: <span className="font-semibold">~{Math.round(eta.etaMinutes)} דקות</span>
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Messages */}
             <MessageList
