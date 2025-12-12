@@ -1,7 +1,7 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 /**
- * Send an email using SendGrid SMTP
+ * Send an email using SendGrid HTTP API
  * @param {Object} options - Email options
  * @param {string} options.to - Recipient email address
  * @param {string} options.subject - Email subject
@@ -11,14 +11,12 @@ const nodemailer = require('nodemailer');
  */
 async function sendEmail({ to, subject, text, html }) {
     try {
-        // Log configuration for debugging (mask API key)
         const apiKey = process.env.SENDGRID_API_KEY;
         const fromEmail = process.env.FROM_EMAIL;
-        
+
         console.log('Email config check:', {
             hasApiKey: !!apiKey,
             apiKeyLength: apiKey?.length || 0,
-            apiKeyPrefix: apiKey?.substring(0, 5) || 'N/A',
             fromEmail: fromEmail || 'NOT SET',
             toEmail: to
         });
@@ -30,44 +28,26 @@ async function sendEmail({ to, subject, text, html }) {
             throw new Error('FROM_EMAIL environment variable is not set');
         }
 
-        // Create transporter using SendGrid SMTP
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.sendgrid.net',
-            port: 587,
-            secure: false,
-            auth: {
-                user: 'apikey',
-                pass: apiKey
-            },
-            // Add timeout settings for deployed environments
-            connectionTimeout: 10000, // 10 seconds
-            greetingTimeout: 10000,
-            socketTimeout: 15000
-        });
+        // Set API key
+        sgMail.setApiKey(apiKey);
 
-        // Verify SMTP connection before sending
-        console.log('Verifying SMTP connection...');
-        await transporter.verify();
-        console.log('SMTP connection verified successfully');
-
-        // Send email
-        const info = await transporter.sendMail({
-            from: fromEmail,
+        // Send email via HTTP API (works on Render and other cloud platforms)
+        const msg = {
             to,
+            from: fromEmail,
             subject,
             text,
             html
-        });
+        };
 
-        console.log('Email sent successfully:', info.messageId);
-        return info;
+        const response = await sgMail.send(msg);
+        console.log('Email sent successfully via SendGrid API:', response[0].statusCode);
+        return response;
     } catch (error) {
         console.error('Error sending email:', {
             message: error.message,
             code: error.code,
-            command: error.command,
-            responseCode: error.responseCode,
-            response: error.response
+            response: error.response?.body
         });
         throw error;
     }
