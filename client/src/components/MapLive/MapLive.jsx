@@ -65,7 +65,7 @@ export default function MapLive() {
   useEffect(() => {
     const { focusLocation } = location.state || {};
     if (focusLocation && mapRef) {
-      console.log('🗺️ Centering map on request location:', focusLocation);
+
       // Center and zoom to the request location with animation
       mapRef.flyTo([focusLocation.lat, focusLocation.lng], 16, {
         duration: 1.5,
@@ -79,7 +79,7 @@ export default function MapLive() {
 
     // האזנה לבקשות חדשות מהשרת
     const handleRequestAdded = (request) => {
-      console.log("New request received:", request);
+
       setSharedMarkers((prev) => {
         if (!request?._id) return prev;
         const exists = prev.some((m) => (m._id || m.id) === request._id);
@@ -102,12 +102,7 @@ export default function MapLive() {
     // Listen for ETA updates
     const handleEtaUpdated = (data) => {
       const { requestId, etaSeconds, timestamp } = data;
-      console.log('🕐 ETA Update Received:', {
-        requestId,
-        etaMinutes: Math.round(etaSeconds / 60),
-        etaSeconds,
-        timestamp
-      });
+
       
       const etaMinutes = etaSeconds / 60;
       
@@ -157,15 +152,7 @@ export default function MapLive() {
              req.helper?._id === userId || req.helper === userId)
     );
 
-    console.log('🔍 Active Request Check:', {
-      userId,
-      totalRequests: sharedMarkers.length,
-      assignedRequests: sharedMarkers.filter(r => r.status === 'assigned').length,
-      foundActiveReq: !!activeReq,
-      activeReqId: activeReq?._id,
-      isRequester: activeReq?.user?._id === userId || activeReq?.user === userId,
-      isHelper: activeReq?.helper?._id === userId || activeReq?.helper === userId
-    });
+
 
     setMyActiveRequest(activeReq || null);
 
@@ -181,7 +168,7 @@ export default function MapLive() {
                 longitude: pos.coords.longitude
               };
               socket.emit('helperLocationUpdate', locationData);
-              console.log('📍 Helper location sent to server:', locationData);
+
             },
             (error) => console.warn('❌ Geolocation error:', error.message)
           );
@@ -189,11 +176,11 @@ export default function MapLive() {
       };
 
       // Send immediately on mount and then every 30 seconds
-      console.log('🚗 Starting helper location tracking for request:', activeReq._id);
+
       sendLocationUpdate();
       const interval = setInterval(sendLocationUpdate, 30000);
       return () => {
-        console.log('🛑 Stopping helper location tracking');
+
         clearInterval(interval);
       };
     }
@@ -216,7 +203,7 @@ export default function MapLive() {
         });
         setEtaData(cleanedData);
         localStorage.setItem('etaData', JSON.stringify(cleanedData));
-        console.log('🧹 Cleaned up old ETA data');
+
       }
     }
   }, [sharedMarkers]);
@@ -230,9 +217,7 @@ export default function MapLive() {
         const res = await apiFetch(`${API_BASE}/api/requests`, {}, navigate);
 
         const json = await res.json();
-        console.log("Initial locations loaded:", json.data?.length || 0);
-        console.log("Sample request data:", json.data?.[0]);
-        console.log("Sample user object:", json.data?.[0]?.user);
+
         
         // Deduplicate by _id before setting
         const uniqueRequests = (json.data || []).reduce((acc, req) => {
@@ -312,7 +297,7 @@ export default function MapLive() {
           request.location?.lng && 
           !routes[request._id || request.id]) {
         
-        console.log('Auto-fetching route for assigned request:', request._id);
+
         fetchRoute(
           request._id || request.id,
           position[0],
@@ -347,7 +332,7 @@ export default function MapLive() {
 
   // Handle new request created from HelpButton
   const handleRequestCreated = (newRequest) => {
-    console.log("New request created from HelpButton:", newRequest);
+
 
     // Add to local markers (avoid duplicate since server will also emit requestAdded)
     setSharedMarkers((prev) => {
@@ -378,7 +363,7 @@ export default function MapLive() {
 
   // Open chat with a specific user for a request
   const openChat = async (request) => {
-    console.log("Opening chat for request:", request);
+
 
     if (!token) {
       alert("אנא התחבר כדי לשלוח הודעות");
@@ -449,7 +434,7 @@ export default function MapLive() {
 
       // Now get or create conversation
       const url = `${API_BASE}/api/chat/conversation/request/${request._id}`;
-      console.log("Fetching conversation from:", url);
+
 
       const response = await fetch(url, {
         headers: {
@@ -457,17 +442,15 @@ export default function MapLive() {
         },
       });
 
-      console.log("Response status:", response.status);
-      const data = await response.json();
-      console.log("Response data:", data);
+
 
       if (response.ok) {
         // Navigate to chat page - the chat page will load this conversation
         const conversationId = data.data?.conversation?._id || data.data?._id;
-        console.log("Navigating to chat with conversation ID:", conversationId);
+
         navigate("/chat", { state: { conversationId } });
       } else if (response.status === 401) {
-        console.log("Unauthorized - token expired");
+
         clearAuthData();
         navigate("/login");
       } else {
@@ -553,18 +536,7 @@ export default function MapLive() {
         
         // Debug logging every render
         if (myActiveRequest || Object.keys(etaData).length > 0) {
-          console.log('🎯 ETA Timer Render Check:', {
-            currentUserId,
-            hasActiveRequest: !!myActiveRequest,
-            activeRequestId: myActiveRequest?._id,
-            activeRequestUser: myActiveRequest?.user?._id || myActiveRequest?.user,
-            activeRequestHelper: myActiveRequest?.helper?._id || myActiveRequest?.helper,
-            isRequester,
-            hasEtaData,
-            etaDataKeys: Object.keys(etaData),
-            etaDataForThisRequest: etaData[myActiveRequest?._id],
-            shouldShow
-          });
+
         }
 
         return shouldShow ? (

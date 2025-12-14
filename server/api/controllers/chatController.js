@@ -257,7 +257,7 @@ exports.deleteConversation = async (req, res) => {
     }
 
     // Log the deletion for debugging
-    console.log(`Deleting conversation ${conversationId} with ${conversation.messages.length} messages`);
+
 
     // Delete the entire conversation document (including all embedded messages)
     const result = await Conversation.findByIdAndDelete(conversationId);
@@ -266,7 +266,7 @@ exports.deleteConversation = async (req, res) => {
       return sendResponse(res, 500, false, 'failed to delete conversation');
     }
 
-    console.log(`Successfully deleted conversation ${conversationId}`);
+
     sendResponse(res, 200, true, 'conversation and all messages deleted successfully');
   } catch (error) {
     console.error('Error deleting conversation:', error);

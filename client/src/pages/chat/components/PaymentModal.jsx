@@ -40,12 +40,7 @@ export default function PaymentModal({
       const requestId = selectedConversation?.request?._id;
       const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
       
-      console.log('Creating PayPal order:', { 
-        requestId, 
-        amount, 
-        selectedConversation,
-        hasToken: !!token 
-      });
+
 
       if (!requestId) {
         alert('לא נמצא מזהה בקשה');

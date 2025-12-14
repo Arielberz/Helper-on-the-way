@@ -9,18 +9,17 @@ export default function HelperConfirmedNotification() {
   const [isLoadingChat, setIsLoadingChat] = useState(false)
 
   useEffect(() => {
-    console.log('🎯 HelperConfirmedNotification component mounted')
+
   }, [])
 
   useEffect(() => {
-    console.log('🎯 helperConfirmed changed:', helperConfirmed)
+
     if (helperConfirmed) {
-      console.log('🎉 SHOWING HELPER CONFIRMED NOTIFICATION!')
-      console.log('Helper confirmed data:', helperConfirmed)
+
     }
   }, [helperConfirmed])
 
-  console.log('🎯 HelperConfirmedNotification render, helperConfirmed:', helperConfirmed)
+
 
   const handleOpenChat = async () => {
     if (!helperConfirmed?.request?._id) return
@@ -45,7 +44,7 @@ export default function HelperConfirmedNotification() {
         const conversationId = chatData.data?.conversation?._id || chatData.data?._id
 
         if (conversationId) {
-          console.log('💬 Opening chat with conversation:', conversationId)
+
           // Navigate to chat with conversation ID
           navigate('/chat', { state: { conversationId } })
           clearHelperConfirmed()
@@ -66,11 +65,11 @@ export default function HelperConfirmedNotification() {
   }
 
   if (!helperConfirmed) {
-    console.log('🎯 Not showing notification - helperConfirmed is null')
+
     return null
   }
 
-  console.log('🎯 RENDERING NOTIFICATION MODAL!')
+
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999 p-4 animate-in fade-in duration-300">

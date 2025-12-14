@@ -51,7 +51,7 @@ exports.createReport = async (req, res) => {
 
     await report.save();
 
-    console.log(`New report created: User ${reportedBy} reported user ${reportedUserId} for ${reason}`);
+
 
     sendResponse(res, 201, true, 'Report submitted successfully. We will review it shortly.', { reportId: report._id });
   } catch (error) {

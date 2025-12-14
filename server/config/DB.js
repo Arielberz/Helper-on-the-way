@@ -12,7 +12,7 @@ async function connectDB() {
 			serverSelectionTimeoutMS: 5000,
 			socketTimeoutMS: 45000,
 		});
-		console.log('MongoDB connected successfully');
+		console.info('MongoDB connected successfully');
 	} catch (err) {
 		console.error('MongoDB connection error:', err.message);
 		console.error('Full error:', err);
