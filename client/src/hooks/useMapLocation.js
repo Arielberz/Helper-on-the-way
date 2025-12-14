@@ -31,11 +31,7 @@ export function useMapLocation(mapRef) {
           );
         }
 
-        console.log(
-          `Location initialized: ${location.city || "Unknown"}, ${
-            location.country || "Unknown"
-          } (${location.accuracy})`
-        );
+
 
         // Step 2: After IP location is set, automatically request GPS permission
         if (location.accuracy !== "precise") {
@@ -76,7 +72,7 @@ export function useMapLocation(mapRef) {
       // Cache the GPS location for future use
       cacheLocation(preciseLocation);
 
-      console.log("Precise GPS location acquired");
+
     } catch (error) {
       console.error("GPS location denied or unavailable:", error);
       setLocationAccuracy("approximate");

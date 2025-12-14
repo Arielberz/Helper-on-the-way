@@ -14,12 +14,7 @@ async function sendEmail({ to, subject, text, html }) {
         const apiKey = process.env.SENDGRID_API_KEY;
         const fromEmail = process.env.FROM_EMAIL;
 
-        console.log('Email config check:', {
-            hasApiKey: !!apiKey,
-            apiKeyLength: apiKey?.length || 0,
-            fromEmail: fromEmail || 'NOT SET',
-            toEmail: to
-        });
+
 
         if (!apiKey) {
             throw new Error('SENDGRID_API_KEY environment variable is not set');
@@ -41,7 +36,7 @@ async function sendEmail({ to, subject, text, html }) {
         };
 
         const response = await sgMail.send(msg);
-        console.log('Email sent successfully via SendGrid API:', response[0].statusCode);
+
         return response;
     } catch (error) {
         console.error('Error sending email:', {

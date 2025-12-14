@@ -102,7 +102,7 @@ exports.createRating = async (req, res) => {
             .populate('helper', 'username email averageRating ratingCount')
             .populate('request', 'problemType description');
 
-        console.log(`Rating created: Helper ${updatedHelper.username} now has ${updatedHelper.averageRating} average (${updatedHelper.ratingCount} ratings)`);
+
 
         sendResponse(res, 201, true, 'Rating created successfully', {
             rating: populatedRating,

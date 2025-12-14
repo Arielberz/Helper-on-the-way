@@ -115,7 +115,7 @@ exports.register = async (req, res) => {
                 text: `Your verification code is: ${verificationCode}`,
                 html: `<p>Your verification code is: <b>${verificationCode}</b></p>`
             });
-            console.log('Verification email sent successfully to:', email);
+
         } catch (emailError) {
             console.error('Failed to send verification email:', emailError);
             // Continue with registration even if email fails
@@ -285,7 +285,7 @@ exports.getLocationFromIP = async (req, res) => {
             clientIP = clientIP.replace('::ffff:', '');
         }
 
-        console.log('Getting location for IP:', clientIP);
+
 
         const fetch = (await import('node-fetch')).default;
         
@@ -294,7 +294,7 @@ exports.getLocationFromIP = async (req, res) => {
         // 2. If private/localhost -> Query "me" endpoint (auto-detect public IP)
         
         const useAutoDetect = !clientIP || isPrivateIP(clientIP);
-        console.log(`IP Type: ${useAutoDetect ? 'Private/Local (Auto-detecting public IP)' : 'Public'}`);
+
 
         // Primary Service: ipapi.co (Reliable, JSON format)
         // Fallback Service: ip-api.com (Good free tier, slightly different format)
@@ -305,7 +305,7 @@ exports.getLocationFromIP = async (req, res) => {
                 ? 'https://ipapi.co/json/' 
                 : `https://ipapi.co/${clientIP}/json/`;
                 
-            console.log(`Trying Primary API: ${primaryUrl}`);
+
             const response = await fetch(primaryUrl);
             
             if (response.ok) {
@@ -335,7 +335,7 @@ exports.getLocationFromIP = async (req, res) => {
                 ? 'http://ip-api.com/json/'
                 : `http://ip-api.com/json/${clientIP}`;
                 
-            console.log(`Trying Fallback API: ${fallbackUrl}`);
+
             const response = await fetch(fallbackUrl);
             
             if (response.ok) {
@@ -469,7 +469,7 @@ exports.getWallet = async (req, res) => {
             .limit(50)
             .populate('request', 'problemType description');
 
-        console.log(`Wallet for user ${userId}: Balance=${user.balance}, Earnings=${user.totalEarnings}, Withdrawals=${user.totalWithdrawals}`);
+
 
         sendResponse(res, 200, true, "wallet retrieved successfully", { 
             balance: user.balance || 0,

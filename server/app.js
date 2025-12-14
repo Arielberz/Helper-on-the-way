@@ -12,6 +12,7 @@ const chatRouter = require('./api/routers/chatRouter');
 const paymentRouter = require('./api/routers/paymentRouter');
 const initializeChatSockets = require('./api/sockets/chatSockets');
 const reportRouter = require('./api/routers/reportRouter');
+const { initCleanupJob } = require('./api/services/cleanupService');
 
 const cors = require('cors');
 
@@ -56,7 +57,10 @@ app.use('/api/payments', paymentRouter);
 // Initialize chat sockets (handles all socket connections)
 initializeChatSockets(io);
 
+// Start background cleanup job for expired requests
+initCleanupJob(io);
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.info(`Server is running on port ${PORT}`);
 });

@@ -44,7 +44,7 @@ export default function PayPalSuccess() {
 
         const data = await response.json();
 
-        console.log('Capture response:', { status: response.status, data });
+
 
         if (response.ok && data.success) {
           setStatus('success');

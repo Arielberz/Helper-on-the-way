@@ -32,9 +32,9 @@ const initializeChatSockets = (io) => {
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
-    console.log('✅ New client connected:', socket.id);
+
     socket.join(`user:${socket.userId}`);
-    console.log(`User ${socket.userId} joined their room`);
+
 
     // Note: Removed insecure 'join' and client-sourced global broadcasts ('newRequest', 'toggleHelper')
 
@@ -152,7 +152,7 @@ const initializeChatSockets = (io) => {
     // Helper sends location updates for ETA calculation
     socket.on('helperLocationUpdate', async (data) => {
       try {
-        console.log('📍 Received helperLocationUpdate from socket:', socket.userId, 'Data:', data);
+
         const { requestId, latitude, longitude } = data;
         
         if (!requestId || typeof latitude !== 'number' || typeof longitude !== 'number') {
@@ -198,7 +198,7 @@ const initializeChatSockets = (io) => {
           timestamp: Date.now()
         });
         
-        console.log(`📍 ETA updated for request ${requestId}: ${Math.round(etaSeconds / 60)} minutes`);
+
         
       } catch (error) {
         console.error('Error handling helper location update:', error);
@@ -208,7 +208,7 @@ const initializeChatSockets = (io) => {
 
     // Handle disconnection
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${socket.userId}`);
+
     });
 
     // Error handling for socket-level errors

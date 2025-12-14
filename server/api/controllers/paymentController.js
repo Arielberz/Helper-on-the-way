@@ -12,13 +12,7 @@ async function getPayPalAccessToken() {
     const clientId = process.env.PAYPAL_CLIENT_ID?.trim();
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET?.trim();
     
-    console.log('PayPal Auth:', {
-        hasClientId: !!clientId,
-        hasClientSecret: !!clientSecret,
-        clientIdLength: clientId?.length,
-        clientSecretLength: clientSecret?.length,
-        clientIdPreview: clientId?.substring(0, 10) + '...'
-    });
+
 
     
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -52,13 +46,7 @@ exports.createOrder = async (req, res) => {
         const { requestId, amount, currency = 'ILS' } = req.body;
         const userId = req.userId;
 
-        console.log('Create order request:', { 
-            requestId, 
-            amount, 
-            currency, 
-            userId,
-            body: req.body 
-        });
+
 
         if (!userId) {
             console.error('No userId found in request');
@@ -150,7 +138,7 @@ exports.captureOrder = async (req, res) => {
         const { orderId, requestId } = req.body;
         const userId = req.userId;
 
-        console.log('Capture order request:', { orderId, requestId, userId });
+
 
         if (!userId) {
             console.error('No userId in request');
@@ -206,7 +194,7 @@ exports.captureOrder = async (req, res) => {
         if (request.requesterConfirmedAt) {
             request.status = 'completed';
             request.completedAt = Date.now();
-            console.log(`✅ Request ${request._id} marked as completed after payment`);
+
         }
         
         await request.save();
@@ -233,7 +221,7 @@ exports.captureOrder = async (req, res) => {
                     status: 'completed'
                 });
 
-                console.log(`✅ PayPal payment captured: ${capturedAmount} credited to helper ${helper.username}'s wallet`);
+
             }
         }
 
@@ -259,7 +247,7 @@ exports.payWithBalance = async (req, res) => {
         const { requestId } = req.body;
         const userId = req.userId;
 
-        console.log('Starting balance payment:', { requestId, userId });
+
 
         if (!userId) {
             return sendResponse(res, 401, false, "unauthorized");
@@ -309,7 +297,7 @@ exports.payWithBalance = async (req, res) => {
             requesterBalanceBefore = requester.balance || 0;
             requester.balance -= amount;
             await requester.save();
-            console.log('Deducted from requester balance');
+
         }
 
         try {
@@ -327,7 +315,7 @@ exports.payWithBalance = async (req, res) => {
                     request: request._id,
                     status: 'completed'
                 });
-                console.log('Created requester transaction');
+
 
                 // Credit helper's wallet
                 const helper = await User.findById(request.helper);
@@ -336,7 +324,7 @@ exports.payWithBalance = async (req, res) => {
                     helper.balance = (helper.balance || 0) + amount;
                     helper.totalEarnings = (helper.totalEarnings || 0) + amount;
                     await helper.save();
-                    console.log('Credited helper balance');
+
 
                     // Create earning transaction for helper
                     await Transaction.create({
@@ -350,12 +338,12 @@ exports.payWithBalance = async (req, res) => {
                         request: request._id,
                         status: 'completed'
                     });
-                    console.log('Created helper transaction');
 
-                    console.log(`✅ Balance payment: ${amount} transferred from ${requester.username} to ${helper.username}`);
+
+
                 }
             } else {
-                console.log('✅ Free help confirmed - no payment transfer needed');
+
             }
 
             // Update request payment status
@@ -368,11 +356,11 @@ exports.payWithBalance = async (req, res) => {
             if (request.requesterConfirmedAt) {
                 request.status = 'completed';
                 request.completedAt = Date.now();
-                console.log(`✅ Request ${request._id} marked as completed`);
+
             }
             
             await request.save();
-            console.log('Updated request payment status');
+
 
             sendResponse(res, 200, true, amount > 0 ? "payment successful" : "help completion confirmed", {
                 amount,

@@ -290,7 +290,7 @@ exports.updateRequestStatus = async (req, res) => {
       }
       updateData.helperCompletedAt = Date.now();
       updateData.status = REQUEST_STATUS.ASSIGNED; // Keep assigned until requester confirms
-      console.log(`Helper marked request ${id} as completed, waiting for requester confirmation`);
+
     }
 
     // Handle requester confirmation
@@ -315,11 +315,11 @@ exports.updateRequestStatus = async (req, res) => {
       if (request.payment && request.payment.isPaid) {
         updateData.status = REQUEST_STATUS.COMPLETED;
         updateData.completedAt = Date.now();
-        console.log(`Requester confirmed completion of request ${id} - Payment already received, marking as completed`);
+
       } else {
         // Keep status as CONFIRMED, waiting for payment
         updateData.status = REQUEST_STATUS.CONFIRMED;
-        console.log(`Requester confirmed completion of request ${id} - Waiting for payment`);
+
       }
     }
 
@@ -463,7 +463,7 @@ exports.requestToHelp = async (req, res) => {
         requestLocation: request.location,
         problemType: getProblemTypeLabel(request.problemType)
       });
-      console.log(`Emitted helper request notification to user ${request.user._id}`);
+
     } else {
       console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper request');
     }
@@ -573,7 +573,7 @@ exports.confirmHelper = async (req, res) => {
         request: populatedRequest,
         message: `You've been confirmed to help ${populatedRequest.user.username}!`
       });
-      console.log(`✅ Notified helper ${helperId} of confirmation`);
+
     } else {
       console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper confirmation');
     }
@@ -719,7 +719,7 @@ exports.cancelHelperAssignment = async (req, res) => {
         message: 'The helper has cancelled. Your request is now available again.'
       });
       io.emit('requestUpdated', sanitizeRequest(updatedRequest));
-      console.log(`🔔 Notified requester ${request.user} of helper cancellation`);
+
     }
 
     res.json({
@@ -802,7 +802,7 @@ exports.assignHelper = async (req, res) => {
         request: populatedRequest,
         message: `${helperInfo?.user.username || 'Someone'} wants to help you!`
       });
-      console.log(`🔔 Notified requester ${request.user} of new helper request`);
+
     } else {
       console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper request');
     }
@@ -1006,7 +1006,7 @@ exports.updatePayment = async (req, res) => {
                 status: 'completed'
               });
               
-              console.log(`✅ Credited ${request.payment.offeredAmount} ${request.payment.currency || 'ILS'} to helper ${helper.username}'s wallet (Balance: ${balanceBefore} → ${helper.balance})`);
+
             }
           } catch (walletError) {
             console.error('Error crediting helper wallet:', walletError);
@@ -1179,7 +1179,7 @@ exports.cancelRequest = async (req, res) => {
         request: updatedRequest,
         message: 'המבקש ביטל את הבקשה'
       });
-      console.log(`🔔 Notified helper ${helperId} of request cancellation`);
+
     }
     
     // Emit general update

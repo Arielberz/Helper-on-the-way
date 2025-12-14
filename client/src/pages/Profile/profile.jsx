@@ -30,17 +30,17 @@ const Profile = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       const token = getToken();
-      console.log("Token from auth utils:", token ? "exists" : "missing");
+
 
       try {
-        console.log("Fetching user profile...");
+
         const response = await fetch(`${API_BASE}/api/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        console.log("Response status:", response.status);
+
 
         if (!response.ok) {
           console.error("Failed to fetch user profile");
@@ -49,7 +49,7 @@ const Profile = () => {
         }
 
         const data = await response.json();
-        console.log("User data received:", data);
+
         const userData = data.data?.user || data.user;
         setUser(userData);
         setRating(userData?.averageRating || 0);
@@ -57,8 +57,7 @@ const Profile = () => {
         
         // Get the user ID - the sanitizeUser function returns 'id', not '_id'
         const userId = userData?.id || userData?._id;
-        console.log("User ID for queries:", userId);
-        console.log("Full user object:", userData);
+
         
         // Fetch user's ratings (as helper)
         if (userId && typeof userId === 'string' && userId.length > 0) {
@@ -70,7 +69,7 @@ const Profile = () => {
             });
             if (ratingsResponse.ok) {
               const ratingsData = await ratingsResponse.json();
-              console.log("Ratings data:", ratingsData);
+
               if (ratingsData.success) {
                 setUserRatings(ratingsData.data?.ratings || []);
               }
@@ -91,14 +90,14 @@ const Profile = () => {
         let helperResponse = null;
         
         if (userId && typeof userId === 'string' && userId.length > 0) {
-          console.log("Fetching helper requests for user ID:", userId);
+
           try {
             helperResponse = await fetch(`${API_BASE}/api/requests?helperId=${userId}`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             });
-            console.log("Helper response status:", helperResponse.status);
+
           } catch (error) {
             console.error("Error fetching helper requests:", error);
           }
@@ -110,9 +109,9 @@ const Profile = () => {
         
         if (requestsResponse.ok) {
           const requestsData = await requestsResponse.json();
-          console.log("My requests data:", requestsData);
+
           const requests = requestsData.data || [];
-          console.log("Number of my requests:", requests.length);
+
           setMyRequests(requests);
           
           // Format requests as actions
@@ -138,9 +137,9 @@ const Profile = () => {
         if (helperResponse && helperResponse.ok) {
           try {
             const helperData = await helperResponse.json();
-            console.log("Helper data:", helperData);
+
             const myHelps = helperData.data || [];
-            console.log("Number of times I helped:", myHelps.length);
+
             
             // Format help actions
             const helpActions = myHelps.map(req => ({
@@ -165,7 +164,7 @@ const Profile = () => {
           console.error("Error details:", errorText);
         }
         
-        console.log("Total actions:", allActions.length);
+
         
         // Sort all actions by date (newest first)
         allActions.sort((a, b) => new Date(b.time) - new Date(a.time));

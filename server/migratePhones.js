@@ -24,11 +24,11 @@ async function migratePhoneNumbers() {
     try {
         // Connect to MongoDB
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('Connected to MongoDB');
+        console.info('Connected to MongoDB');
 
         // Find all users
         const users = await User.find({});
-        console.log(`Found ${users.length} users`);
+        console.info(`Found ${users.length} users`);
 
         let updated = 0;
         let skipped = 0;
@@ -38,23 +38,23 @@ async function migratePhoneNumbers() {
             const newPhone = normalizePhone(oldPhone);
 
             if (oldPhone !== newPhone) {
-                console.log(`Updating user ${user.username}: ${oldPhone} -> ${newPhone}`);
+                console.info(`Updating user ${user.username}: ${oldPhone} -> ${newPhone}`);
                 user.phone = newPhone;
                 await user.save();
                 updated++;
             } else {
-                console.log(`Skipping user ${user.username}: phone already normalized (${oldPhone})`);
+                console.info(`Skipping user ${user.username}: phone already normalized (${oldPhone})`);
                 skipped++;
             }
         }
 
-        console.log('\n=== Migration Complete ===');
-        console.log(`Total users: ${users.length}`);
-        console.log(`Updated: ${updated}`);
-        console.log(`Skipped: ${skipped}`);
+        console.info('\n=== Migration Complete ===');
+        console.info(`Total users: ${users.length}`);
+        console.info(`Updated: ${updated}`);
+        console.info(`Skipped: ${skipped}`);
 
         await mongoose.connection.close();
-        console.log('Database connection closed');
+        console.info('Database connection closed');
         process.exit(0);
     } catch (error) {
         console.error('Migration error:', error);

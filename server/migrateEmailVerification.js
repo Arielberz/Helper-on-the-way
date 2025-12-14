@@ -11,9 +11,9 @@ const User = require('./api/models/userModel');
 
 async function migrateEmailVerification() {
     try {
-        console.log('Connecting to MongoDB...');
+        console.info('Connecting to MongoDB...');
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('Connected to MongoDB');
+        console.info('Connected to MongoDB');
 
         // Find all users where emailVerified is not explicitly set to true
         const usersToUpdate = await User.find({
@@ -23,10 +23,10 @@ async function migrateEmailVerification() {
             ]
         });
 
-        console.log(`Found ${usersToUpdate.length} users to update`);
+        console.info(`Found ${usersToUpdate.length} users to update`);
 
         if (usersToUpdate.length === 0) {
-            console.log('No users need updating. All users are already verified.');
+            console.info('No users need updating. All users are already verified.');
             process.exit(0);
         }
 
@@ -43,8 +43,8 @@ async function migrateEmailVerification() {
             }
         );
 
-        console.log(`✓ Successfully updated ${result.modifiedCount} users`);
-        console.log('All existing users are now marked as email verified');
+        console.info(`✓ Successfully updated ${result.modifiedCount} users`);
+        console.info('All existing users are now marked as email verified');
         
         process.exit(0);
     } catch (error) {
