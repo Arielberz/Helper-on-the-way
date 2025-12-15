@@ -58,6 +58,9 @@ export const clearAuthData = () => {
     // Clean up legacy keys if they exist
     localStorage.removeItem('user');
     localStorage.removeItem('authTimestamp');
+    // Clean up ETA data on logout
+    localStorage.removeItem('etaData');
+    localStorage.removeItem('etaByRequestId');
   } catch (error) {
     console.error('Error clearing auth data:', error);
   }

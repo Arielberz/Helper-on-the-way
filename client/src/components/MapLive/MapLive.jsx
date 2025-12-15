@@ -24,7 +24,6 @@ import ConfirmationToast from "./components/ConfirmationToast";
 import UserMarker from "./components/UserMarker";
 import RequestMarkers from "./components/RequestMarkers";
 import RoutePolylines from "./components/RoutePolylines";
-import EtaTimer from "./components/EtaTimer";
 
 export default function MapLive() {
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
@@ -46,15 +45,6 @@ export default function MapLive() {
   } = useMapLocation(mapRef);
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
   const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
-  const [etaData, setEtaData] = useState(() => {
-    // Load ETA data from localStorage on mount
-    try {
-      const saved = localStorage.getItem('etaData');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  }); // ETA data: { requestId: { etaSeconds, updatedAt } }
   const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
 
   const navigate = useNavigate();
@@ -99,44 +89,14 @@ export default function MapLive() {
       setSharedMarkers((prev) => prev.filter((m) => (m._id || m.id) !== _id));
     };
 
-    // Listen for ETA updates
-    const handleEtaUpdated = (data) => {
-      const { requestId, etaSeconds, timestamp } = data;
-
-      
-      const etaMinutes = etaSeconds / 60;
-      
-      setEtaData(prev => {
-        const newData = {
-          ...prev,
-          [requestId]: { etaSeconds, updatedAt: timestamp }
-        };
-        // Persist to localStorage
-        try {
-          localStorage.setItem('etaData', JSON.stringify(newData));
-        } catch (e) {
-          console.warn('Failed to save ETA to localStorage:', e);
-        }
-        return newData;
-      });
-      
-      // Also push to context for chat to access
-      // Note: We don't have distance here from socket, but we can get it from routes
-      if (setEtaForRequest) {
-        setEtaForRequest(requestId, { etaMinutes, etaSeconds });
-      }
-    };
-
     socket.on("requestAdded", handleRequestAdded);
     socket.on("requestUpdated", handleRequestUpdated);
     socket.on("requestDeleted", handleRequestDeleted);
-    socket.on("etaUpdated", handleEtaUpdated);
 
     return () => {
       socket.off("requestAdded", handleRequestAdded);
       socket.off("requestUpdated", handleRequestUpdated);
       socket.off("requestDeleted", handleRequestDeleted);
-      socket.off("etaUpdated", handleEtaUpdated);
     };
   }, [socket]);
 
@@ -185,28 +145,6 @@ export default function MapLive() {
       };
     }
   }, [sharedMarkers, socket]);
-
-  // Clean up old ETA data when requests are completed/cancelled
-  useEffect(() => {
-    const currentEtaKeys = Object.keys(etaData);
-    if (currentEtaKeys.length > 0 && sharedMarkers.length > 0) {
-      const hasStaleData = currentEtaKeys.some(reqId => 
-        !sharedMarkers.find(r => r._id === reqId && r.status === 'assigned')
-      );
-      if (hasStaleData) {
-        const cleanedData = {};
-        currentEtaKeys.forEach(reqId => {
-          const req = sharedMarkers.find(r => r._id === reqId && r.status === 'assigned');
-          if (req) {
-            cleanedData[reqId] = etaData[reqId];
-          }
-        });
-        setEtaData(cleanedData);
-        localStorage.setItem('etaData', JSON.stringify(cleanedData));
-
-      }
-    }
-  }, [sharedMarkers]);
 
   // 3. טעינת כל המיקומים מהשרת פעם אחת בהתחלה
   useEffect(() => {
@@ -269,9 +207,10 @@ export default function MapLive() {
         // Push ETA/distance to context for chat
         const distanceKm = route.distance / 1000; // Convert meters to km
         const etaMinutes = route.duration / 60; // Convert seconds to minutes
+        const etaSeconds = route.duration; // Keep seconds for consistency
         
         if (setEtaForRequest) {
-          setEtaForRequest(requestId, { distanceKm, etaMinutes });
+          setEtaForRequest(requestId, { distanceKm, etaMinutes, etaSeconds });
         }
       }
     } catch (error) {
@@ -525,27 +464,6 @@ export default function MapLive() {
       )}
 
       <ConfirmationToast message={confirmationMessage} />
-
-      {/* ETA Timer - Show only for requester when helper is assigned */}
-      {(() => {
-        const currentUserId = getUserId();
-        const isRequester = myActiveRequest && 
-          (myActiveRequest.user?._id === currentUserId || myActiveRequest.user === currentUserId);
-        const hasEtaData = myActiveRequest && etaData[myActiveRequest._id];
-        const shouldShow = isRequester && hasEtaData;
-        
-        // Debug logging every render
-        if (myActiveRequest || Object.keys(etaData).length > 0) {
-
-        }
-
-        return shouldShow ? (
-          <EtaTimer 
-            etaSeconds={etaData[myActiveRequest._id].etaSeconds}
-            lastUpdated={etaData[myActiveRequest._id].updatedAt}
-          />
-        ) : null;
-      })()}
 
       {/* Pending Helpers Button - Floating (only when you have pending helpers) */}
       {!isNearbyModalOpen && <PendingHelpersMapButton />}

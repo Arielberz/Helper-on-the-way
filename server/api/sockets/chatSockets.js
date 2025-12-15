@@ -3,6 +3,7 @@ const Request = require('../models/requestsModel');
 const verifyToken = require('../utils/verifyToken');
 const chatService = require('../services/chatService');
 const { isConversationParticipant } = require('../utils/conversationUtils');
+const { calculateETAWithDistance } = require('../utils/etaUtils');
 
 // Socket.IO authentication middleware
 const authenticateSocket = (socket, next) => {
@@ -182,22 +183,43 @@ const initializeChatSockets = (io) => {
           return;
         }
         
-        // Calculate ETA using OSRM
-        const etaSeconds = await calculateETA(
+        // Calculate ETA and distance using OSRM
+        const etaResult = await calculateETAWithDistance(
           latitude,
           longitude,
           request.location.lat,
           request.location.lng
         );
         
-        // Emit ETA to requester's personal room
-        io.to(`user:${request.user._id}`).emit('etaUpdated', {
+        const now = Date.now();
+        const etaPayload = {
           requestId,
-          etaSeconds,
-          helperLocation: { latitude, longitude },
-          timestamp: Date.now()
+          etaSeconds: etaResult.etaSeconds,
+          distanceMeters: etaResult.distanceMeters,
+          distanceKm: etaResult.distanceMeters / 1000,
+          etaMinutes: etaResult.etaSeconds / 60,
+          helperLocation: { lat: latitude, lng: longitude },
+          timestamp: now
+        };
+        
+        // Store ETA in database for persistence
+        await Request.findByIdAndUpdate(requestId, {
+          etaData: {
+            etaSeconds: etaResult.etaSeconds,
+            distanceMeters: etaResult.distanceMeters,
+            helperLocation: { lat: latitude, lng: longitude },
+            updatedAt: now
+          }
         });
         
+        // Emit ETA to requester's personal room
+        io.to(`user:${request.user._id}`).emit('etaUpdated', etaPayload);
+        
+        // Also emit to the conversation room so requester gets it even if only in chat
+        const conversation = await Conversation.findOne({ request: requestId });
+        if (conversation) {
+          io.to(`conversation:${conversation._id}`).emit('etaUpdated', etaPayload);
+        }
 
         
       } catch (error) {
@@ -217,37 +239,5 @@ const initializeChatSockets = (io) => {
     });
   });
 };
-
-// Calculate ETA using OSRM routing service
-async function calculateETA(fromLat, fromLng, toLat, toLng) {
-  try {
-    const fetch = (await import('node-fetch')).default;
-    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
-    
-    const response = await fetch(url, { timeout: 5000 });
-    const data = await response.json();
-    
-    if (data.code === 'Ok' && data.routes?.[0]?.duration) {
-      return Math.round(data.routes[0].duration);
-    }
-    
-    throw new Error('OSRM routing failed');
-  } catch (error) {
-    console.warn('OSRM error, using fallback calculation:', error.message);
-    
-    // Fallback: Haversine distance with average city speed
-    const R = 6371; // Earth's radius in km
-    const dLat = (toLat - fromLat) * Math.PI / 180;
-    const dLon = (toLng - fromLng) * Math.PI / 180;
-    const a = Math.sin(dLat/2) ** 2 + 
-              Math.cos(fromLat * Math.PI / 180) * Math.cos(toLat * Math.PI / 180) * 
-              Math.sin(dLon/2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distanceKm = R * c;
-    
-    // Assume 30 km/h average city speed
-    return Math.round((distanceKm / 30) * 3600);
-  }
-}
 
 module.exports = initializeChatSockets;

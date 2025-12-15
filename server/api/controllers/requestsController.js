@@ -1,5 +1,6 @@
 const Request = require('../models/requestsModel');
 const REQUEST_STATUS = require('../constants/requestStatus');
+const { calculateETAWithDistance } = require('../utils/etaUtils');
 
 // Helper: sanitize a request document for real-time broadcasts
 const sanitizeRequest = (reqDoc) => {
@@ -559,6 +560,34 @@ exports.confirmHelper = async (req, res) => {
     request.helper = helperId;
     request.status = REQUEST_STATUS.ASSIGNED;
     request.assignedAt = Date.now();
+
+    // Calculate initial ETA if helper has location
+    const helperLocation = helperInPending.location;
+    const requestLocation = request.location;
+    
+    if (helperLocation?.lat && helperLocation?.lng && requestLocation?.lat && requestLocation?.lng) {
+      try {
+        const etaResult = await calculateETAWithDistance(
+          helperLocation.lat,
+          helperLocation.lng,
+          requestLocation.lat,
+          requestLocation.lng
+        );
+        
+        request.etaData = {
+          etaSeconds: etaResult.etaSeconds,
+          distanceMeters: etaResult.distanceMeters,
+          helperLocation: {
+            lat: helperLocation.lat,
+            lng: helperLocation.lng
+          },
+          updatedAt: Date.now()
+        };
+      } catch (etaError) {
+        console.warn('Failed to calculate initial ETA:', etaError.message);
+      }
+    }
+
     await request.save();
 
     const populatedRequest = await Request.findById(request._id)
@@ -573,6 +602,20 @@ exports.confirmHelper = async (req, res) => {
         request: populatedRequest,
         message: `You've been confirmed to help ${populatedRequest.user.username}!`
       });
+
+      // Also emit initial ETA to the requester immediately
+      if (request.etaData?.etaSeconds) {
+        const etaPayload = {
+          requestId: request._id.toString(),
+          etaSeconds: request.etaData.etaSeconds,
+          distanceMeters: request.etaData.distanceMeters,
+          distanceKm: request.etaData.distanceMeters / 1000,
+          etaMinutes: request.etaData.etaSeconds / 60,
+          helperLocation: request.etaData.helperLocation,
+          timestamp: Date.now()
+        };
+        io.to(`user:${String(request.user)}`).emit('etaUpdated', etaPayload);
+      }
 
     } else {
       console.warn('⚠️ Socket.IO not available, real-time notification skipped for helper confirmation');
