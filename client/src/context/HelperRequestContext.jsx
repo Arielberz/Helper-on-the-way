@@ -17,7 +17,15 @@ export const HelperRequestProvider = ({ children }) => {
   const [pendingRequest, setPendingRequest] = useState(null)
   const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
-  const [etaByRequestId, setEtaByRequestId] = useState({})
+  // Initialize ETA from localStorage for persistence across page refreshes
+  const [etaByRequestId, setEtaByRequestId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('etaByRequestId');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  })
 
   // Track auth token reactively (updates on storage changes)
   const [authToken, setAuthToken] = useState(getToken())
@@ -68,6 +76,31 @@ export const HelperRequestProvider = ({ children }) => {
       } catch (e) {}
     })
 
+    // Listen for ETA updates from server - this ensures ETA is available everywhere
+    newSocket.on('etaUpdated', (data) => {
+      const { requestId, etaSeconds, timestamp } = data;
+      if (requestId && typeof etaSeconds === 'number') {
+        const etaMinutes = etaSeconds / 60;
+        setEtaByRequestId(prev => {
+          const newData = {
+            ...prev,
+            [requestId]: { 
+              etaMinutes, 
+              etaSeconds, 
+              updatedAt: timestamp || Date.now() 
+            }
+          };
+          // Persist to localStorage
+          try {
+            localStorage.setItem('etaByRequestId', JSON.stringify(newData));
+          } catch (e) {
+            console.warn('Failed to save ETA to localStorage:', e);
+          }
+          return newData;
+        });
+      }
+    })
+
     newSocket.on('connect', () => {
 
     })
@@ -101,10 +134,33 @@ export const HelperRequestProvider = ({ children }) => {
   }
 
   const setEtaForRequest = (requestId, etaData) => {
-    setEtaByRequestId(prev => ({
-      ...prev,
-      [requestId]: etaData,
-    }))
+    setEtaByRequestId(prev => {
+      const newData = {
+        ...prev,
+        [requestId]: etaData,
+      };
+      // Persist to localStorage
+      try {
+        localStorage.setItem('etaByRequestId', JSON.stringify(newData));
+      } catch (e) {
+        console.warn('Failed to save ETA to localStorage:', e);
+      }
+      return newData;
+    })
+  }
+
+  // Clear ETA data for a specific request (e.g., when completed)
+  const clearEtaForRequest = (requestId) => {
+    setEtaByRequestId(prev => {
+      const newData = { ...prev };
+      delete newData[requestId];
+      try {
+        localStorage.setItem('etaByRequestId', JSON.stringify(newData));
+      } catch (e) {
+        console.warn('Failed to save ETA to localStorage:', e);
+      }
+      return newData;
+    })
   }
 
   return (
@@ -116,7 +172,8 @@ export const HelperRequestProvider = ({ children }) => {
         clearHelperConfirmed,
         socket,
         etaByRequestId,
-        setEtaForRequest
+        setEtaForRequest,
+        clearEtaForRequest
       }}
     >
       {children}

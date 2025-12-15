@@ -20,7 +20,7 @@ export default function Chat() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const { socket, etaByRequestId } = useHelperRequest();
+  const { socket, etaByRequestId, setEtaForRequest } = useHelperRequest();
   const { openRatingModal } = useRating();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -180,10 +180,25 @@ export default function Chat() {
       }
     };
 
+    // Handle ETA updates from the conversation room
+    const handleEtaUpdated = (data) => {
+      const requestId = selectedConversation?.request?._id;
+      if (data.requestId === requestId && setEtaForRequest) {
+        setEtaForRequest(requestId, {
+          etaMinutes: data.etaMinutes,
+          etaSeconds: data.etaSeconds,
+          distanceKm: data.distanceKm,
+          updatedAt: data.timestamp
+        });
+      }
+    };
+
     socket.on("new_message", handleNewMessage);
+    socket.on("etaUpdated", handleEtaUpdated);
 
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("etaUpdated", handleEtaUpdated);
       socket.emit("leave_conversation", selectedConversation._id);
     };
   }, [socket, selectedConversation]);
@@ -537,29 +552,6 @@ export default function Chat() {
               setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
 
-            {/* ETA Info Banner */}
-            {(() => {
-              const requestId = selectedConversation?.request?._id;
-              const eta = requestId ? etaByRequestId[requestId] : null;
-              
-              if (eta && eta.etaMinutes !== undefined) {
-                return (
-                  <div className="mx-4 mb-3 mt-3 rounded-xl bg-sky-50 text-sky-800 px-4 py-2 text-sm flex items-center gap-2 shadow-sm border border-sky-100">
-                    <span className="text-lg">🚗</span>
-                    <span className="leading-relaxed">
-                      העוזר נמצא במרחק של כ-
-                      {eta.distanceKm !== undefined && (
-                        <span className="font-semibold"> {eta.distanceKm.toFixed(1)} ק"מ</span>
-                      )}
-                      {eta.distanceKm !== undefined && ', '}
-                      זמן הגעה משוער: <span className="font-semibold">~{Math.round(eta.etaMinutes)} דקות</span>
-                    </span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
             {/* Messages */}
             <MessageList
               messages={messages}
@@ -568,6 +560,29 @@ export default function Chat() {
               handleConfirmCompletion={handleConfirmCompletion}
               handleAcceptPayment={handleAcceptPayment}
               isAcceptingPayment={isAcceptingPayment}
+              etaData={(() => {
+                const requestId = selectedConversation?.request?._id;
+                
+                // First check real-time ETA from context (socket updates)
+                const realtimeEta = requestId ? etaByRequestId[requestId] : null;
+                if (realtimeEta && typeof realtimeEta.etaMinutes === 'number' && !isNaN(realtimeEta.etaMinutes) && realtimeEta.etaMinutes >= 0) {
+                  return realtimeEta;
+                }
+                
+                // Fallback: check server-stored ETA from the request
+                const serverEta = selectedConversation?.request?.etaData;
+                if (serverEta && serverEta.etaSeconds != null) {
+                  return {
+                    etaMinutes: serverEta.etaSeconds / 60,
+                    etaSeconds: serverEta.etaSeconds,
+                    distanceKm: serverEta.distanceMeters ? serverEta.distanceMeters / 1000 : undefined,
+                    updatedAt: serverEta.updatedAt
+                  };
+                }
+                
+                return null;
+              })()}
+              requestStatus={selectedConversation?.request?.status}
             />
 
             {/* Input */}

@@ -131,6 +131,25 @@ const requestSchema = new Schema({
     type: Date,
     default: null,
   },
+  // Live ETA tracking data
+  etaData: {
+    etaSeconds: {
+      type: Number,
+      default: null,
+    },
+    distanceMeters: {
+      type: Number,
+      default: null,
+    },
+    helperLocation: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
+    updatedAt: {
+      type: Date,
+      default: null,
+    },
+  },
   payment: {
     offeredAmount: {
       type: Number,
