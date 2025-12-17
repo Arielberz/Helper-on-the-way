@@ -2,6 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/landing/landing";
 import Register from "./pages/register/register";
 import Login from "./pages/login/login";
+import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Home from "./pages/home/home";
 import Chat from "./pages/chat/chat";
 import Rating from "./pages/Rating/Rating";
@@ -29,6 +31,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route
           path="/home"
           element={
