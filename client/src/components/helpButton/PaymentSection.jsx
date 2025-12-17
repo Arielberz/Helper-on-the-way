@@ -12,7 +12,7 @@ export default function PaymentSection({
       <div className="grid grid-cols-3" style={{ gap: 'var(--space-lg)' }}>
         <div className="col-span-2">
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-main)' }}>
-            Amount
+            סכום
           </label>
           <input
             type="number"
@@ -37,7 +37,7 @@ export default function PaymentSection({
         </div>
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-main)' }}>
-            Currency
+            מטבע
           </label>
           <select
             name="currency"

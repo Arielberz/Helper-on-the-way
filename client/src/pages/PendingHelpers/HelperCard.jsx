@@ -48,12 +48,12 @@ export function HelperCard({
                 <span className="text-yellow-500 text-lg">⭐</span>
               </div>
               <span className="text-sm text-gray-500">
-                ({helper.user.ratingCount || 0} reviews)
+                ({helper.user.ratingCount || 0} דירוגים)
               </span>
             </div>
           ) : (
             <div className="text-sm text-gray-500 mb-2">
-              No ratings yet
+              אין דירוגים עדיין
             </div>
           )}
 
@@ -64,13 +64,13 @@ export function HelperCard({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span>{distance.toFixed(1)} km away</span>
+              <span>{distance.toFixed(1)} ק"מ ממך</span>
             </div>
           )}
 
           {/* Request Time */}
           <p className="text-gray-400 text-xs">
-            🕐 Requested {new Date(helper.requestedAt).toLocaleString('en-US', {
+            🕐 בקש {new Date(helper.requestedAt).toLocaleString('he-IL', {
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
@@ -90,10 +90,10 @@ export function HelperCard({
           {isProcessing ? (
             <span className="flex items-center justify-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Confirming...
+              מאשר...
             </span>
           ) : (
-            '✅ Confirm & Chat'
+            '✅ אשר ופתח צאט'
           )}
         </button>
         <button
@@ -104,10 +104,10 @@ export function HelperCard({
           {isProcessing ? (
             <span className="flex items-center justify-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Rejecting...
+              מדחה...
             </span>
           ) : (
-            '❌ Reject'
+            '❌ דחה'
           )}
         </button>
       </div>

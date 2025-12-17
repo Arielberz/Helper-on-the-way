@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { calculateDistance } from './utils/nearbyUtils'
 import NearbyButton from './components/NearbyButton'
 import NearbyRequestsList from './components/NearbyRequestsList'
 import FilterSettingsModal from './components/FilterSettingsModal'
 
-const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, onModalStateChange }) => {
+const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, onModalStateChange, forceOpen = false }) => {
   const [showList, setShowList] = useState(false)
   const [showHelperSettings, setShowHelperSettings] = useState(false)
   const [filterSettings, setFilterSettings] = useState({
@@ -15,15 +15,27 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, onModal
     minPayment: 0
   })
 
+  // Auto-open when forceOpen is enabled
+  useEffect(() => {
+    if (forceOpen) {
+      setShowList(true)
+      onModalStateChange?.(true)
+    }
+  }, [forceOpen])
+
   const closeList = useCallback(() => {
+    // Don't allow closing if forceOpen is enabled
+    if (forceOpen) return
     setShowList(false)
     onModalStateChange?.(false)
-  }, [onModalStateChange])
+  }, [onModalStateChange, forceOpen])
 
   const toggleList = useCallback(() => {
+    // Don't allow toggling if forceOpen is enabled
+    if (forceOpen) return
     setShowList(s => !s)
     onModalStateChange?.(!showList)
-  }, [showList, onModalStateChange])
+  }, [showList, onModalStateChange, forceOpen])
 
   const updateSetting = useCallback((key, value) => {
     setFilterSettings(prev => ({ ...prev, [key]: value }))
@@ -63,7 +75,7 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, onModal
 
   return (
     <>
-      <NearbyButton onClick={toggleList} count={sortedRequests.length} />
+      {!forceOpen && <NearbyButton onClick={toggleList} count={sortedRequests.length} />}
 
       <NearbyRequestsList
         showList={showList}
@@ -73,6 +85,7 @@ const NearbyRequestsButton = ({ requests, userPosition, onSelectRequest, onModal
         hasActiveFilters={hasActiveFilters}
         sortedRequests={sortedRequests}
         onSelectRequest={onSelectRequest}
+        asSidebar={forceOpen}
       />
 
       <FilterSettingsModal

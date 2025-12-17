@@ -32,10 +32,10 @@ export default function HelpRequestModal({
   if (!isOpen) return null;
 
   const steps = [
-    { title: 'Location', description: 'Where do you need help?' },
-    { title: 'Details', description: 'What is the problem?' },
-    { title: 'Photos', description: 'Add a photo (optional)' },
-    { title: 'Offer', description: 'Offer an amount (optional)' }
+    { title: 'מיקום', description: 'איפה אתה צריך עזרה?' },
+    { title: 'פרטים', description: 'מה הבעיה?' },
+    { title: 'תמונות', description: 'הוסף תמונה (אופציונלי)' },
+    { title: 'הצעה', description: 'הצע סכום (אופציונלי)' }
   ];
 
   const handleNext = () => {
@@ -43,11 +43,11 @@ export default function HelpRequestModal({
     
     if (currentStep === 0) {
       if (useCurrentLocation && !currentLocation) {
-        setLocationError('Please wait for GPS location or enter address manually');
+        setLocationError('אנא המתן למיקום GPS או הזן כתובת ידנית');
         return;
       }
       if (!useCurrentLocation && !formData.manualAddress?.trim()) {
-        setLocationError('Please enter a valid address');
+        setLocationError('אנא הזן כתובת תקינה');
         return;
       }
     }
@@ -125,8 +125,8 @@ export default function HelpRequestModal({
              style={{ borderColor: 'rgba(0, 0, 0, 0.05)' }}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-main)' }}>Request Assistance</h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Step {currentStep + 1} of {steps.length}: {steps[currentStep].description}</p>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--text-main)' }}>בקש סיוע</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>שלב {currentStep + 1} מתוך {steps.length}: {steps[currentStep].description}</p>
             </div>
             <button onClick={onClose} className="transition-colors"
                     style={{
@@ -189,7 +189,7 @@ export default function HelpRequestModal({
             }}
             disabled={isSubmitting}
           >
-            {currentStep === 0 ? 'Cancel' : 'Back'}
+            {currentStep === 0 ? 'ביטול' : 'חזרה'}
           </button>
           
           {currentStep === steps.length - 1 ? (
@@ -222,10 +222,10 @@ export default function HelpRequestModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Sending...
+                  שולח...
                 </>
               ) : (
-                'Submit Request'
+                'שלח בקשה'
               )}
             </button>
           ) : (
@@ -252,7 +252,7 @@ export default function HelpRequestModal({
                 e.currentTarget.style.boxShadow = 'var(--shadow-md)';
               }}
             >
-              Next Step
+              שלב הבא
             </button>
           )}
         </div>
