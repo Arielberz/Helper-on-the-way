@@ -24,6 +24,7 @@ const Profile = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [myRequests, setMyRequests] = useState([]);
+  const [ratedRequests, setRatedRequests] = useState(new Set());
   const navigate = useNavigate();
   const maxRating = 5;
 
@@ -114,6 +115,18 @@ const Profile = () => {
 
           setMyRequests(requests);
           
+          // Check which completed requests have been rated
+          const ratedSet = new Set();
+          for (const req of requests) {
+            if (req.status === 'completed' && req.helper && req.requesterConfirmedAt) {
+              const isRated = await checkIfRequestRated(req._id);
+              if (isRated) {
+                ratedSet.add(req._id);
+              }
+            }
+          }
+          setRatedRequests(ratedSet);
+          
           // Format requests as actions
           const requestActions = requests.map(req => ({
             title: `בקשת עזרה: ${getProblemTypeLabel(req.problemType)}`,
@@ -196,6 +209,11 @@ const Profile = () => {
 
   const handleRatingSuccess = () => {
     setShowRatingModal(false);
+    // Add the request to rated set
+    if (selectedRequest?._id) {
+      setRatedRequests(prev => new Set([...prev, selectedRequest._id]));
+    }
+    setSelectedRequest(null);
     // Refresh the page data to show updated ratings
     window.location.reload();
   };
@@ -663,13 +681,20 @@ const Profile = () => {
                   {/* Rating Button for completed requests */}
                   {action.type === 'requested' && action.status === 'completed' && action.helper && action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      <button
-                        onClick={() => handleRateHelper(action)}
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-                      >
-                        <span>⭐</span>
-                        <span>דרג את העוזר</span>
-                      </button>
+                      {ratedRequests.has(action.requestId) ? (
+                        <div className="w-full bg-gray-100 text-gray-600 font-medium py-2 px-3 sm:px-4 rounded-lg flex items-center justify-center gap-2 text-sm sm:text-base">
+                          <span>✅</span>
+                          <span>כבר דירגת את העוזר</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleRateHelper(action)}
+                          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                        >
+                          <span>⭐</span>
+                          <span>דרג את העוזר</span>
+                        </button>
+                      )}
                     </div>
                   )}
 

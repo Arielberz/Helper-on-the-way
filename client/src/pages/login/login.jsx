@@ -111,7 +111,12 @@ export default function Login() {
 
         {/* סיסמה */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">סיסמה</label>
+          <div className="flex justify-between items-center">
+            <label className="block text-sm font-medium text-gray-700">סיסמה</label>
+            <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200">
+              שכחת סיסמה?
+            </Link>
+          </div>
           <input 
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none" 
             type="password" 
