@@ -27,14 +27,14 @@ export function ConfirmedHelper({ request }) {
         if (conversationId) {
           navigate('/chat', { state: { conversationId } });
         } else {
-          alert('Unable to open chat. Please try again.');
+          alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
         }
       } else {
-        alert('Unable to open chat. Please try again.');
+        alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
       }
     } catch (error) {
       console.error('Error opening chat:', error);
-      alert('Unable to open chat. Please try again.');
+      alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
     }
   };
 
@@ -42,7 +42,7 @@ export function ConfirmedHelper({ request }) {
     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow-md p-6 mb-6 border-2 border-green-200">
       <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
         <span className="text-2xl">✅</span>
-        Confirmed Helper
+        עוזר מאושר
       </h2>
       
       <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -85,7 +85,7 @@ export function ConfirmedHelper({ request }) {
           onClick={handleOpenChat}
           className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
         >
-          💬 Open Chat
+          💬 פתח צ'אט
         </button>
       </div>
     </div>

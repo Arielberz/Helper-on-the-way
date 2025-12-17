@@ -50,8 +50,8 @@ export default function ImageUpload({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Tap to add photo</span>
-            <span className="text-xs mt-1" style={{ color: 'var(--text-light)' }}>Max size: 5MB</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>לחץ להוספת תמונה</span>
+            <span className="text-xs mt-1" style={{ color: 'var(--text-light)' }}>גודל מקסימלי: 5MB</span>
           </label>
         </div>
       ) : (
@@ -86,7 +86,7 @@ export default function ImageUpload({
             </svg>
           </button>
           <div className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <strong>Selected:</strong> {selectedImage?.name}
+            <strong>נבחר:</strong> {selectedImage?.name}
           </div>
         </div>
       )}

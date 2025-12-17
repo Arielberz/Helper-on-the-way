@@ -154,7 +154,7 @@ export default function PendingHelpers() {
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-gray-600">טוען...</p>
           </div>
         </div>
       </div>
@@ -166,12 +166,12 @@ export default function PendingHelpers() {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center h-[80vh]">
           <div className="text-center">
-            <p className="text-red-600 mb-4">❌ {error || 'Request not found'}</p>
+            <p className="text-red-600 mb-4">❌ {error || 'הבקשה לא נמצאה'}</p>
             <button
               onClick={() => navigate('/home')}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
             >
-              Back to Home
+              חזרה לדף הבית
             </button>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function PendingHelpers() {
             onClick={() => navigate('/home')}
             className="text-blue-600 hover:text-blue-700 font-semibold"
           >
-            ← Back to Home
+            ← חזרה לדף הבית
           </button>
         </div>
       </div>

@@ -82,7 +82,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
     
     const token = getToken();
     if (!token) {
-      setErrorMessage('You must be logged in to create a help request');
+      setErrorMessage('עליך להיות מחובר כדי ליצור בקשת עזרה');
       return;
     }
 
@@ -90,7 +90,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
     try {
       if (useCurrentLocation) {
         if (!currentLocation && !fallbackLocation) {
-          setLocationError('GPS location is not available. Please wait or enter address manually.');
+          setLocationError('מיקום GPS לא זמין. אנא המתן או הזן כתובת ידנית.');
           return;
         }
         const locationToUse = currentLocation || fallbackLocation;
@@ -103,7 +103,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
         };
       } else {
         if (!formData.manualAddress?.trim()) {
-          setLocationError('Please enter a valid address');
+          setLocationError('אנא הזן כתובת תקינה');
           return;
         }
         setIsSubmitting(true);
@@ -117,7 +117,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
     }
 
     if (!formData.problemType) {
-      setErrorMessage('Please select a problem type');
+      setErrorMessage('אנא בחר סוג בעיה');
       setIsSubmitting(false);
       return;
     }
@@ -128,7 +128,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       const requestData = {
         location,
         problemType: formData.problemType,
-        description: formData.description || 'No description provided'
+        description: formData.description || 'ללא תיאור'
       };
 
       if (formData.offeredAmount && parseFloat(formData.offeredAmount) > 0) {
@@ -146,7 +146,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
       handleCloseModal();
     } catch (error) {
       console.error('Error creating request:', error);
-      setErrorMessage(error.message || 'Failed to create help request. Please try again.');
+      setErrorMessage(error.message || 'שגיאה ביצירת בקשת עזרה. אנא נסה שוב.');
     } finally {
       setIsSubmitting(false);
     }
@@ -174,7 +174,7 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
           e.currentTarget.style.backgroundColor = 'var(--glass-bg-strong)';
         }}
       >
-       Request Help
+       בקש עזרה
       </button>
 
       <HelpRequestModal

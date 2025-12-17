@@ -72,7 +72,7 @@ export default function PendingHelpersMapButton() {
     <button
       onClick={handleClick}
       className="absolute bottom-24 right-6 z-1000 bg-linear-to-br from-blue-500 to-blue-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 animate-bounce"
-      title={`${pendingCount} ${pendingCount === 1 ? 'helper' : 'helpers'} waiting`}
+      title={`${pendingCount} ${pendingCount === 1 ? 'עוזר ממתין' : 'עוזרים ממתינים'}`}
     >
       {/* Icon */}
       <div className="relative">
@@ -102,7 +102,7 @@ export default function PendingHelpersMapButton() {
       {/* Tooltip */}
       <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
         <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
-          {pendingCount} {pendingCount === 1 ? 'helper' : 'helpers'} waiting
+          {pendingCount} {pendingCount === 1 ? 'עוזר ממתין' : 'עוזרים ממתינים'}
           <div className="absolute top-full right-6 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
         </div>
       </div>

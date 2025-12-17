@@ -46,6 +46,7 @@ export default function MapLive() {
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
   const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
   const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
+  const [autoOpenNearby, setAutoOpenNearby] = useState(false); // Auto-open nearby requests panel
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -438,10 +439,52 @@ export default function MapLive() {
         <RoutePolylines routes={routes} />
       </MapContainer>
 
-      {!isNearbyModalOpen && <MapLogo mapRef={mapRef} position={position} />}
+      {/* Logo - Top Left */}
+      <MapLogo mapRef={mapRef} position={position} />
 
-      {/* Nearby Button - Mobile Only (Top Center) */}
+      {/* Auto-open toggle - below logo on left side */}
       {position && (
+        <div className="fixed top-20 left-6 z-1000">
+          <label
+            className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+            style={{
+              background: 'var(--glass-bg-strong)',
+              backdropFilter: 'var(--glass-blur)',
+              borderRadius: 'var(--rounded-xl)',
+              border: '1px solid var(--glass-border)',
+              boxShadow: 'var(--glass-shadow)',
+            }}
+            dir="rtl"
+          >
+            <span className="text-sm font-medium text-gray-700">הצג בקשות באזור</span>
+            <div className="relative inline-block w-11 h-6">
+              <input
+                type="checkbox"
+                checked={autoOpenNearby}
+                onChange={(e) => setAutoOpenNearby(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </div>
+          </label>
+        </div>
+      )}
+
+      {/* Nearby Requests List - Always visible when toggle is ON */}
+      {autoOpenNearby && position && (
+        <div className="fixed top-36 right-6 z-1000">
+          <NearbyRequestsButton
+            requests={sharedMarkers}
+            userPosition={position}
+            onSelectRequest={handleSelectRequest}
+            onModalStateChange={() => {}}
+            forceOpen={true}
+          />
+        </div>
+      )}
+
+      {/* Nearby Button - Mobile Only (Top Center) - Hidden when toggle is ON */}
+      {!autoOpenNearby && position && (
         <div className="fixed top-6 left-0 right-0 flex justify-center z-1000 sm:hidden pointer-events-none">
           <div className="pointer-events-auto">
             <NearbyRequestsButton
@@ -453,6 +496,7 @@ export default function MapLive() {
           </div>
         </div>
       )}
+
 
       {!isNearbyModalOpen && (
         <ProfileMenu
@@ -477,7 +521,7 @@ export default function MapLive() {
             fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
           />
         )}
-        {position && (
+        {!autoOpenNearby && position && (
           <div className="hidden sm:block">
             <NearbyRequestsButton
               requests={sharedMarkers}

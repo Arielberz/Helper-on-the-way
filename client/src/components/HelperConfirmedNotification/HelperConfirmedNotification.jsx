@@ -77,27 +77,27 @@ export default function HelperConfirmedNotification() {
         <div className="text-center">
           <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            You're Confirmed!
+            אושרת!
           </h2>
           <p className="text-gray-600 mb-6">
-            {helperConfirmed.message || "You've been confirmed to help with this request!"}
+            {helperConfirmed.message || "אושרת לעזור בבקשה זו!"}
           </p>
           
           {helperConfirmed.request && (
             <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-              <h3 className="font-semibold text-gray-900 mb-2">Request Details:</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">פרטי הבקשה:</h3>
               <p className="text-sm text-gray-700 mb-1">
-                <span className="font-medium">Requester:</span> {helperConfirmed.request.user?.username || 'N/A'}
+                <span className="font-medium">מבקש:</span> {helperConfirmed.request.user?.username || 'N/A'}
               </p>
               <p className="text-sm text-gray-700 mb-1">
-                <span className="font-medium">Phone:</span> {helperConfirmed.request.user?.phone || 'N/A'}
+                <span className="font-medium">טלפון:</span> {helperConfirmed.request.user?.phone || 'N/A'}
               </p>
               <p className="text-sm text-gray-700 mb-1">
-                <span className="font-medium">Problem:</span> {helperConfirmed.request.problemType?.replace(/_/g, ' ') || 'N/A'}
+                <span className="font-medium">בעיה:</span> {helperConfirmed.request.problemType?.replace(/_/g, ' ') || 'N/A'}
               </p>
               {helperConfirmed.request.location?.address && (
                 <p className="text-sm text-gray-700">
-                  <span className="font-medium">Location:</span> {helperConfirmed.request.location.address}
+                  <span className="font-medium">מיקום:</span> {helperConfirmed.request.location.address}
                 </p>
               )}
             </div>
@@ -111,12 +111,12 @@ export default function HelperConfirmedNotification() {
             >
               {isLoadingChat ? (
                 <>
-                  <span className="animate-spin">⏳</span>
-                  Opening Chat...
+                  <span className="animate-spin">⌛</span>
+                  פותח צ'אט...
                 </>
               ) : (
                 <>
-                  💬 Contact Requester
+                  💬 צור קשר עם המבקש
                 </>
               )}
             </button>
@@ -139,13 +139,13 @@ export default function HelperConfirmedNotification() {
                 }}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
               >
-                📍 View on Map
+                📍 צפה במפה
               </button>
               <button
                 onClick={clearHelperConfirmed}
                 className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition font-medium"
               >
-                Dismiss
+                סגור
               </button>
             </div>
           </div>

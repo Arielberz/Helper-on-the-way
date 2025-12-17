@@ -20,7 +20,7 @@ export default function NearbyButton({ onClick, count }) {
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--glass-bg-strong)'; }}
     >
       <span className="text-xl">📍</span>
-      <span className="text-sm font-medium">{count} Nearby</span>
+      <span className="text-sm font-medium">{count} בקרבת מקום</span>
     </button>
   );
 }

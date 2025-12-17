@@ -91,7 +91,7 @@ export default function ProfileMenu({
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-              <span className="font-medium">Settings</span>
+              <span className="font-medium">פרופיל</span>
             </button>
             <button
               onClick={() => {
@@ -116,7 +116,7 @@ export default function ProfileMenu({
                   d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2h-4l-4 4-4-4H9z"
                 />
               </svg>
-              <span className="font-medium">Chat</span>
+              <span className="font-medium">צ'אט</span>
               {unreadCount > 0 && (
                 <span className="ml-auto h-2.5 w-2.5 bg-red-500 rounded-full" />
               )}
@@ -145,7 +145,7 @@ export default function ProfileMenu({
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                 />
               </svg>
-              <span className="font-medium">Sign Out</span>
+              <span className="font-medium">התנתקות</span>
             </button>
           </div>
         </>
