@@ -38,29 +38,41 @@ export default function Login() {
           // Store userId for Socket.IO room management
           localStorage.setItem("userId", response.data.data.user.id);
         }
-        // Redirect to home page
-        navigate("/home");
+        
+        // Redirect based on user role
+        if (response.data.data.user?.role === 'admin') {
+          navigate("/admin");
+        } else {
+          navigate("/home");
+        }
       }
     } catch (err) {
       const serverMsg = err.response?.data?.message;
+      const isBlocked = err.response?.data?.isBlocked;
       let msg = "שגיאה בהתחברות. נסה שוב.";
-      switch (serverMsg) {
-        case "identifier and password are required":
-          msg = "יש לספק מזהה (אימייל/טלפון) וסיסמה";
-          break;
-        case "please use email or phone to login":
-          msg = "אנא השתמש באימייל או בטלפון להתחברות";
-          break;
-        case "invalid credentials":
-          msg = "פרטי ההתחברות שגויים";
-          break;
-        case "server misconfiguration: missing JWT secret":
-          msg = "שגיאת שרת: הגדרה חסרה. נסו מאוחר יותר";
-          break;
-        default:
-          if (typeof serverMsg === "string" && serverMsg.trim()) {
-            msg = serverMsg;
-          }
+      
+      // If account is blocked, show the exact message from server
+      if (isBlocked || (serverMsg && serverMsg.includes('blocked'))) {
+        msg = serverMsg || "החשבון שלך חסום. אנא צור קשר עם התמיכה למידע נוסף.";
+      } else {
+        switch (serverMsg) {
+          case "identifier and password are required":
+            msg = "יש לספק מזהה (אימייל/טלפון) וסיסמה";
+            break;
+          case "please use email or phone to login":
+            msg = "אנא השתמש באימייל או בטלפון להתחברות";
+            break;
+          case "invalid credentials":
+            msg = "פרטי ההתחברות שגויים";
+            break;
+          case "server misconfiguration: missing JWT secret":
+            msg = "שגיאת שרת: הגדרה חסרה. נסו מאוחר יותר";
+            break;
+          default:
+            if (typeof serverMsg === "string" && serverMsg.trim()) {
+              msg = serverMsg;
+            }
+        }
       }
       setError(msg);
     } finally {

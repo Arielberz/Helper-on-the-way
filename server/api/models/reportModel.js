@@ -36,7 +36,7 @@ const reportSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'reviewed', 'resolved', 'dismissed'],
+    enum: ['pending', 'in_review', 'closed', 'reviewed', 'resolved', 'dismissed'],
     default: 'pending'
   },
   createdAt: {
@@ -48,6 +48,15 @@ const reportSchema = new Schema({
   },
   reviewNotes: {
     type: String
+  },
+  actionTaken: {
+    type: String,
+    enum: ['none', 'warning', 'user_blocked', 'report_dismissed'],
+    default: 'none'
+  },
+  actionTakenBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
   }
 });
 

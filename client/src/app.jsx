@@ -18,6 +18,13 @@ import { HelperRequestProvider } from "./context/HelperRequestContext";
 import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
 import HelperConfirmedNotification from "./components/HelperConfirmedNotification/HelperConfirmedNotification";
 import NotFound from "./pages/notfound/NotFound";
+import AdminLayout from "./pages/Admin/AdminLayout";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+import UsersTable from "./pages/Admin/UsersTable";
+import RequestsTable from "./pages/Admin/RequestsTable";
+import TransactionsTable from "./pages/Admin/TransactionsTable";
+import ReportsTable from "./pages/Admin/ReportsTable";
+import AdminDebugPage from "./pages/Admin/AdminDebugPage";
 
 
 function App() {
@@ -89,6 +96,19 @@ function App() {
             </ProtectedRoute>
           }
         />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<UsersTable />} />
+          <Route path="requests" element={<RequestsTable />} />
+          <Route path="transactions" element={<TransactionsTable />} />
+          <Route path="reports" element={<ReportsTable />} />
+        </Route>
+
+        {/* Admin Debug Page */}
+        <Route path="/admin-debug" element={<AdminDebugPage />} />
+
          <Route path="*" element={<NotFound />} />      </Routes>
       </HelperRequestProvider>
     </RatingProvider>

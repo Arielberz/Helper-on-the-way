@@ -74,6 +74,21 @@ const userSchema = new Schema({
     resetPasswordExpires: {
         type: Date
     },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user'
+    },
+    isBlocked: {
+        type: Boolean,
+        default: false
+    },
+    blockedAt: {
+        type: Date
+    },
+    blockReason: {
+        type: String
+    },
     createdAt: {
         type: Date,
         default: Date.now
