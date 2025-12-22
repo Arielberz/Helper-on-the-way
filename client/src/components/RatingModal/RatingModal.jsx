@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { getToken } from '../../utils/authUtils'
+import { useAlert } from '../../context/AlertContext'
 
 const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
+  const { showAlert } = useAlert()
   const [score, setScore] = useState(0)
   const [hoveredScore, setHoveredScore] = useState(0)
   const [review, setReview] = useState('')
@@ -12,7 +14,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
     e.preventDefault()
     
     if (score === 0) {
-      alert('אנא בחר דירוג')
+      showAlert('אנא בחר דירוג')
       return
     }
 
@@ -35,9 +37,9 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
       if (response.data.success) {
         const updatedHelper = response.data.data?.updatedHelper;
         if (updatedHelper) {
-          alert(`✅ תודה על הדירוג!\n${helperName} כעת בעל דירוג: ${updatedHelper.averageRating.toFixed(1)} ⭐ (${updatedHelper.ratingCount} דירוגים)`);
+          showAlert(`✅ תודה על הדירוג!\n${helperName} כעת בעל דירוג: ${updatedHelper.averageRating.toFixed(1)} ⭐ (${updatedHelper.ratingCount} דירוגים)`);
         } else {
-          alert('✅ תודה על הדירוג!');
+          showAlert('✅ תודה על הדירוג!');
         }
         if (onSubmitSuccess) {
           onSubmitSuccess(response.data.data)
@@ -46,7 +48,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
       }
     } catch (error) {
       console.error('Error submitting rating:', error)
-      alert(error.response?.data?.message || 'שגיאה בשליחת הדירוג')
+      showAlert(error.response?.data?.message || 'שגיאה בשליחת הדירוג')
     } finally {
       setIsSubmitting(false)
     }

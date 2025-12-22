@@ -1,9 +1,10 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAlert } from '../../context/AlertContext';
 import { API_BASE } from '../../utils/apiConfig';
 
 export function ConfirmedHelper({ request }) {
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
 
   if (!request.helper) return null;
 
@@ -27,14 +28,14 @@ export function ConfirmedHelper({ request }) {
         if (conversationId) {
           navigate('/chat', { state: { conversationId } });
         } else {
-          alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
+          showAlert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
         }
       } else {
-        alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
+        showAlert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
       }
     } catch (error) {
       console.error('Error opening chat:', error);
-      alert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
+      showAlert('לא ניתן לפתוח את הצאט. אנא נסה שוב.');
     }
   };
 

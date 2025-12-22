@@ -6,11 +6,13 @@ import { apiFetch } from '../../utils/apiFetch'
 import { PendingHelpersHeader } from './PendingHelpersHeader'
 import { ConfirmedHelper } from './ConfirmedHelper'
 import { HelpersList } from './HelpersList'
+import { useAlert } from '../../context/AlertContext'
 
 export default function PendingHelpers() {
   const [searchParams] = useSearchParams()
   const requestId = searchParams.get('requestId')
   const navigate = useNavigate()
+  const { showAlert } = useAlert()
   
   const [request, setRequest] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -89,16 +91,16 @@ export default function PendingHelpers() {
         } else {
           // Fallback: refresh page if no conversation ID
           await fetchRequest()
-          alert('Helper confirmed! Chat will be available shortly.')
+          showAlert('Helper confirmed! Chat will be available shortly.')
         }
       } else {
         // Fallback: refresh page if chat fetch fails
         await fetchRequest()
-        alert('Helper confirmed! Please navigate to chat manually.')
+        showAlert('Helper confirmed! Please navigate to chat manually.')
       }
     } catch (err) {
       console.error('Error confirming helper:', err)
-      alert(err.message || 'Failed to confirm helper')
+      showAlert(err.message || 'Failed to confirm helper')
       setProcessingHelperId(null)
     }
   }
@@ -130,7 +132,7 @@ export default function PendingHelpers() {
       setProcessingHelperId(null)
     } catch (err) {
       console.error('Error rejecting helper:', err)
-      alert(err.message || 'Failed to reject helper')
+      showAlert(err.message || 'Failed to reject helper')
       setProcessingHelperId(null)
     }
   }

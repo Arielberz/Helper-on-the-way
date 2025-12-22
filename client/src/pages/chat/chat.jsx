@@ -15,7 +15,10 @@ import EmptyState from "./components/EmptyState";
 import ReportModal from "./components/ReportModal";
 import PaymentModal from "./components/PaymentModal";
 
+import { useAlert } from "../../context/AlertContext";
+
 export default function Chat() {
+  const { showAlert, showConfirm } = useAlert();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -230,48 +233,51 @@ export default function Chat() {
       const requestStatus = conversation.request.status;
       // Prevent deletion if request is still open (not completed or cancelled)
       if (requestStatus !== 'completed' && requestStatus !== 'cancelled') {
-        alert("לא ניתן למחוק שיחה כאשר בקשת העזרה עדיין פעילה. אנא המתן עד להשלמת הבקשה.");
+        showAlert("לא ניתן למחוק שיחה כאשר בקשת העזרה עדיין פעילה. אנא המתן עד להשלמת הבקשה.");
         return;
       }
     }
 
-    if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה הזו?")) return;
+    showConfirm(
+      "האם אתה בטוח שברצונך למחוק את השיחה הזו?",
+      async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) return;
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/chat/conversation/${conversationId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-    try {
-      const response = await fetch(
-        `${API_BASE}/api/chat/conversation/${conversationId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          if (response.ok) {
+            setConversations((prev) =>
+              prev.filter((conv) => conv._id !== conversationId)
+            );
+
+            if (selectedConversation?._id === conversationId) {
+              setSelectedConversation(null);
+              setMessages([]);
+            }
+          } else {
+            showAlert("שגיאה במחיקת השיחה");
+          }
+        } catch (error) {
+          console.error("Error deleting conversation:", error);
+          showAlert("שגיאה במחיקת השיחה");
         }
-      );
-
-      if (response.ok) {
-        setConversations((prev) =>
-          prev.filter((conv) => conv._id !== conversationId)
-        );
-
-        if (selectedConversation?._id === conversationId) {
-          setSelectedConversation(null);
-          setMessages([]);
-        }
-      } else {
-        alert("שגיאה במחיקת השיחה");
       }
-    } catch (error) {
-      console.error("Error deleting conversation:", error);
-      alert("שגיאה במחיקת השיחה");
-    }
+    );
   };
 
   const handleSubmitReport = async () => {
     if (!reportReason || !reportDescription.trim()) {
-      alert("אנא בחר סיבה והוסף תיאור");
+      showAlert("אנא בחר סיבה והוסף תיאור");
       return;
     }
 
@@ -299,17 +305,17 @@ export default function Chat() {
       });
 
       if (response.ok) {
-        alert("הדיווח נשלח בהצלחה. אנו נבדוק את הנושא בהקדם.");
+        showAlert("הדיווח נשלח בהצלחה. אנו נבדוק את הנושא בהקדם.");
         setShowReportModal(false);
         setReportReason("");
         setReportDescription("");
       } else {
         const data = await response.json();
-        alert(data.message || "שגיאה בשליחת הדיווח");
+        showAlert(data.message || "שגיאה בשליחת הדיווח");
       }
     } catch (error) {
       console.error("Error submitting report:", error);
-      alert("שגיאה בשליחת הדיווח");
+      showAlert("שגיאה בשליחת הדיווח");
     }
   };
 
@@ -350,14 +356,14 @@ export default function Chat() {
           });
         }
 
-        alert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
+        showAlert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
       } else {
         const responseData = await response.json();
-        alert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
+        showAlert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
       }
     } catch (error) {
       console.error("Error ending treatment:", error);
-      alert("❌ שגיאה בעדכון סטטוס");
+      showAlert("❌ שגיאה בעדכון סטטוס");
     } finally {
       setIsEndingTreatment(false);
     }
@@ -386,11 +392,11 @@ export default function Chat() {
         setShowPaymentPopup(true);
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
+        showAlert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
       }
     } catch (error) {
       console.error("Error confirming completion:", error);
-      alert("❌ שגיאה באישור השלמה");
+      showAlert("❌ שגיאה באישור השלמה");
     }
   };
 
@@ -428,15 +434,11 @@ export default function Chat() {
       // Close popup
       setShowPaymentPopup(false);
       setPaymentRequestId(null);
-      alert("✅ תשלום בוצע בהצלחה!");
+      showAlert("✅ תשלום בוצע בהצלחה!", { onClose: () => window.location.reload() });
 
-      // Refresh to show updated state
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (error) {
       console.error("Error processing payment:", error);
-      alert("❌ שגיאה בעיבוד התשלום");
+      showAlert("❌ שגיאה בעיבוד התשלום");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -491,15 +493,11 @@ export default function Chat() {
         });
       }
 
-      alert("✅ התשלום אושר בהצלחה!");
+      showAlert("✅ התשלום אושר בהצלחה!", { onClose: () => window.location.reload() });
 
-      // Refresh to show updated state
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (error) {
       console.error("Error accepting payment:", error);
-      alert("❌ שגיאה באישור התשלום");
+      showAlert("❌ שגיאה באישור התשלום");
     } finally {
       setIsAcceptingPayment(false);
     }

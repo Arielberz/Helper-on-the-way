@@ -14,6 +14,7 @@ import { useUnreadCount } from "../../hooks/useUnreadCount";
 import { useMapLocation } from "../../hooks/useMapLocation";
 import { API_BASE } from "../../utils/apiConfig";
 import { apiFetch } from "../../utils/apiFetch";
+import { useAlert } from "../../context/AlertContext";
 
 // Subcomponents
 import MapRefSetter from "./components/MapRefSetter";
@@ -26,6 +27,7 @@ import RequestMarkers from "./components/RequestMarkers";
 import RoutePolylines from "./components/RoutePolylines";
 
 export default function MapLive() {
+  const { showAlert } = useAlert();
   const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
   const { socket, setEtaForRequest } = useHelperRequest(); // Use shared socket from context
 
@@ -306,7 +308,7 @@ export default function MapLive() {
 
 
     if (!token) {
-      alert("אנא התחבר כדי לשלוח הודעות");
+      showAlert("אנא התחבר כדי לשלוח הודעות");
       navigate("/login");
       return;
     }
@@ -344,13 +346,11 @@ export default function MapLive() {
         
         if (!helpResponse.ok) {
           const helpData = await helpResponse.json();
-          alert(`❌ ${helpData.message || 'נכשל בשליחת בקשת העזרה'}`);
+          showAlert(`❌ ${helpData.message || 'נכשל בשליחת בקשת העזרה'}`);
           return;
         } else {
           await helpResponse.json();
-          alert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`);
-          // Reload markers to show updated pendingHelpers
-          window.location.reload();
+          showAlert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`, { onClose: () => window.location.reload() });
           return;
         }
       } 
@@ -362,13 +362,13 @@ export default function MapLive() {
       
       // Flow 3: Helper already assigned to someone else
       else if (request.helper) {
-        alert('⚠️ בקשה זו כבר שובצה לעוזר אחר');
+        showAlert('⚠️ בקשה זו כבר שובצה לעוזר אחר');
         return;
       } 
       
       // Flow 4: Request is not pending anymore
       else {
-        alert('⚠️ בקשה זו אינה זמינה יותר');
+        showAlert('⚠️ בקשה זו אינה זמינה יותר');
         return;
       }
 
@@ -382,9 +382,14 @@ export default function MapLive() {
         },
       });
 
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error("Failed to parse chat response", e);
+      }
 
-
-      if (response.ok) {
+      if (response.ok && data) {
         // Navigate to chat page - the chat page will load this conversation
         const conversationId = data.data?.conversation?._id || data.data?._id;
 
@@ -395,10 +400,11 @@ export default function MapLive() {
         navigate("/login");
       } else {
         console.error("Failed to open chat:", data);
-        alert(`לא ניתן לפתוח שיחה: ${data.message || "שגיאה לא ידועה"}`);
+        const errorMessage = data?.message || "שגיאה לא ידועה";
+        showAlert(`לא ניתן לפתוח שיחה: ${errorMessage}`);
       }
     } catch (error) {
-      alert(`שגיאה בפתיחת השיחה: ${error.message}`);
+      showAlert(`שגיאה בפתיחת השיחה: ${error.message}`);
     }
   };
 
