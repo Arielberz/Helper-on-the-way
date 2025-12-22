@@ -7,7 +7,10 @@ import { WalletSummary } from './WalletSummary';
 import { WalletTransactions } from './WalletTransactions';
 import { WithdrawModal } from './WithdrawModal';
 
+import { useAlert } from '../../context/AlertContext';
+
 export default function Wallet() {
+  const { showAlert } = useAlert();
   const navigate = useNavigate();
   const [walletData, setWalletData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,7 @@ export default function Wallet() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('✅ בקשת משיכה נשלחה בהצלחה! הכסף יועבר בתוך 3-5 ימי עסקים');
+        showAlert('✅ בקשת משיכה נשלחה בהצלחה! הכסף יועבר בתוך 3-5 ימי עסקים');
         setShowWithdrawModal(false);
         setWithdrawAmount('');
         setAccountInfo('');

@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { getToken } from '../utils/authUtils';
 import { API_BASE } from '../utils/apiConfig';
 
+import { useAlert } from '../context/AlertContext';
+
 export function useChatPayment(socket, selectedConversation, currentUserId) {
+  const { showAlert } = useAlert();
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
   const [paymentRequestId, setPaymentRequestId] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -43,14 +46,14 @@ export function useChatPayment(socket, selectedConversation, currentUserId) {
           });
         }
 
-        alert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
+        showAlert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
       } else {
         const responseData = await response.json();
-        alert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
+        showAlert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
       }
     } catch (error) {
       console.error("Error ending treatment:", error);
-      alert("❌ שגיאה בעדכון סטטוס");
+      showAlert("❌ שגיאה בעדכון סטטוס");
     } finally {
       setIsEndingTreatment(false);
     }
@@ -79,11 +82,11 @@ export function useChatPayment(socket, selectedConversation, currentUserId) {
         setShowPaymentPopup(true);
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
+        showAlert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
       }
     } catch (error) {
       console.error("Error confirming completion:", error);
-      alert("❌ שגיאה באישור השלמה");
+      showAlert("❌ שגיאה באישור השלמה");
     }
   };
 
@@ -120,7 +123,7 @@ export function useChatPayment(socket, selectedConversation, currentUserId) {
       setPaymentRequestId(null);
     } catch (error) {
       console.error("Error processing payment:", error);
-      alert("❌ שגיאה בעיבוד תשלום");
+      showAlert("❌ שגיאה בעיבוד תשלום");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -155,11 +158,11 @@ export function useChatPayment(socket, selectedConversation, currentUserId) {
         }
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || "לא ניתן לאשר תשלום"}`);
+        showAlert(`❌ שגיאה: ${data.message || "לא ניתן לאשר תשלום"}`);
       }
     } catch (error) {
       console.error("Error accepting payment:", error);
-      alert("❌ שגיאה באישור תשלום");
+      showAlert("❌ שגיאה באישור תשלום");
     } finally {
       setIsAcceptingPayment(false);
     }

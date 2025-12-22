@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiFetch } from '../../utils/apiFetch';
 import { API_BASE } from '../../utils/apiConfig';
+import { useAlert } from '../../context/AlertContext';
 
 function UsersTable() {
+  const { showAlert, showConfirm } = useAlert();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,48 +40,48 @@ function UsersTable() {
   };
 
   const handleBlockUser = async (userId, username) => {
-    if (!confirm(`Are you sure you want to block ${username}?`)) return;
-    
-    const reason = prompt('Please provide a reason for blocking this user:');
-    if (!reason) return;
+    showConfirm(`Are you sure you want to block ${username}?`, async () => {
+      const reason = prompt('Please provide a reason for blocking this user:');
+      if (!reason) return;
 
-    try {
-      const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/block`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-      });
+      try {
+        const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/block`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        });
 
-      const response = await res.json();
-      if (response.success) {
-        alert('User blocked successfully');
-        fetchUsers();
-      } else {
-        alert('Failed to block user: ' + response.message);
+        const response = await res.json();
+        if (response.success) {
+          showAlert('User blocked successfully');
+          fetchUsers();
+        } else {
+          showAlert('Failed to block user: ' + response.message);
+        }
+      } catch (err) {
+        showAlert('Error blocking user: ' + err.message);
       }
-    } catch (err) {
-      alert('Error blocking user: ' + err.message);
-    }
+    });
   };
 
   const handleUnblockUser = async (userId, username) => {
-    if (!confirm(`Are you sure you want to unblock ${username}?`)) return;
+    showConfirm(`Are you sure you want to unblock ${username}?`, async () => {
+      try {
+        const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/unblock`, {
+          method: 'POST',
+        });
 
-    try {
-      const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/unblock`, {
-        method: 'POST',
-      });
-
-      const response = await res.json();
-      if (response.success) {
-        alert('User unblocked successfully');
-        fetchUsers();
-      } else {
-        alert('Failed to unblock user: ' + response.message);
+        const response = await res.json();
+        if (response.success) {
+          showAlert('User unblocked successfully');
+          fetchUsers();
+        } else {
+          showAlert('Failed to unblock user: ' + response.message);
+        }
+      } catch (err) {
+        showAlert('Error unblocking user: ' + err.message);
       }
-    } catch (err) {
-      alert('Error unblocking user: ' + err.message);
-    }
+    });
   };
 
   const filteredUsers = users.filter(

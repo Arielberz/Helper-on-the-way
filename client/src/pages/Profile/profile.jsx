@@ -10,7 +10,10 @@ import { ProfileHeader } from './ProfileHeader';
 import { ProfileContactSection } from './ProfileContactSection';
 import { getProblemTypeLabel, getStatusLabel } from '../../utils/profileUtils';
 
+import { useAlert } from "../../context/AlertContext";
+
 const Profile = () => {
+  const { showAlert, showConfirm } = useAlert();
   const { openRatingModal } = useRating();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -256,74 +259,73 @@ const Profile = () => {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ ${data.message || 'ממתין לאישור המבקש'}`);
-        window.location.reload();
+        showAlert(`✅ ${data.message || 'ממתין לאישור המבקש'}`, { onClose: () => window.location.reload() });
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לעדכן סטטוס'}`);
+        showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לעדכן סטטוס'}`);
       }
     } catch (error) {
       console.error("Error marking as completed:", error);
-      alert('❌ שגיאה בעדכון סטטוס');
+      showAlert('❌ שגיאה בעדכון סטטוס');
     }
   };
 
   const handleHelperCancelAssignment = async (requestId) => {
-    if (!confirm('האם אתה בטוח שברצונך לבטל את העזרה? הבקשה תחזור להיות זמינה לעוזרים אחרים.')) {
-      return;
-    }
-    
-    try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel-help`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        }
-      });
+    showConfirm(
+      'האם אתה בטוח שברצונך לבטל את העזרה? הבקשה תחזור להיות זמינה לעוזרים אחרים.',
+      async () => {
+        try {
+          const token = getToken();
+          const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel-help`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            }
+          });
 
-      if (response.ok) {
-        const data = await response.json();
-        alert(`✅ ${data.message || 'ביטלת את העזרה בהצלחה'}`);
-        window.location.reload();
-      } else {
-        const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לבטל את העזרה'}`);
+          if (response.ok) {
+            const data = await response.json();
+            showAlert(`✅ ${data.message || 'ביטלת את העזרה בהצלחה'}`, { onClose: () => window.location.reload() });
+          } else {
+            const data = await response.json();
+            showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לבטל את העזרה'}`);
+          }
+        } catch (error) {
+          console.error("Error canceling helper assignment:", error);
+          showAlert('❌ שגיאה בביטול העזרה');
+        }
       }
-    } catch (error) {
-      console.error("Error canceling helper assignment:", error);
-      alert('❌ שגיאה בביטול העזרה');
-    }
+    );
   };
 
   const handleCancelRequest = async (requestId) => {
-    if (!confirm('האם אתה בטוח שברצונך לבטל את הבקשה? פעולה זו לא ניתנת לביטול.')) {
-      return;
-    }
-    
-    try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        }
-      });
+    showConfirm(
+      'האם אתה בטוח שברצונך לבטל את הבקשה? פעולה זו לא ניתנת לביטול.',
+      async () => {
+        try {
+          const token = getToken();
+          const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            }
+          });
 
-      if (response.ok) {
-        const data = await response.json();
-        alert(`✅ ${data.message || 'הבקשה בוטלה בהצלחה'}`);
-        window.location.reload();
-      } else {
-        const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לבטל את הבקשה'}`);
+          if (response.ok) {
+            const data = await response.json();
+            showAlert(`✅ ${data.message || 'הבקשה בוטלה בהצלחה'}`, { onClose: () => window.location.reload() });
+          } else {
+            const data = await response.json();
+            showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לבטל את הבקשה'}`);
+          }
+        } catch (error) {
+          console.error("Error canceling request:", error);
+          showAlert('❌ שגיאה בביטול הבקשה');
+        }
       }
-    } catch (error) {
-      console.error("Error canceling request:", error);
-      alert('❌ שגיאה בביטול הבקשה');
-    }
+    );
   };
 
   const handleRequesterConfirmCompletion = async (action) => {
@@ -346,11 +348,11 @@ const Profile = () => {
         }
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר השלמה'}`);
+        showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר השלמה'}`);
       }
     } catch (error) {
       console.error("Error confirming completion:", error);
-      alert('❌ שגיאה באישור השלמה');
+      showAlert('❌ שגיאה באישור השלמה');
     }
   };
 
@@ -380,25 +382,24 @@ const Profile = () => {
             const conversationId = chatData.data?.conversation?._id || chatData.data?._id;
             
             // Navigate to chat with the conversation
-            alert(`✅ ${helperName} confirmed as helper! Opening chat...`);
-            navigate("/chat", { state: { conversationId } });
+            showAlert(`✅ ${helperName} confirmed as helper! Opening chat...`, {
+               onClose: () => navigate("/chat", { state: { conversationId } })
+            });
           } else {
             console.error('Failed to get conversation');
-            alert(`✅ ${helperName} confirmed! But unable to open chat now.`);
-            window.location.reload();
+            showAlert(`✅ ${helperName} confirmed! But unable to open chat now.`, { onClose: () => window.location.reload() });
           }
         } catch (chatError) {
           console.error("Error opening chat:", chatError);
-          alert(`✅ ${helperName} confirmed! But unable to open chat now.`);
-          window.location.reload();
+          showAlert(`✅ ${helperName} confirmed! But unable to open chat now.`, { onClose: () => window.location.reload() });
         }
       } else {
         const data = await response.json();
-        alert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר עוזר'}`);
+        showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר עוזר'}`);
       }
     } catch (error) {
       console.error("Error confirming helper:", error);
-      alert('❌ שגיאה באישור עוזר');
+      showAlert('❌ שגיאה באישור עוזר');
     }
   };
 

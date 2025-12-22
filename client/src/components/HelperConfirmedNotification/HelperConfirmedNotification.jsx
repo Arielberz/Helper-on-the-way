@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useHelperRequest } from '../../context/HelperRequestContext'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../../utils/apiConfig'
+import { useAlert } from '../../context/AlertContext'
 
 export default function HelperConfirmedNotification() {
+  const { showAlert } = useAlert()
   const { helperConfirmed, clearHelperConfirmed } = useHelperRequest()
   const navigate = useNavigate()
   const [isLoadingChat, setIsLoadingChat] = useState(false)
@@ -50,15 +52,15 @@ export default function HelperConfirmedNotification() {
           clearHelperConfirmed()
         } else {
           console.error('No conversation ID received')
-          alert('Unable to open chat. Please try again.')
+          showAlert('Unable to open chat. Please try again.')
         }
       } else {
         console.error('Failed to get conversation:', response.status)
-        alert('Unable to open chat. Please try again.')
+        showAlert('Unable to open chat. Please try again.')
       }
     } catch (error) {
       console.error('Error opening chat:', error)
-      alert('Unable to open chat. Please try again.')
+      showAlert('Unable to open chat. Please try again.')
     } finally {
       setIsLoadingChat(false)
     }

@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { apiFetch } from '../../utils/apiFetch';
 import { API_BASE } from '../../utils/apiConfig';
+import { useAlert } from '../../context/AlertContext';
 
 function ReportsTable() {
+  const { showAlert } = useAlert();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -66,12 +68,13 @@ function ReportsTable() {
         setReviewingReport(null);
         setReviewNotes('');
         setBlockUser(false);
-        alert('Report updated successfully' + (shouldBlockUser ? ' and user blocked' : ''));
+        setBlockUser(false);
+        showAlert('Report updated successfully' + (shouldBlockUser ? ' and user blocked' : ''));
       } else {
-        alert('Failed to update report: ' + response.message);
+        showAlert('Failed to update report: ' + response.message);
       }
     } catch (err) {
-      alert('Error updating report: ' + err.message);
+      showAlert('Error updating report: ' + err.message);
     } finally {
       setUpdating(null);
     }
@@ -79,7 +82,7 @@ function ReportsTable() {
 
   const handleSubmitReview = () => {
     if (blockUser && !reviewNotes.trim()) {
-      alert('Please provide review notes when blocking a user');
+      showAlert('Please provide review notes when blocking a user');
       return;
     }
     handleUpdateStatus(reviewingReport._id, 'resolved', reviewNotes, blockUser);

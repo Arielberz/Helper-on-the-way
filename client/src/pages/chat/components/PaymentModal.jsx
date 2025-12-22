@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { getToken } from "../../../utils/authUtils";
 import { API_BASE } from '../../../utils/apiConfig';
 
+import { useAlert } from "../../../context/AlertContext";
+
 export default function PaymentModal({
   selectedConversation,
   handlePaymentConfirm,
   isProcessingPayment,
   setShowPaymentPopup,
 }) {
+  const { showAlert } = useAlert();
   const [isProcessingPayPal, setIsProcessingPayPal] = useState(false);
   const [isProcessingBalance, setIsProcessingBalance] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
@@ -43,13 +46,13 @@ export default function PaymentModal({
 
 
       if (!requestId) {
-        alert('לא נמצא מזהה בקשה');
+        showAlert('לא נמצא מזהה בקשה');
         setIsProcessingPayPal(false);
         return;
       }
 
       if (!amount || amount <= 0) {
-        alert('לא ניתן להשתמש ב-PayPal עבור עזרה חינמית. השתמש בכפתור "אשר סיום העזרה"');
+        showAlert('לא ניתן להשתמש ב-PayPal עבור עזרה חינמית. השתמש בכפתור "אשר סיום העזרה"');
         setIsProcessingPayPal(false);
         return;
       }
@@ -72,12 +75,12 @@ export default function PaymentModal({
         // Redirect to PayPal
         window.location.href = data.data.approvalUrl;
       } else {
-        alert(data.message || 'שגיאה ביצירת תשלום PayPal');
+        showAlert(data.message || 'שגיאה ביצירת תשלום PayPal');
         setIsProcessingPayPal(false);
       }
     } catch (error) {
       console.error('Error creating PayPal order:', error);
-      alert('שגיאה ביצירת תשלום');
+      showAlert('שגיאה ביצירת תשלום');
       setIsProcessingPayPal(false);
     }
   };
@@ -86,7 +89,7 @@ export default function PaymentModal({
     const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
     
     if (amount > 0 && userBalance < amount) {
-      alert(`אין לך מספיק יתרה. יתרה נוכחית: ${userBalance}₪`);
+      showAlert(`אין לך מספיק יתרה. יתרה נוכחית: ${userBalance}₪`);
       return;
     }
 
@@ -107,15 +110,14 @@ export default function PaymentModal({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert('התשלום בוצע בהצלחה!');
         setShowPaymentPopup(false);
-        window.location.reload();
+        showAlert('התשלום בוצע בהצלחה!', { onClose: () => window.location.reload() });
       } else {
-        alert(data.message || 'שגיאה בביצוע התשלום');
+        showAlert(data.message || 'שגיאה בביצוע התשלום');
       }
     } catch (error) {
       console.error('Error paying with balance:', error);
-      alert('שגיאה בביצוע התשלום');
+      showAlert('שגיאה בביצוע התשלום');
     } finally {
       setIsProcessingBalance(false);
     }
