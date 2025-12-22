@@ -58,7 +58,8 @@ function sanitizeUser(user) {
         balance: user.balance || 0,
         totalEarnings: user.totalEarnings || 0,
         totalWithdrawals: user.totalWithdrawals || 0,
-        emailVerified: user.emailVerified || false
+        emailVerified: user.emailVerified || false,
+        role: user.role || 'user'
     };
 }
 
@@ -95,6 +96,12 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, isNaN(saltRounds) ? 10 : saltRounds);
 
         const newUser = new User({ username, email, password: hashedPassword, phone });
+        
+        // Check if this is the admin email
+        const adminEmail = process.env.ADMIN_EMAIL || 'info.helperontheway@gmail.com';
+        if (email === adminEmail.toLowerCase()) {
+            newUser.role = 'admin';
+        }
         
         // Generate verification code
         const verificationCode = generateCode(6);
@@ -154,6 +161,12 @@ exports.login = async (req, res) => {
         if (!user) {
             return sendResponse(res, 400, false, "invalid credentials");
         }
+        
+        // Check if user is blocked
+        if (user.isBlocked) {
+            return sendResponse(res, 403, false, `החשבון שלך נחסם. סיבה: ${user.blockReason || 'הפרת תנאי השימוש'}. אנא צור קשר עם התמיכה למידע נוסף.`, null, { isBlocked: true });
+        }
+        
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return sendResponse(res, 400, false, "invalid credentials");
