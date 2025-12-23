@@ -12,6 +12,7 @@ import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
 import PayPalSuccess from "./pages/PayPal/PayPalSuccess";
 import PayPalCancel from "./pages/PayPal/PayPalCancel";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute/PublicRoute";
 import { RatingProvider } from "./context/RatingContext";
 import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
 import { HelperRequestProvider } from "./context/HelperRequestContext";
@@ -35,10 +36,38 @@ function App() {
         <GlobalHelperRequestModal />
         <HelperConfirmedNotification />
         <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route 
+          path="/" 
+          element={
+            <PublicRoute>
+              <Landing />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/login" 
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/register" 
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          } 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={
+            <PublicRoute>
+              <ForgotPassword />
+            </PublicRoute>
+          } 
+        />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route
           path="/home"
