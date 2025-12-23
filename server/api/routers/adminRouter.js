@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../authMiddleware');
 const { adminOnly } = require('../authMiddleware');
 const adminController = require('../controllers/adminController');
+const contactController = require('../controllers/contactController');
 
 // All admin routes require authentication and admin role
 router.use(authMiddleware);
@@ -28,5 +29,11 @@ router.patch('/reports/:id', adminController.updateReportStatus);
 
 // Additional statistics
 router.get('/stats', adminController.getStats);
+router.get('/commission-stats', adminController.getCommissionStats);
+
+// Contact message management
+router.get('/contact-messages', contactController.getAllContactMessages);
+router.patch('/contact-messages/:id/read', contactController.markMessageAsRead);
+router.delete('/contact-messages/:id', contactController.deleteContactMessage);
 
 module.exports = router;

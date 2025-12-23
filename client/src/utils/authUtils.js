@@ -22,13 +22,48 @@ export const setAuthData = (token, user) => {
 };
 
 /**
- * Get stored token
- * @returns {string|null} Token or null if not found
+ * Check if token is expired (basic client-side check)
+ * @param {string} token - JWT token
+ * @returns {boolean} True if token appears expired
+ */
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+  
+  try {
+    // Decode JWT payload (middle part)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    
+    // Check if exp exists and if current time is past expiration
+    if (payload.exp) {
+      const currentTime = Math.floor(Date.now() / 1000);
+      return currentTime > payload.exp;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking token expiration:', error);
+    return true; // Assume expired if we can't decode
+  }
+};
+
+/**
+ * Get stored token (validates expiration)
+ * @returns {string|null} Token or null if not found/expired
  */
 export const getToken = () => {
   try {
     const token = localStorage.getItem('token');
-    return token || null;
+    
+    if (!token) return null;
+    
+    // Check if token is expired
+    if (isTokenExpired(token)) {
+      console.log('Token expired, clearing auth data');
+      clearAuthData();
+      return null;
+    }
+    
+    return token;
   } catch (error) {
     console.error('Error getting token:', error);
     return null;

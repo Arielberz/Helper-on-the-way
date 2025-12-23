@@ -53,7 +53,7 @@ function RequestsTable() {
   };
 
   const filteredRequests = requests.filter((request) =>
-    request.userId?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    request.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     request.problemType?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -127,17 +127,17 @@ function RequestsTable() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        {request.userId?.avatar ? (
-                          <img className="h-10 w-10 rounded-full" src={request.userId.avatar} alt="" />
+                        {request.user?.avatar ? (
+                          <img className="h-10 w-10 rounded-full" src={request.user.avatar} alt="" />
                         ) : (
                           <div className="h-10 w-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
-                            {request.userId?.username?.charAt(0).toUpperCase() || '?'}
+                            {request.user?.username?.charAt(0).toUpperCase() || '?'}
                           </div>
                         )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-white">
-                          {request.userId?.username || 'Unknown'}
+                          {request.user?.username || 'Unknown'}
                         </div>
                       </div>
                     </div>
@@ -147,7 +147,7 @@ function RequestsTable() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-300">
-                      {request.helperId?.username || 'Not assigned'}
+                      {request.helper?.username || 'Not assigned'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

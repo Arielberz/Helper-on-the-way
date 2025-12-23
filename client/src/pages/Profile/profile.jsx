@@ -259,7 +259,12 @@ const Profile = () => {
 
       if (response.ok) {
         const data = await response.json();
-        showAlert(`✅ ${data.message || 'ממתין לאישור המבקש'}`, { onClose: () => window.location.reload() });
+        const request = data.data;
+        const hasPayment = request?.payment?.offeredAmount > 0;
+        const message = hasPayment 
+          ? (data.message || 'ממתין לאישור המבקש')
+          : 'העזרה הסתיימה בהצלחה! ממתין לאישור המבקש';
+        showAlert(`✅ ${message}`, { onClose: () => window.location.reload() });
       } else {
         const data = await response.json();
         showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לעדכן סטטוס'}`);

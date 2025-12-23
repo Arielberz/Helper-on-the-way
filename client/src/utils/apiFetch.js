@@ -32,9 +32,23 @@ export async function apiFetch(url, options = {}, navigate) {
     },
   });
 
+  // Handle authentication errors (expired token, invalid token, etc.)
   if (res.status === 401 || res.status === 403) {
+    const errorData = await res.json().catch(() => ({}));
+    
+    // Clear expired/invalid token
     clearAuthData();
-    if (navigate) navigate("/login");
+    
+    // Redirect to login with helpful message
+    if (navigate) {
+      navigate("/login", { 
+        state: { 
+          message: errorData.message || "Session expired. Please login again.",
+          expired: true 
+        }
+      });
+    }
+    
     throw new Error("UNAUTHORIZED");
   }
 

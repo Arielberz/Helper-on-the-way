@@ -154,10 +154,27 @@ const requestSchema = new Schema({
     offeredAmount: {
       type: Number,
       default: 0,
+      // NOTE: Stored in agorot (1 ILS = 100 agorot) to avoid floating-point errors
+      // Example: 50 ILS = 5000 agorot
+    },
+    helperAmount: {
+      type: Number,
+      default: 0,
+      // NOTE: Stored in agorot
+    },
+    commissionAmount: {
+      type: Number,
+      default: 0,
+      // NOTE: Stored in agorot
+    },
+    commissionRate: {
+      type: Number,
+      default: 10, // 10% commission
     },
     currency: {
       type: String,
       default: 'ILS',
+      enum: ['ILS']  // Only ILS supported
     },
     isPaid: {
       type: Boolean,
@@ -189,6 +206,23 @@ requestSchema.pre('save', function(next) {
   if (this.location && typeof this.location.lat === 'number' && typeof this.location.lng === 'number') {
     this.geo = { type: 'Point', coordinates: [this.location.lng, this.location.lat] };
   }
+  
+  // Calculate commission and helper amount automatically (amounts are in agorot)
+  if (this.payment && this.payment.offeredAmount > 0) {
+    const commissionRate = this.payment.commissionRate || 10;
+    const totalAgorot = this.payment.offeredAmount;
+    
+    // Calculate commission in agorot
+    const commissionAgorot = Math.round(totalAgorot * (commissionRate / 100));
+    const helperAgorot = totalAgorot - commissionAgorot;
+    
+    this.payment.helperAmount = helperAgorot;
+    this.payment.commissionAmount = commissionAgorot;
+  } else if (this.payment) {
+    this.payment.helperAmount = 0;
+    this.payment.commissionAmount = 0;
+  }
+  
   next();
 });
 

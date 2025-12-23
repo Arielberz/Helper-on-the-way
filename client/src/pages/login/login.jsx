@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { setAuthData } from "../../utils/authUtils";
 import { API_BASE } from "../../utils/apiConfig";
@@ -12,6 +12,14 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for session expiration message
+  useEffect(() => {
+    if (location.state?.expired) {
+      setError(location.state.message || "ההתחברות שלך פגה. אנא התחבר שוב.");
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
