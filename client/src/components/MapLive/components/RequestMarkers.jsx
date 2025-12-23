@@ -15,9 +15,9 @@ export default function RequestMarkers({
   const getStatusLabel = (status) => {
     switch (status) {
       case "pending":
-        return "Pending";
+        return "ממתין";
       case "assigned":
-        return "Assigned";
+        return "שוייך";
       default:
         return status;
     }
@@ -71,7 +71,11 @@ export default function RequestMarkers({
                     <span className="popup-type">
                       {getProblemTypeLabel(m.problemType)}
                       {m.payment?.offeredAmount > 0 && (
-                        <span className="popup-price"> {m.payment.offeredAmount}{m.payment.currency === 'ILS' ? '₪' : '$'}</span>
+                        <span className="popup-price">
+                          {' '}
+                          {m.payment.helperAmount || Math.round(m.payment.offeredAmount * 0.9 * 10) / 10}
+                          {m.payment.currency === 'ILS' ? '₪' : '$'}
+                        </span>
                       )}
                     </span>
                     <span className={`popup-status ${m.status || 'pending'}`}>
@@ -105,7 +109,7 @@ export default function RequestMarkers({
                       }
                       className="popup-btn primary"
                     >
-                      🗺️ Show Route
+                      🗺️ הצג מסלול
                     </button>
                   )}
 
@@ -117,13 +121,13 @@ export default function RequestMarkers({
                           onClick={() => openChat(m)}
                           className="popup-btn success"
                         >
-                          🙋 I want to help
+                          🙋 אני רוצה לעזור
                         </button>
                       )}
 
                       {m.status === "pending" && alreadyRequested && (
                         <div className="popup-btn-waiting">
-                          ⏳ Waiting for approval
+                          ⏳ ממתין לאישור
                         </div>
                       )}
 
@@ -133,7 +137,7 @@ export default function RequestMarkers({
                             onClick={() => openChat(m)}
                             className="popup-btn primary"
                           >
-                            💬 Open Chat
+                            💬 פתח צ'אט
                           </button>
                           {!routeInfo && position && position[0] && position[1] && (
                             <button
@@ -148,7 +152,7 @@ export default function RequestMarkers({
                               }
                               className="popup-btn success"
                             >
-                              🚗 Navigate
+                              🚗 נווט
                             </button>
                           )}
                         </>
@@ -156,7 +160,7 @@ export default function RequestMarkers({
 
                       {m.status === "assigned" && !isAssignedHelper && (
                         <div className="popup-btn-disabled">
-                          👤 Helper assigned
+                          👤 עוזר שוייך
                         </div>
                       )}
                     </>

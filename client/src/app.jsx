@@ -11,6 +11,10 @@ import Profile from "./pages/Profile/profile";
 import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
 import PayPalSuccess from "./pages/PayPal/PayPalSuccess";
 import PayPalCancel from "./pages/PayPal/PayPalCancel";
+import Terms from "./pages/Terms/Terms";
+import Privacy from "./pages/Privacy/Privacy";
+import About from "./pages/About/About";
+import Contact from "./pages/Contact/Contact";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import { RatingProvider } from "./context/RatingContext";
 import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
@@ -24,6 +28,7 @@ import UsersTable from "./pages/Admin/UsersTable";
 import RequestsTable from "./pages/Admin/RequestsTable";
 import TransactionsTable from "./pages/Admin/TransactionsTable";
 import ReportsTable from "./pages/Admin/ReportsTable";
+import ContactMessagesTable from "./pages/Admin/ContactMessagesTable";
 import AdminDebugPage from "./pages/Admin/AdminDebugPage";
 
 
@@ -40,6 +45,10 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/home"
           element={
@@ -104,6 +113,7 @@ function App() {
           <Route path="requests" element={<RequestsTable />} />
           <Route path="transactions" element={<TransactionsTable />} />
           <Route path="reports" element={<ReportsTable />} />
+          <Route path="contact-messages" element={<ContactMessagesTable />} />
         </Route>
 
         {/* Admin Debug Page */}

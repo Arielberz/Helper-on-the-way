@@ -38,6 +38,16 @@ const transactionSchema = new Schema({
         ref: 'Request',
         default: null
     },
+    commission: {
+        amount: {
+            type: Number,
+            default: null
+        },
+        rate: {
+            type: Number,
+            default: null
+        }
+    },
     status: {
         type: String,
         enum: ['pending', 'completed', 'failed', 'cancelled'],

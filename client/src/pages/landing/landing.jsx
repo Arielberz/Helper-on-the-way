@@ -209,8 +209,9 @@ const Landing = () => {
                         <div>
                             <h3 className="text-xl font-bold mb-4">קישורים</h3>
                             <div className="space-y-2">
+                                <Link to="/terms" className="block text-gray-400 hover:text-white transition-colors">תנאי שימוש</Link>
+                                <Link to="/privacy" className="block text-gray-400 hover:text-white transition-colors">מדיניות פרטיות</Link>
                                 <Link to="/about" className="block text-gray-400 hover:text-white transition-colors">אודות</Link>
-                                <Link to="/services" className="block text-gray-400 hover:text-white transition-colors">שירותים</Link>
                                 <Link to="/contact" className="block text-gray-400 hover:text-white transition-colors">צור קשר</Link>
                             </div>
                         </div>

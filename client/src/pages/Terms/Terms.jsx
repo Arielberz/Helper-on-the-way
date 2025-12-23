@@ -1,0 +1,141 @@
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+
+const TERMS_TEXT = `תנאי שימוש – אפליקציית Helper on the Way
+
+עודכן לאחרונה: 23/12/2025
+
+ברוכים הבאים לאפליקציית Helper on the Way (להלן: "האפליקציה").
+השימוש באפליקציה כפוף לתנאי שימוש אלה. שימוש באפליקציה מהווה הסכמה מלאה לכל האמור להלן.
+
+1. הגדרות
+- החברה / מפעילת האפליקציה – מפעילת אפליקציית Helper on the Way.
+- משתמש – כל אדם הרשום או עושה שימוש באפליקציה.
+- עוזר – משתמש המציע שירותים או עזרה דרך האפליקציה.
+- נעזר – משתמש המבקש שירות או עזרה דרך האפליקציה.
+
+2. מטרת האפליקציה
+האפליקציה נועדה לאפשר חיבור, תקשורת וביצוע תשלומים בין משתמשים המבקשים עזרה לבין משתמשים המציעים עזרה, לרבות צ'אט, דירוגים, דיווחים ומערכת תשלומים.
+האפליקציה מהווה פלטפורמה טכנולוגית בלבד ואינה צד להסכמות שבין המשתמשים.
+
+3. הרשמה ושימוש
+1. השימוש באפליקציה מותר לגילאי 18 ומעלה בלבד.
+2. המשתמש מתחייב למסור פרטים נכונים, מלאים ומעודכנים.
+3. המשתמש אחראי לשמירה על סודיות פרטי ההתחברות שלו.
+4. חל איסור להשתמש באפליקציה לכל מטרה בלתי חוקית, פוגענית או בניגוד לתנאים אלה.
+
+4. התקשרות בין משתמשים, דיווחים ופיקוח
+האפליקציה מאפשרת למשתמשים ליצור קשר ולהיעזר בכלי דיווח, דירוג ובקרה.
+במקרה של בעיה, ניתן לדווח דרך המערכת, והחברה תפעל ככל האפשר לבדיקת המקרה ולנקיטת צעדים מתאימים, בהתאם לשיקול דעתה.
+החברה אינה צד להסכמות בין המשתמשים ואינה אחראית לביצוע השירות בפועל.
+
+5. תשלומים ויתרה פנימית
+1. האפליקציה מאפשרת ביצוע תשלומים באמצעות מערכת התשלומים של החברה.
+2. התשלומים בין המשתמשים אינם מתבצעים ישירות ביניהם.
+3. כל תשלום עובר תחילה דרך מערכת האפליקציה ונזקף ליתרה פנימית של העוזר.
+4. החברה רשאית לגבות עמלה מכל תשלום, בהתאם למדיניות שתוצג למשתמשים.
+5. משיכת כספים מהיתרה הפנימית כפופה לאימות, לעמלות ולתנאים נוספים.
+
+6. דירוגים וביקורות
+- משתמשים רשאים לדרג ולהשאיר חוות דעת.
+- חל איסור לפרסם תוכן פוגעני, שקרי או מטעה.
+- החברה רשאית להסיר דירוגים או תגובות לפי שיקול דעתה.
+
+7. קניין רוחני
+כל הזכויות באפליקציה, לרבות קוד, עיצוב, תוכן, לוגו ומסדי נתונים – שייכות לחברה.
+אין להעתיק, להפיץ או לעשות שימוש מסחרי ללא אישור מראש ובכתב.
+
+8. פרטיות ואבטחת מידע
+השימוש באפליקציה כפוף למדיניות הפרטיות.
+החברה נוקטת באמצעי אבטחה סבירים, אך אינה יכולה להבטיח חסינות מוחלטת מפני חדירות או תקלות.
+
+9. השעיה וחסימת משתמשים
+החברה רשאית להגביל, להשעות או לחסום משתמש, זמנית או לצמיתות, במקרה של:
+- הפרת תנאי שימוש
+- פעילות חשודה או בלתי חוקית
+- פגיעה במשתמשים אחרים או במערכת
+
+10. הגבלת אחריות וטיפול במקרים חריגים
+השימוש באפליקציה הוא באחריות המשתמש.
+החברה לא תישא באחריות לנזק ישיר או עקיף, כספי או אחר, שנגרם עקב השימוש באפליקציה או כתוצאה מפעולות של משתמשים אחרים.
+עם זאת, החברה תפעל ככל האפשר, במסגרת יכולותיה ובאמצעות הכלים העומדים לרשותה, לסייע בבדיקת מקרים חריגים שידווחו לה ולנקוט צעדים מתאימים מול משתמשים שפעלו בניגוד לתנאי השימוש.
+
+11. שינויים בתנאי השימוש
+החברה רשאית לעדכן תנאי שימוש אלה מעת לעת.
+המשך שימוש באפליקציה לאחר העדכון מהווה הסכמה לתנאים המעודכנים.
+
+12. דין וסמכות שיפוט
+על תנאי שימוש אלה יחולו דיני מדינת ישראל בלבד.
+סמכות השיפוט הבלעדית נתונה לבתי המשפט המוסמכים בישראל.
+
+13. יצירת קשר
+לשאלות, פניות או דיווחים:
+Email: info.helperontheway@gmail.com`
+
+export default function Terms() {
+  const navigate = useNavigate()
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" dir="rtl">
+      {/* Header */}
+      <div className="bg-white shadow-md border-b border-blue-100 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            ← חזרה
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="text-blue-600 hover:text-blue-800 font-bold transition-colors flex items-center gap-2"
+          >
+            <span>🏠</span>
+            <span>עמוד הבית</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 border border-blue-100">
+          {/* Header Section */}
+          <div className="text-center mb-8 pb-6 border-b-2 border-blue-100">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+              תנאי שימוש
+            </h1>
+            <p className="text-xl text-blue-600 font-semibold">Helper on the Way</p>
+          </div>
+
+          <div className="prose prose-lg max-w-none text-right">
+            <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+              {TERMS_TEXT}
+            </div>
+          </div>
+
+          {/* Bottom Navigation */}
+          <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <button
+              onClick={() => navigate('/privacy')}
+              className="text-blue-600 hover:text-blue-800 underline font-medium flex items-center gap-2"
+            >
+              <span>צפה במדיניות הפרטיות</span>
+              <span>←</span>
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              חזרה
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-gray-600">
+          <p className="font-medium">© 2025 Helper on the Way. כל הזכויות שמורות.</p>
+        </div>
+      </div>
+    </div>
+  )
+}

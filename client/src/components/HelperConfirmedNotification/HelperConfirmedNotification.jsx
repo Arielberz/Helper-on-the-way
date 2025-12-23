@@ -92,9 +92,6 @@ export default function HelperConfirmedNotification() {
                 <span className="font-medium">מבקש:</span> {helperConfirmed.request.user?.username || 'N/A'}
               </p>
               <p className="text-sm text-gray-700 mb-1">
-                <span className="font-medium">טלפון:</span> {helperConfirmed.request.user?.phone || 'N/A'}
-              </p>
-              <p className="text-sm text-gray-700 mb-1">
                 <span className="font-medium">בעיה:</span> {helperConfirmed.request.problemType?.replace(/_/g, ' ') || 'N/A'}
               </p>
               {helperConfirmed.request.location?.address && (

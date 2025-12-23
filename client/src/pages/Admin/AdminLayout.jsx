@@ -6,6 +6,7 @@ import {
   FileText, 
   CreditCard, 
   AlertCircle,
+  MessageSquare,
   LogOut,
   Menu,
   X
@@ -57,6 +58,7 @@ function AdminLayout() {
     { path: '/admin/requests', icon: FileText, label: 'Requests' },
     { path: '/admin/transactions', icon: CreditCard, label: 'Transactions' },
     { path: '/admin/reports', icon: AlertCircle, label: 'Reports' },
+    { path: '/admin/contact-messages', icon: MessageSquare, label: 'Contact Messages' },
   ];
 
   return (

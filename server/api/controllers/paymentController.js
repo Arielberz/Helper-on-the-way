@@ -2,60 +2,26 @@ const Request = require('../models/requestsModel');
 const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
 const sendResponse = require('../utils/sendResponse');
-
-// PayPal API configuration
-const PAYPAL_API = 'https://api-m.sandbox.paypal.com';
-
-
-// Get PayPal access token
-async function getPayPalAccessToken() {
-    const clientId = process.env.PAYPAL_CLIENT_ID?.trim();
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET?.trim();
-    
-
-
-    
-    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    
-    const response = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Basic ${auth}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'grant_type=client_credentials'
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok || data.error) {
-        console.error('PayPal authentication failed:', {
-            status: response.status,
-            error: data.error,
-            error_description: data.error_description
-        });
-        throw new Error(data.error_description || 'PayPal authentication failed');
-    }
-    
-    return data.access_token;
-}
+const { calculateCommission, getCommissionRatePercentage } = require('../utils/commissionUtils');
+const { ilsToAgorot, agorotToIlsString, agorotToIls, isValidAgorotAmount } = require('../utils/currencyConverter');
+const { createPayPalOrder, capturePayPalOrder, getPayPalOrderDetails } = require('../services/paypalService');
 
 // Create PayPal order
 exports.createOrder = async (req, res) => {
     try {
-        const { requestId, amount, currency = 'ILS' } = req.body;
+        const { requestId } = req.body;
         const userId = req.userId;
 
-
+        console.log('🔵 Creating PayPal order request:', { requestId, userId });
 
         if (!userId) {
             console.error('No userId found in request');
             return sendResponse(res, 401, false, "unauthorized");
         }
 
-        if (!requestId || !amount || amount <= 0) {
-            console.error('Invalid request data:', { requestId, amount });
-            return sendResponse(res, 400, false, "requestId and valid amount are required");
+        if (!requestId) {
+            console.error('Missing requestId');
+            return sendResponse(res, 400, false, "requestId is required");
         }
 
         // Verify the request exists and user is the requester
@@ -72,63 +38,64 @@ exports.createOrder = async (req, res) => {
             return sendResponse(res, 400, false, "no helper assigned to this request");
         }
 
-        // Get PayPal access token
-        let accessToken;
-        try {
-            accessToken = await getPayPalAccessToken();
-        } catch (error) {
-            console.error('Failed to get PayPal access token:', error);
-            return sendResponse(res, 500, false, "PayPal authentication failed - please check credentials");
+        // Get amount in agorot from request (already stored as agorot in DB)
+        const amountAgorot = request.payment?.offeredAmount || 0;
+
+        if (!isValidAgorotAmount(amountAgorot)) {
+            return sendResponse(res, 400, false, "invalid payment amount");
         }
 
-        // Create order with PayPal
-        const orderResponse = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                intent: 'CAPTURE',
-                purchase_units: [{
-                    amount: {
-                        currency_code: 'USD', // PayPal sandbox works best with USD
-                        value: amount.toFixed(2)
-                    },
-                    description: `Payment for help request: ${request.problemType}`,
-                    custom_id: requestId
-                }],
-                application_context: {
-                    return_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/success?requestId=${requestId}`,
-                    cancel_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/cancel?requestId=${requestId}`,
-                    brand_name: 'Helper On The Way',
-                    user_action: 'PAY_NOW'
-                }
-            })
+        if (amountAgorot === 0) {
+            return sendResponse(res, 400, false, "cannot use PayPal for free help - use 'Confirm Completion' button instead");
+        }
+
+        console.log('💰 Payment amount:', {
+            agorot: amountAgorot,
+            ils: agorotToIls(amountAgorot),
+            currency: 'ILS'
         });
 
-        const orderData = await orderResponse.json();
+        // Create PayPal order with ILS currency
+        const returnUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/success?requestId=${requestId}`;
+        const cancelUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/cancel?requestId=${requestId}`;
+        
+        const paypalOrder = await createPayPalOrder(
+            amountAgorot,
+            requestId,
+            `Helper Service - ${request.problemType}`,
+            returnUrl,
+            cancelUrl
+        );
 
-        if (orderData.error) {
-            console.error('PayPal error:', orderData);
-            return sendResponse(res, 400, false, orderData.error_description || "PayPal error");
-        }
+        console.log('🔵 PayPal order response:', JSON.stringify(paypalOrder, null, 2));
 
         // Get approval URL
-        const approvalUrl = orderData.links.find(link => link.rel === 'approve')?.href;
+        if (!paypalOrder || !paypalOrder.links || !Array.isArray(paypalOrder.links)) {
+            console.error('❌ Invalid PayPal order response:', paypalOrder);
+            return sendResponse(res, 500, false, "invalid PayPal order response - missing links array");
+        }
+
+        const approvalUrl = paypalOrder.links.find(link => link.rel === 'approve')?.href;
 
         if (!approvalUrl) {
-            return sendResponse(res, 500, false, "failed to create PayPal order");
+            console.error('❌ No approval URL in links:', paypalOrder.links);
+            return sendResponse(res, 500, false, "failed to create PayPal order - no approval URL");
         }
 
         sendResponse(res, 200, true, "order created successfully", {
-            orderId: orderData.id,
-            approvalUrl
+            orderId: paypalOrder.id,
+            approvalUrl,
+            amount: {
+                agorot: amountAgorot,
+                ils: agorotToIls(amountAgorot),
+                currency: 'ILS'
+            }
         });
 
     } catch (error) {
-        console.error('Error creating PayPal order:', error);
-        sendResponse(res, 500, false, "server error creating order");
+        console.error('❌ Error creating PayPal order:', error);
+        console.error('❌ Error stack:', error.stack);
+        sendResponse(res, 500, false, error.message || "server error creating order");
     }
 };
 
@@ -138,7 +105,7 @@ exports.captureOrder = async (req, res) => {
         const { orderId, requestId } = req.body;
         const userId = req.userId;
 
-
+        console.log('🔵 Capturing PayPal order:', { orderId, requestId, userId });
 
         if (!userId) {
             console.error('No userId in request');
@@ -160,80 +127,119 @@ exports.captureOrder = async (req, res) => {
             return sendResponse(res, 403, false, "not authorized");
         }
 
-        // Get PayPal access token
-        const accessToken = await getPayPalAccessToken();
-
-        // Capture the order
-        const captureResponse = await fetch(`${PAYPAL_API}/v2/checkout/orders/${orderId}/capture`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const captureData = await captureResponse.json();
+        // Capture the PayPal payment
+        const captureData = await capturePayPalOrder(orderId);
 
         if (captureData.status !== 'COMPLETED') {
-            console.error('PayPal capture failed:', captureData);
+            console.error('❌ PayPal capture not completed:', captureData.status);
             return sendResponse(res, 400, false, "payment capture failed");
         }
 
-        // Payment successful - update database
-        const capturedAmount = parseFloat(captureData.purchase_units[0].payments.captures[0].amount.value);
+        // Extract payment details
+        const captureInfo = captureData.purchase_units[0].payments.captures[0];
+        const capturedCurrency = captureInfo.amount.currency_code;
+        const capturedValueString = captureInfo.amount.value;
+        
+        console.log('✅ Payment captured:', {
+            currency: capturedCurrency,
+            value: capturedValueString
+        });
+
+        // Verify currency is ILS
+        if (capturedCurrency !== 'ILS') {
+            console.error('❌ Wrong currency captured:', capturedCurrency);
+            return sendResponse(res, 400, false, `Payment captured in wrong currency: ${capturedCurrency}`);
+        }
+
+        // Convert captured amount to agorot
+        const capturedIls = parseFloat(capturedValueString);
+        const capturedAgorot = ilsToAgorot(capturedIls);
+
+        // Verify amount matches what was expected
+        const expectedAgorot = request.payment?.offeredAmount || 0;
+        if (Math.abs(capturedAgorot - expectedAgorot) > 1) { // Allow 1 agora difference for rounding
+            console.error('❌ Amount mismatch:', { captured: capturedAgorot, expected: expectedAgorot });
+            return sendResponse(res, 400, false, "payment amount mismatch");
+        }
+
+        // Calculate commission and helper payout (working in agorot)
+        const { commissionAmount, helperAmount } = calculateCommission(agorotToIls(capturedAgorot));
+        const commissionAgorot = ilsToAgorot(commissionAmount);
+        const helperAgorot = ilsToAgorot(helperAmount);
+
+        console.log('💰 Payment breakdown:', {
+            total_agorot: capturedAgorot,
+            total_ils: agorotToIls(capturedAgorot),
+            commission_agorot: commissionAgorot,
+            commission_ils: agorotToIls(commissionAgorot),
+            helper_agorot: helperAgorot,
+            helper_ils: agorotToIls(helperAgorot)
+        });
 
         // Update request payment status
         request.payment = request.payment || {};
         request.payment.isPaid = true;
         request.payment.paidAt = Date.now();
         request.payment.paymentMethod = 'paypal';
-        request.payment.offeredAmount = capturedAmount;
-        request.payment.currency = captureData.purchase_units[0].payments.captures[0].amount.currency_code;
+        request.payment.offeredAmount = capturedAgorot;
+        request.payment.helperAmount = helperAgorot;
+        request.payment.commissionAmount = commissionAgorot;
+        request.payment.currency = 'ILS';
         
         // Mark request as completed if requester has confirmed
         if (request.requesterConfirmedAt) {
             request.status = 'completed';
             request.completedAt = Date.now();
-
         }
         
         await request.save();
 
-        // Credit helper's wallet
+        // Credit helper's wallet (after commission) - using ILS for wallet
         if (request.helper) {
             const helper = await User.findById(request.helper);
             if (helper) {
                 const balanceBefore = helper.balance || 0;
-                helper.balance = (helper.balance || 0) + capturedAmount;
-                helper.totalEarnings = (helper.totalEarnings || 0) + capturedAmount;
+                const helperEarningIls = agorotToIls(helperAgorot);
+                helper.balance = (helper.balance || 0) + helperEarningIls;
+                helper.totalEarnings = (helper.totalEarnings || 0) + helperEarningIls;
                 await helper.save();
 
                 // Create transaction record
                 await Transaction.create({
                     user: helper._id,
                     type: 'earning',
-                    amount: capturedAmount,
+                    amount: helperEarningIls,
                     balanceBefore,
                     balanceAfter: helper.balance,
-                    currency: request.payment.currency,
+                    currency: 'ILS',
                     description: `PayPal payment received for helping with ${request.problemType}`,
                     request: request._id,
-                    status: 'completed'
+                    status: 'completed',
+                    commission: {
+                        amount: agorotToIls(commissionAgorot),
+                        rate: getCommissionRatePercentage()
+                    }
                 });
 
-
+                console.log('✅ Helper credited:', {
+                    helper_id: helper._id,
+                    amount_ils: helperEarningIls,
+                    new_balance: helper.balance
+                });
             }
         }
 
         sendResponse(res, 200, true, "payment successful", {
             captureId: captureData.id,
-            amount: capturedAmount,
-            currency: request.payment.currency
+            totalAmount: agorotToIls(capturedAgorot),
+            helperAmount: agorotToIls(helperAgorot),
+            commissionAmount: agorotToIls(commissionAgorot),
+            currency: 'ILS'
         });
 
     } catch (error) {
-        console.error('Error capturing PayPal order:', error);
-        sendResponse(res, 500, false, "server error capturing payment");
+        console.error('❌ Error capturing PayPal order:', error);
+        sendResponse(res, 500, false, error.message || "server error capturing payment");
     }
 };
 
@@ -303,6 +309,9 @@ exports.payWithBalance = async (req, res) => {
         try {
             // Only create transactions and transfer money if amount > 0
             if (amount > 0) {
+                // Calculate commission and helper payout
+                const { commissionAmount, helperAmount } = calculateCommission(amount);
+
                 // Create deduction transaction for requester
                 await Transaction.create({
                     user: requester._id,
@@ -317,12 +326,12 @@ exports.payWithBalance = async (req, res) => {
                 });
 
 
-                // Credit helper's wallet
+                // Credit helper's wallet (after commission)
                 const helper = await User.findById(request.helper);
                 if (helper) {
                     const helperBalanceBefore = helper.balance || 0;
-                    helper.balance = (helper.balance || 0) + amount;
-                    helper.totalEarnings = (helper.totalEarnings || 0) + amount;
+                    helper.balance = (helper.balance || 0) + helperAmount;
+                    helper.totalEarnings = (helper.totalEarnings || 0) + helperAmount;
                     await helper.save();
 
 
@@ -330,13 +339,17 @@ exports.payWithBalance = async (req, res) => {
                     await Transaction.create({
                         user: helper._id,
                         type: 'earning',
-                        amount: amount,
+                        amount: helperAmount,
                         balanceBefore: helperBalanceBefore,
                         balanceAfter: helper.balance,
                         currency: request.payment?.currency || 'ILS',
                         description: `Payment received for helping with ${request.problemType}`,
                         request: request._id,
-                        status: 'completed'
+                        status: 'completed',
+                        commission: {
+                            amount: commissionAmount,
+                            rate: getCommissionRatePercentage()
+                        }
                     });
 
 
@@ -351,6 +364,13 @@ exports.payWithBalance = async (req, res) => {
             request.payment.isPaid = true;
             request.payment.paidAt = Date.now();
             request.payment.paymentMethod = amount > 0 ? 'balance' : 'free';
+            
+            // Save commission details if amount > 0
+            if (amount > 0) {
+                const { commissionAmount, helperAmount } = calculateCommission(amount);
+                request.payment.helperAmount = helperAmount;
+                request.payment.commissionAmount = commissionAmount;
+            }
             
             // Mark request as completed if requester has confirmed
             if (request.requesterConfirmedAt) {

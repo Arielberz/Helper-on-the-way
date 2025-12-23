@@ -12,6 +12,7 @@ const chatRouter = require('./api/routers/chatRouter');
 const paymentRouter = require('./api/routers/paymentRouter');
 const reportRouter = require('./api/routers/reportRouter');
 const adminRouter = require('./api/routers/adminRouter');
+const contactRouter = require('./api/routers/contactRouter');
 const initializeChatSockets = require('./api/sockets/chatSockets');
 const { initCleanupJob } = require('./api/services/cleanupService');
 
@@ -55,6 +56,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/reports', reportRouter);
 app.use('/api/payments', paymentRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/contact', contactRouter);
 
 // Initialize chat sockets (handles all socket connections)
 initializeChatSockets(io);

@@ -1,6 +1,7 @@
 const Request = require('../models/requestsModel');
 const REQUEST_STATUS = require('../constants/requestStatus');
 const { calculateETAWithDistance } = require('../utils/etaUtils');
+const { calculateCommission, getCommissionRatePercentage } = require('../utils/commissionUtils');
 
 // Helper: sanitize a request document for real-time broadcasts
 const sanitizeRequest = (reqDoc) => {
@@ -77,6 +78,8 @@ exports.createRequest = async (req, res) => {
     }
 
     // Validate payment amount if provided
+    // NOTE: offeredAmount should be in agorot (1 ILS = 100 agorot)
+    // Example: 50 ILS = 5000 agorot
     if (offeredAmount !== undefined && (typeof offeredAmount !== 'number' || offeredAmount < 0)) {
       return res.status(400).json({
         success: false,
@@ -98,9 +101,10 @@ exports.createRequest = async (req, res) => {
     };
 
     // Add payment info if amount is offered
+    // NOTE: Amount should be in agorot
     if (offeredAmount !== undefined && offeredAmount > 0) {
       requestData.payment = {
-        offeredAmount,
+        offeredAmount,  // Stored in agorot
         currency: currency || 'ILS',
         isPaid: false
       };
@@ -180,10 +184,21 @@ exports.getActiveRequests = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(200);
 
+    // Add commission info to each request
+    const requestsWithCommission = requests.map(request => {
+      const requestObj = request.toObject();
+      if (requestObj.payment?.offeredAmount > 0) {
+        const { commissionAmount, helperAmount } = calculateCommission(requestObj.payment.offeredAmount);
+        requestObj.payment.commissionAmount = commissionAmount;
+        requestObj.payment.helperAmount = helperAmount;
+      }
+      return requestObj;
+    });
+
     res.json({
       success: true,
-      count: requests.length,
-      data: requests
+      count: requestsWithCommission.length,
+      data: requestsWithCommission
     });
   } catch (err) {
     console.error('Error fetching active requests:', err);
@@ -361,7 +376,7 @@ exports.updateRequestStatus = async (req, res) => {
     res.json({
       success: true,
       data: updatedRequest,
-      message: helperCompleted ? 'Waiting for requester confirmation' : 
+      message: helperCompleted ? 'ממתין לאישור המבקש' : 
                requesterConfirmed ? 'Request completed successfully' : 
                'Status updated successfully'
     });
@@ -600,7 +615,7 @@ exports.confirmHelper = async (req, res) => {
       io.to(`user:${String(helperId)}`).emit('helperConfirmed', {
         requestId: populatedRequest._id,
         request: populatedRequest,
-        message: `You've been confirmed to help ${populatedRequest.user.username}!`
+        message: `אושרת לעזור ל-${populatedRequest.user.username}!`
       });
 
       // Also emit initial ETA to the requester immediately
@@ -1029,24 +1044,31 @@ exports.updatePayment = async (req, res) => {
             const User = require('../models/userModel');
             const Transaction = require('../models/transactionModel');
             
+            // Calculate commission and helper payout
+            const { commissionAmount, helperAmount } = calculateCommission(request.payment.offeredAmount);
+            
             const helper = await User.findById(request.helper);
             if (helper) {
               const balanceBefore = helper.balance || 0;
-              helper.balance = (helper.balance || 0) + request.payment.offeredAmount;
-              helper.totalEarnings = (helper.totalEarnings || 0) + request.payment.offeredAmount;
+              helper.balance = (helper.balance || 0) + helperAmount;
+              helper.totalEarnings = (helper.totalEarnings || 0) + helperAmount;
               await helper.save();
               
               // Create transaction record
               await Transaction.create({
                 user: helper._id,
                 type: 'earning',
-                amount: request.payment.offeredAmount,
+                amount: helperAmount,
                 balanceBefore,
                 balanceAfter: helper.balance,
                 currency: request.payment.currency || 'ILS',
                 description: `Payment received for helping with ${request.problemType}`,
                 request: request._id,
-                status: 'completed'
+                status: 'completed',
+                commission: {
+                  amount: commissionAmount,
+                  rate: getCommissionRatePercentage()
+                }
               });
               
 

@@ -65,11 +65,17 @@ function sanitizeUser(user) {
 
 exports.register = async (req, res) => {
     try {
-        const { username: rawUsername, email: rawEmail, password, phone: rawPhone } = req.body || {};
+        const { username: rawUsername, email: rawEmail, password, phone: rawPhone, termsAccepted } = req.body || {};
 
         if (!rawUsername || !rawEmail || !password || !rawPhone) {
             return sendResponse(res, 400, false, "all fields are required");
         }
+        
+        // Enforce terms acceptance
+        if (!termsAccepted || termsAccepted !== true) {
+            return sendResponse(res, 400, false, "Must accept Terms & Privacy");
+        }
+        
         const username = normalizeUsername(rawUsername);
         const email = normalizeEmail(rawEmail);
         const phone = normalizePhone(rawPhone);
@@ -95,7 +101,14 @@ exports.register = async (req, res) => {
         const saltRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
         const hashedPassword = await bcrypt.hash(password, isNaN(saltRounds) ? 10 : saltRounds);
 
-        const newUser = new User({ username, email, password: hashedPassword, phone });
+        const newUser = new User({ 
+            username, 
+            email, 
+            password: hashedPassword, 
+            phone,
+            termsAccepted: true,
+            termsAcceptedAt: new Date()
+        });
         
         // Check if this is the admin email
         const adminEmail = process.env.ADMIN_EMAIL || 'info.helperontheway@gmail.com';

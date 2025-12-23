@@ -4,6 +4,7 @@ import { setAuthData } from "../../utils/authUtils";
 import { API_BASE } from "../../utils/apiConfig";
 import { RegisterForm } from "./RegisterForm";
 import { EmailVerificationModal } from "./EmailVerificationModal";
+import TermsConsentModal from "../../components/TermsConsentModal/TermsConsentModal";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -21,6 +22,12 @@ export default function Register() {
   const [verificationError, setVerificationError] = useState("");
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
+  
+  // Terms consent state
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState("");
+  
   const navigate = useNavigate();
 
 
@@ -153,6 +160,20 @@ export default function Register() {
       return;
     }
 
+    // Show terms modal before proceeding with registration
+    setShowTermsModal(true);
+  };
+
+  const handleTermsAccept = async () => {
+    if (!termsAccepted) {
+      setTermsError("חובה לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך.");
+      return;
+    }
+    
+    setShowTermsModal(false);
+    setTermsError("");
+    
+    // Now proceed with actual registration
     setLoading(true);
 
     try {
@@ -171,7 +192,8 @@ export default function Register() {
           username: formData.username,
           phone: phoneToSend,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          termsAccepted: true
         }),
       });
 
@@ -190,6 +212,9 @@ export default function Register() {
           case "all fields are required":
             errorMessage = "כל השדות חייבים להיות מלאים";
             break;
+          case "Must accept Terms & Privacy":
+            errorMessage = "חובה לאשר את תנאי השימוש ומדיניות הפרטיות";
+            break;
           case "invalid username format":
             errorMessage = "שם המשתמש אינו תקין";
             break;
@@ -203,6 +228,7 @@ export default function Register() {
             errorMessage = "הסיסמה חייבת להכיל לפחות 8 תווים";
             break;
           case "username, email, or phone already in use":
+          case "email or phone already in use":
             errorMessage = "שם משתמש/אימייל/טלפון כבר קיימים במערכת";
             break;
           case "server misconfiguration: missing JWT secret":
@@ -227,6 +253,12 @@ export default function Register() {
     }
   };
 
+  const handleTermsCancel = () => {
+    setShowTermsModal(false);
+    setTermsAccepted(false);
+    setTermsError("");
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" dir="rtl" lang="he">
       <button
@@ -237,6 +269,19 @@ export default function Register() {
       >
         ← חזרה
       </button>
+
+      {/* Terms Consent Modal */}
+      <TermsConsentModal
+        isOpen={showTermsModal}
+        onAccept={handleTermsAccept}
+        onCancel={handleTermsCancel}
+        isChecked={termsAccepted}
+        onCheckChange={(e) => {
+          setTermsAccepted(e.target.checked);
+          setTermsError("");
+        }}
+        error={termsError}
+      />
 
       {/* Verification Modal */}
       <EmailVerificationModal

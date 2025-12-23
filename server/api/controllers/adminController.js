@@ -3,6 +3,7 @@ const Request = require('../models/requestsModel');
 const Transaction = require('../models/transactionModel');
 const Report = require('../models/reportModel');
 const sendResponse = require('../utils/sendResponse');
+const { getCommissionRatePercentage } = require('../utils/commissionUtils');
 
 // GET /api/admin/overview - Dashboard statistics
 exports.getOverview = async (req, res) => {
@@ -359,6 +360,86 @@ exports.unblockUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Unblock user error:', error);
+        sendResponse(res, 500, false, 'Server error', null);
+    }
+};
+
+// GET /api/admin/commission-stats - Get commission statistics
+exports.getCommissionStats = async (req, res) => {
+    try {
+        // Get all transactions with commission data
+        const commissionsData = await Transaction.aggregate([
+            {
+                $match: {
+                    'commission.amount': { $exists: true, $ne: null },
+                    status: 'completed'
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalCommission: { $sum: '$commission.amount' },
+                    totalTransactions: { $sum: 1 },
+                    avgCommission: { $avg: '$commission.amount' },
+                    totalHelperPayouts: { $sum: '$amount' }
+                }
+            }
+        ]);
+
+        // Commission by month (last 12 months)
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+        const commissionByMonth = await Transaction.aggregate([
+            {
+                $match: {
+                    'commission.amount': { $exists: true, $ne: null },
+                    status: 'completed',
+                    createdAt: { $gte: twelveMonthsAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' }
+                    },
+                    totalCommission: { $sum: '$commission.amount' },
+                    transactionCount: { $sum: 1 }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]);
+
+        const monthlyData = commissionByMonth.map(item => ({
+            month: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+            commission: parseFloat(item.totalCommission.toFixed(2)),
+            transactions: item.transactionCount
+        }));
+
+        const stats = commissionsData.length > 0 ? commissionsData[0] : {
+            totalCommission: 0,
+            totalTransactions: 0,
+            avgCommission: 0,
+            totalHelperPayouts: 0
+        };
+
+        // Calculate total transaction volume (commission + helper payouts)
+        const totalVolume = stats.totalCommission + stats.totalHelperPayouts;
+
+        sendResponse(res, 200, true, 'Commission statistics retrieved', {
+            currentRate: getCommissionRatePercentage(),
+            summary: {
+                totalCommission: parseFloat(stats.totalCommission.toFixed(2)),
+                totalTransactions: stats.totalTransactions,
+                avgCommission: parseFloat(stats.avgCommission.toFixed(2)),
+                totalHelperPayouts: parseFloat(stats.totalHelperPayouts.toFixed(2)),
+                totalVolume: parseFloat(totalVolume.toFixed(2))
+            },
+            monthlyData
+        });
+    } catch (error) {
+        console.error('Get commission stats error:', error);
         sendResponse(res, 500, false, 'Server error', null);
     }
 };
