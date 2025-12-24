@@ -43,7 +43,7 @@ export default function PaymentModal({
       const requestId = selectedConversation?.request?._id;
       const amount = selectedConversation?.request?.payment?.offeredAmount || 0;
       
-
+      console.log('🔵 Creating PayPal payment:', { requestId, amount });
 
       if (!requestId) {
         showAlert('לא נמצא מזהה בקשה');
@@ -57,6 +57,7 @@ export default function PaymentModal({
         return;
       }
 
+      // ✅ Backend now calculates amount from request - don't send amount from frontend
       const response = await fetch(`${API_BASE}/api/payments/create-order`, {
         method: 'POST',
         headers: {
@@ -64,14 +65,15 @@ export default function PaymentModal({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          requestId,
-          amount,
+          requestId
+          // Amount is NOT sent - backend calculates it from the request
         }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success && data.data.approvalUrl) {
+        console.log('✅ PayPal order created:', data.data);
         // Redirect to PayPal
         window.location.href = data.data.approvalUrl;
       } else {
@@ -79,7 +81,7 @@ export default function PaymentModal({
         setIsProcessingPayPal(false);
       }
     } catch (error) {
-      console.error('Error creating PayPal order:', error);
+      console.error('❌ Error creating PayPal order:', error);
       showAlert('שגיאה ביצירת תשלום');
       setIsProcessingPayPal(false);
     }
@@ -111,7 +113,9 @@ export default function PaymentModal({
 
       if (response.ok && data.success) {
         setShowPaymentPopup(false);
-        showAlert('התשלום בוצע בהצלחה!', { onClose: () => window.location.reload() });
+        const hasPayment = (selectedConversation?.request?.payment?.offeredAmount || 0) > 0;
+        const message = hasPayment ? 'התשלום בוצע בהצלחה!' : 'העזרה הסתיימה בהצלחה!';
+        showAlert(message, { onClose: () => window.location.reload() });
       } else {
         showAlert(data.message || 'שגיאה בביצוע התשלום');
       }
@@ -168,6 +172,33 @@ export default function PaymentModal({
               {selectedConversation?.request?.payment?.offeredAmount || 0}₪
             </p>
           </div>
+
+          {/* Commission breakdown - only if amount > 0 */}
+          {(selectedConversation?.request?.payment?.offeredAmount || 0) > 0 && (
+            <div
+              className="p-4 rounded-lg text-sm space-y-2"
+              style={{
+                backgroundColor: "rgba(234, 179, 8, 0.1)",
+                color: "var(--text-main)",
+                border: "1px solid #eab308",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span>💵 העוזר יקבל:</span>
+                <span className="font-bold text-green-600">
+                  {selectedConversation?.request?.payment?.helperAmount || 
+                   Math.round((selectedConversation?.request?.payment?.offeredAmount || 0) * 0.9 * 10) / 10}₪
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span>📊 עמלת פלטפורמה (10%):</span>
+                <span>
+                  {selectedConversation?.request?.payment?.commissionAmount || 
+                   Math.round((selectedConversation?.request?.payment?.offeredAmount || 0) * 0.1 * 10) / 10}₪
+                </span>
+              </div>
+            </div>
+          )}
 
           <div
             className="p-4 rounded-lg text-sm"

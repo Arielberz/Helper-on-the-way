@@ -193,9 +193,13 @@ export default function NearbyRequestsList({
                 <div className="text-text-main mb-2">👤 {req.user?.username || 'משתמש לא ידוע'}</div>
                 {req.description && <div className="text-text-secondary text-sm mb-2">{req.description}</div>}
                 {req.location?.address && <div className="text-text-light text-sm mb-2">📍 {req.location.address}</div>}
-                {req.payment?.offeredAmount > 0 && (
-                  <div className="text-success font-semibold mb-2">💰 {req.payment.offeredAmount} {req.payment.currency || 'ILS'}</div>
-                )}
+                {req.payment?.offeredAmount > 0 && (() => {
+                  // Calculate helper amount (90% rounded to 1 decimal)
+                  const helperAmount = req.payment?.helperAmount || Math.round(req.payment.offeredAmount * 0.9 * 10) / 10;
+                  return (
+                    <div className="text-success font-semibold mb-2">💰 {helperAmount} {req.payment.currency || 'ILS'}</div>
+                  );
+                })()}
                 <div className="text-text-light text-xs">⏰ {new Date(req.createdAt).toLocaleString('he-IL')}</div>
               </div>
             ))

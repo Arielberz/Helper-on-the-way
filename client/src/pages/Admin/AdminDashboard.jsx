@@ -8,6 +8,7 @@ import { API_BASE } from '../../utils/apiConfig';
 function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [commissionData, setCommissionData] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -17,16 +18,27 @@ function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch overview data
       const res = await apiFetch(`${API_BASE}/api/admin/overview`, {
         method: 'GET',
       });
-
       const response = await res.json();
+
+      // Fetch commission stats
+      const commRes = await apiFetch(`${API_BASE}/api/admin/commission-stats`, {
+        method: 'GET',
+      });
+      const commResponse = await commRes.json();
 
       if (response.success) {
         setData(response.data);
       } else {
         setError(response.message || 'Failed to load dashboard data');
+      }
+
+      if (commResponse.success) {
+        setCommissionData(commResponse.data);
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -83,10 +95,10 @@ function AdminDashboard() {
       color: 'bg-orange-600',
     },
     {
-      title: 'Total Volume',
-      value: `$${data?.counters?.totalVolume || 0}`,
+      title: 'Total Commission',
+      value: `₪${commissionData?.summary?.totalCommission?.toFixed(2) || '0.00'}`,
       icon: DollarSign,
-      color: 'bg-indigo-600',
+      color: 'bg-emerald-600',
     },
   ];
 

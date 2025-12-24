@@ -89,6 +89,13 @@ const userSchema = new Schema({
     blockReason: {
         type: String
     },
+    termsAccepted: {
+        type: Boolean,
+        default: false
+    },
+    termsAcceptedAt: {
+        type: Date
+    },
     createdAt: {
         type: Date,
         default: Date.now
