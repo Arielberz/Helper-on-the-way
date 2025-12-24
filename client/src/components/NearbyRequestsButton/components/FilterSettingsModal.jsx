@@ -12,7 +12,11 @@ export default function FilterSettingsModal({
   if (!showHelperSettings) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-1002 p-4" onClick={() => setShowHelperSettings(false)}>
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-[2200] p-4 backdrop-blur-sm transition-all"
+      style={{ backgroundColor: 'rgba(15, 23, 42, 0.8)' }}
+      onClick={() => setShowHelperSettings(false)}
+    >
       <div className="bg-white rounded-theme-xl shadow-theme-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()} dir="rtl">
         <div className="bg-white px-8 py-6 border-b border-slate-100">
           <div className="flex justify-between items-center">
