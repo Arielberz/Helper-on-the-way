@@ -8,7 +8,7 @@ import Home from "./pages/home/home";
 import Chat from "./pages/chat/chat";
 import Rating from "./pages/Rating/Rating";
 import Profile from "./pages/Profile/profile";
-import PendingHelpers from "./pages/PendingHelpers/PendingHelpers";
+
 import PayPalSuccess from "./pages/PayPal/PayPalSuccess";
 import PayPalCancel from "./pages/PayPal/PayPalCancel";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
@@ -16,7 +16,7 @@ import PublicRoute from "./components/PublicRoute/PublicRoute";
 import { RatingProvider } from "./context/RatingContext";
 import GlobalRatingModal from "./components/GlobalRatingModal/GlobalRatingModal";
 import { HelperRequestProvider } from "./context/HelperRequestContext";
-import GlobalHelperRequestModal from "./components/GlobalHelperRequestModal/GlobalHelperRequestModal";
+
 import HelperConfirmedNotification from "./components/HelperConfirmedNotification/HelperConfirmedNotification";
 import NotFound from "./pages/notfound/NotFound";
 import AdminLayout from "./pages/Admin/AdminLayout";
@@ -33,7 +33,7 @@ function App() {
     <RatingProvider>
       <HelperRequestProvider>
         <GlobalRatingModal />
-        <GlobalHelperRequestModal />
+
         <HelperConfirmedNotification />
         <Routes>
         <Route 
@@ -101,14 +101,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/pending-helpers"
-          element={
-            <ProtectedRoute>
-              <PendingHelpers />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/paypal/success"
           element={

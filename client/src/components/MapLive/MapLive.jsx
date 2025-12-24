@@ -7,8 +7,7 @@ import "./leaflet-overrides.css";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
-import NearbyRequestsButton from "../NearbyRequestsButton/NearbyRequestsButton";
-import PendingHelpersMapButton from "../PendingHelpersMapButton/PendingHelpersMapButton";
+import IncomingHelpNotification from "../IncomingHelpNotification/IncomingHelpNotification";
 import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
 import { useUnreadCount } from "../../hooks/useUnreadCount";
 import { useMapLocation } from "../../hooks/useMapLocation";
@@ -19,7 +18,8 @@ import { useAlert } from "../../context/AlertContext";
 // Subcomponents
 import MapRefSetter from "./components/MapRefSetter";
 import LocationAccuracyBanner from "./components/LocationAccuracyBanner";
-import MapLogo from "./components/MapLogo";
+import MapSidebar from "./components/MapSidebar";
+import MobileMapHeader from "./components/MobileMapHeader";
 import ProfileMenu from "./components/ProfileMenu";
 import ConfirmationToast from "./components/ConfirmationToast";
 import UserMarker from "./components/UserMarker";
@@ -36,6 +36,17 @@ export default function MapLive() {
   const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown menu
   const unreadCount = useUnreadCount(); // Unread messages count from shared hook
   
+  // Track when help modal is open to hide sidebar
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  
+  // Mobile detection - sidebar is hidden on mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // Use location hook
   const {
     position,
@@ -46,9 +57,7 @@ export default function MapLive() {
     dismissAccuracyBanner,
   } = useMapLocation(mapRef);
   const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
-  const [isNearbyModalOpen, setIsNearbyModalOpen] = useState(false); // מצב מודל בקשות קרובות
   const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
-  const [autoOpenNearby, setAutoOpenNearby] = useState(false); // Auto-open nearby requests panel
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,8 +123,6 @@ export default function MapLive() {
             (req.user?._id === userId || req.user === userId || 
              req.helper?._id === userId || req.helper === userId)
     );
-
-
 
     setMyActiveRequest(activeReq || null);
 
@@ -418,6 +425,28 @@ export default function MapLive() {
         setShowAccuracyBanner={dismissAccuracyBanner}
       />
 
+      {/* Sidebar - Desktop only, hidden when help modal is open */}
+      {!isMobile && !isHelpModalOpen && (
+        <MapSidebar
+          mapRef={mapRef}
+          userPosition={position}
+          requests={sharedMarkers}
+          onSelectRequest={handleSelectRequest}
+        />
+      )}
+
+      {/* Mobile Header - Logo, Nearby, Profile in one row, hidden when help modal is open */}
+      {isMobile && !isHelpModalOpen && (
+        <MobileMapHeader
+          mapRef={mapRef}
+          userPosition={position}
+          requests={sharedMarkers}
+          onSelectRequest={handleSelectRequest}
+          unreadCount={unreadCount}
+          navigate={navigate}
+        />
+      )}
+
       <MapContainer
         center={position}
         zoom={locationAccuracy === "precise" ? 15 : 12}
@@ -445,66 +474,8 @@ export default function MapLive() {
         <RoutePolylines routes={routes} />
       </MapContainer>
 
-      {/* Logo - Top Left */}
-      <MapLogo mapRef={mapRef} position={position} />
-
-      {/* Auto-open toggle - below logo on left side */}
-      {position && (
-        <div className="fixed top-20 left-6 z-1000">
-          <label
-            className="flex items-center gap-2 px-3 py-2 cursor-pointer"
-            style={{
-              background: 'var(--glass-bg-strong)',
-              backdropFilter: 'var(--glass-blur)',
-              borderRadius: 'var(--rounded-xl)',
-              border: '1px solid var(--glass-border)',
-              boxShadow: 'var(--glass-shadow)',
-            }}
-            dir="rtl"
-          >
-            <span className="text-sm font-medium text-gray-700">הצג בקשות באזור</span>
-            <div className="relative inline-block w-11 h-6">
-              <input
-                type="checkbox"
-                checked={autoOpenNearby}
-                onChange={(e) => setAutoOpenNearby(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </div>
-          </label>
-        </div>
-      )}
-
-      {/* Nearby Requests List - Always visible when toggle is ON */}
-      {autoOpenNearby && position && (
-        <div className="fixed top-36 right-6 z-1000">
-          <NearbyRequestsButton
-            requests={sharedMarkers}
-            userPosition={position}
-            onSelectRequest={handleSelectRequest}
-            onModalStateChange={() => {}}
-            forceOpen={true}
-          />
-        </div>
-      )}
-
-      {/* Nearby Button - Mobile Only (Top Center) - Hidden when toggle is ON */}
-      {!autoOpenNearby && position && (
-        <div className="fixed top-6 left-0 right-0 flex justify-center z-1000 sm:hidden pointer-events-none">
-          <div className="pointer-events-auto">
-            <NearbyRequestsButton
-              requests={sharedMarkers}
-              userPosition={position}
-              onSelectRequest={handleSelectRequest}
-              onModalStateChange={setIsNearbyModalOpen}
-            />
-          </div>
-        </div>
-      )}
-
-
-      {!isNearbyModalOpen && (
+      {/* Profile Menu - Desktop only, hidden when help modal is open */}
+      {!isMobile && !isHelpModalOpen && (
         <ProfileMenu
           showProfileMenu={showProfileMenu}
           setShowProfileMenu={setShowProfileMenu}
@@ -515,28 +486,16 @@ export default function MapLive() {
 
       <ConfirmationToast message={confirmationMessage} />
 
-      {/* Pending Helpers Button - Floating (only when you have pending helpers) */}
-      {!isNearbyModalOpen && <PendingHelpersMapButton />}
+      {/* Incoming Help Notification - Replaces PendingHelpersMapButton */}
+      {!isHelpModalOpen && <IncomingHelpNotification />}
 
-      {/* Button Group - Help at bottom, Nearby above (desktop only) */}
+      {/* Button Group - Help at bottom */}
       <div className="fixed bottom-6 right-6 flex flex-col-reverse gap-2 z-1000">
-        {!isNearbyModalOpen && (
-          <HelpButton
-            onRequestCreated={handleRequestCreated}
-            onModalStateChange={() => {}}
-            fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
-          />
-        )}
-        {!autoOpenNearby && position && (
-          <div className="hidden sm:block">
-            <NearbyRequestsButton
-              requests={sharedMarkers}
-              userPosition={position}
-              onSelectRequest={handleSelectRequest}
-              onModalStateChange={() => {}}
-            />
-          </div>
-        )}
+        <HelpButton
+          onRequestCreated={handleRequestCreated}
+          onModalStateChange={setIsHelpModalOpen}
+          fallbackLocation={position ? { lat: position[0], lng: position[1] } : null}
+        />
       </div>
     </div>
   );

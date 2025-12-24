@@ -113,7 +113,7 @@ export default function HelpRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-1001 flex items-center justify-center p-4 backdrop-blur-sm transition-all"
+    <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4 backdrop-blur-sm transition-all"
          style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)' }}>
       <div className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
            style={{
