@@ -18,7 +18,7 @@ const Landing = () => {
                 {/* Hero Section */}
                 <section className="relative pt-6 pb-0 overflow-hidden">
                     <div className="container mx-auto px-6">
-                        <div className={`flex flex-col items-center text-center max-w-5xl mx-auto mb-0 transition-all duration-1000 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                        <div className={`relative z-20 flex flex-col items-center text-center max-w-5xl mx-auto mb-0 transition-all duration-1000 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                             <span className="inline-block py-2 px-4 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4 border border-blue-100 animate-pulse">
                                 🌟 הפלטפורמה המובילה בישראל
                             </span>
