@@ -31,12 +31,14 @@ import TransactionsTable from "./pages/Admin/TransactionsTable";
 import ReportsTable from "./pages/Admin/ReportsTable";
 import ContactMessagesTable from "./pages/Admin/ContactMessagesTable";
 import AdminDebugPage from "./pages/Admin/AdminDebugPage";
+import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 
 
 function App() {
   return (
     <RatingProvider>
       <HelperRequestProvider>
+        <ScrollToTop />
         <GlobalRatingModal />
 
         <HelperConfirmedNotification />

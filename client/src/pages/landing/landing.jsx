@@ -1,68 +1,92 @@
-
 import { Link } from "react-router-dom";
+import Header from "../../components/Header/Header";
+import Footer from "../../components/Footer/Footer";
+import { useEffect, useState } from "react";
 
 const Landing = () => {
-    
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        setIsVisible(true);
+    }, []);
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-        
+        <div className="min-h-screen bg-white" dir="rtl">
+            <Header />
             
-            {/* Hero Section */}
-            <section className="relative overflow-hidden">
-                {/* Background decoration */}
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-20 right-20 w-72 h-72 bg-blue-500 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-20 left-20 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
-                </div>
-
-                <div className="container mx-auto px-6 py-20 md:py-32 relative z-10" dir="rtl">
-                    {/* Mobile Logo - Shows only on mobile */}
-                    <div className="flex justify-center mb-8 md:hidden">
-                        <img 
-                            src="/helper-logo-removebg.png" 
-                            alt="Helper on the way" 
-                            className="w-48"
-                        />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        {/* Left Content */}
-                        <div className="text-center md:text-right">
-                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-                            ברוכים הבאים 
+            <main>
+                {/* Hero Section */}
+                <section className="relative pt-6 pb-0 overflow-hidden">
+                    <div className="container mx-auto px-6">
+                        <div className={`flex flex-col items-center text-center max-w-5xl mx-auto mb-0 transition-all duration-1000 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                            <span className="inline-block py-2 px-4 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4 border border-blue-100 animate-pulse">
+                                🌟 הפלטפורמה המובילה בישראל
+                            </span>
+                            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight tracking-tight">
+                                עזרה בדרך <br/>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                                    בדיוק כשצריך אותה
+                                </span>
                             </h1>
-                            <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
-                                פלטפורמה לסיוע הדדי בדרכים - קבלו עזרה מהירה וקלה בכל מקום ובכל זמן
+                            <p className="text-xl text-gray-500 mb-8 max-w-2xl mx-auto leading-relaxed">
+                                נתקעתם בצד הדרך? אל דאגה. הקהילה שלנו כאן בשבילכם.
+                                חיבור מהיר למתנדבים ובעלי מקצוע בקרבת מקום, בזמן אמת.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                            
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center w-full sm:w-auto">
                                 <Link 
                                     to="/register" 
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-lg"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-lg flex items-center justify-center gap-2"
                                 >
-                                    🚀 התחל עכשיו
+                                    <span>הצטרפו עכשיו</span>
+                                    <span>🚀</span>
                                 </Link>
                                 <Link 
-                                    to="/login" 
-                                    className="bg-white hover:bg-gray-50 text-blue-600 font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-lg border-2 border-blue-600"
+                                    to="/about" 
+                                    className="bg-white hover:bg-gray-50 text-gray-700 font-bold py-4 px-10 rounded-full border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-300 text-lg"
                                 >
-                                    🔐 כניסה למערכת
+                                    איך זה עובד?
                                 </Link>
                             </div>
                         </div>
 
-                        {/* Right Image/Illustration */}
-                        <div className="hidden md:flex justify-center">
-                            <img 
-                                src="/helper-logo-removebg.png" 
-                                alt="Helper on the way" 
-                                className="transform hover:scale-105 transition-transform duration-500 w-full max-w-lg"
-                            />
+                        {/* Hero Image */}
+                        <div className={`relative mx-auto max-w-6xl md:-mt-24 transition-all duration-1000 delay-300 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
+                            <div className="relative z-10 group">
+                                <img 
+                                    src="/mapHeroB.png" 
+                                    alt="Helper on the Way Interface" 
+                                    className="relative w-full  mx-auto h-auto object-contain transform group-hover:scale-[1.01] transition-transform duration-700 mix-blend-multiply drop-shadow-xl"
+                                />
+                            </div>
+                            {/* Hidden blur: Was causing background artifacts with mix-blend-mode 
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-[80px] -z-10 rounded-full"></div>
+                            */}
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Features Section */}
+                {/* Statistics / Trust Indicators */}
+                <section className="py-12 border-y border-gray-100 bg-gray-50/50">
+                    <div className="container mx-auto px-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 justify-items-center opacity-80">
+                            {[
+                                { number: "24/7", label: "זמינות מסביב לשעון" },
+                                { number: "100%", label: "חינם למתנדבים" },
+                                { number: "500+", label: "מתנדבים פעילים" },
+                                { number: "< 15", label: "דקות זמן הגעה ממוצע" },
+                            ].map((stat, i) => (
+                                <div key={i} className="text-center group hover:-translate-y-1 transition-transform duration-300">
+                                    <div className="text-3xl font-bold text-blue-600 mb-1 group-hover:text-blue-700 transition-colors">{stat.number}</div>
+                                    <div className="text-sm text-gray-500 font-medium">{stat.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Features Grid */}
+                   {/* Features Section */}
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-6" dir="rtl">
                     <div className="text-center mb-16">
@@ -132,56 +156,10 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* How It Works Section */}
-            <section className="py-20 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-                <div className="container mx-auto px-6" dir="rtl">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                            איך זה עובד?
-                        </h2>
-                        <p className="text-xl opacity-90">
-                            ארבעה שלבים פשוטים לקבלת עזרה
-                        </p>
-                    </div>
 
-                    <div className="grid md:grid-cols-4 gap-8">
-                        <div className="text-center">
-                            <div className="bg-white text-blue-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">
-                                1
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">הרשמה</h3>
-                            <p className="opacity-90">צרו חשבון בקלות תוך דקה</p>
-                        </div>
 
-                        <div className="text-center">
-                            <div className="bg-white text-blue-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">
-                                2
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">בקשת עזרה</h3>
-                            <p className="opacity-90">תארו את הבעיה והמיקום שלכם</p>
-                        </div>
-
-                        <div className="text-center">
-                            <div className="bg-white text-blue-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">
-                                3
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">מתנדב נבחר</h3>
-                            <p className="opacity-90">מתנדב מתאים נמצא ומגיע אליכם</p>
-                        </div>
-
-                        <div className="text-center">
-                            <div className="bg-white text-blue-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-lg">
-                                4
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">קבלו עזרה</h3>
-                            <p className="opacity-90">המתנדב מסייע לכם במקום</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-20 bg-white">
+                {/* CTA Section */}
+                <section className="py-20 bg-white">
                 <div className="container mx-auto px-6 text-center" dir="rtl">
                     <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
                         מוכנים להצטרף?
@@ -198,36 +176,11 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="bg-gray-900 text-white py-12">
-                <div className="container mx-auto px-6" dir="rtl">
-                    <div className="grid md:grid-cols-3 gap-8 text-center md:text-right">
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">Helper on the Way</h3>
-                            <p className="text-gray-400">פלטפורמה לסיוע הדדי בדרכים</p>
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">קישורים</h3>
-                            <div className="space-y-2">
-                                <Link to="/terms" className="block text-gray-400 hover:text-white transition-colors">תנאי שימוש</Link>
-                                <Link to="/privacy" className="block text-gray-400 hover:text-white transition-colors">מדיניות פרטיות</Link>
-                                <Link to="/about" className="block text-gray-400 hover:text-white transition-colors">אודות</Link>
-                                <Link to="/contact" className="block text-gray-400 hover:text-white transition-colors">צור קשר</Link>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">צור קשר</h3>
-                            <p className="text-gray-400">info.helperontheway@gmail.com</p>
-                            <p className="text-gray-400">054-123-4567</p>
-                        </div>
-                    </div>
-                    <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-                        <p>&copy; 2025 Helper on the Way. כל הזכויות שמורות.</p>
-                    </div>
-                </div>
-            </footer>
+            </main>
+
+            <Footer />
         </div>
-    )
+    );
 }
 
 export default Landing;
