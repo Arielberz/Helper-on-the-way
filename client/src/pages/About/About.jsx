@@ -1,46 +1,14 @@
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import Header from "../../components/Header/Header";
+import Footer from "../../components/Footer/Footer";
 
 const About = () => {
-    const navigate = useNavigate();
-
     return (
         <div className="min-h-screen" style={{ background: 'var(--background)' }} dir="rtl">
-            {/* Hero Section with Navigation */}
-            <section style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)' }} className="text-white py-12">
-                <div className="container mx-auto px-6">
-                    {/* Navigation Buttons */}
-                    <div className="flex justify-between items-center mb-8">
-                        <button 
-                            onClick={() => navigate(-1)}
-                            className="glass text-white font-bold py-2 px-6 hover:scale-105 transform transition-all"
-                            style={{ 
-                                borderRadius: 'var(--rounded-full)',
-                                transition: 'var(--transition-mid)'
-                            }}
-                        >
-                            ← חזרה
-                        </button>
-                        <Link 
-                            to="/"
-                            className="glass text-white font-bold py-2 px-6 hover:scale-105 transform transition-all"
-                            style={{ 
-                                borderRadius: 'var(--rounded-full)',
-                                transition: 'var(--transition-mid)'
-                            }}
-                        >
-                            🏠 דף הבית
-                        </Link>
-                    </div>
-
-                    {/* Page Title */}
-                    <div className="text-center">
-                        <h1 className="text-5xl md:text-6xl font-bold mb-4">
-                            אודות – Helper on the Way
-                        </h1>
-                        <div className="w-24 h-1 bg-white mx-auto" style={{ borderRadius: 'var(--rounded-full)' }}></div>
-                    </div>
-                </div>
-            </section>
+            <Header />
+            
+            {/* Hero Section */}
+            
 
             {/* Main Content */}
             <section className="py-16">
@@ -302,68 +270,7 @@ const About = () => {
             </section>
 
             {/* Footer */}
-            <footer className="py-12" style={{ 
-                background: 'var(--text-main)',
-                color: 'var(--text-inverted)'
-            }}>
-                <div className="container mx-auto px-6">
-                    <div className="grid md:grid-cols-3 gap-8 text-center md:text-right">
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">Helper on the Way</h3>
-                            <p style={{ color: 'var(--text-light)', opacity: 0.7 }}>פלטפורמה לסיוע הדדי בדרכים</p>
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">קישורים</h3>
-                            <div className="space-y-2">
-                                <Link 
-                                    to="/terms" 
-                                    className="block hover:text-white transition-colors"
-                                    style={{ 
-                                        color: 'var(--text-light)',
-                                        opacity: 0.7,
-                                        transition: 'var(--transition-fast)'
-                                    }}
-                                >
-                                    תנאי שימוש
-                                </Link>
-                                <Link 
-                                    to="/privacy" 
-                                    className="block hover:text-white transition-colors"
-                                    style={{ 
-                                        color: 'var(--text-light)',
-                                        opacity: 0.7,
-                                        transition: 'var(--transition-fast)'
-                                    }}
-                                >
-                                    מדיניות פרטיות
-                                </Link>
-                                <Link 
-                                    to="/about" 
-                                    className="block hover:text-white transition-colors"
-                                    style={{ 
-                                        color: 'var(--text-light)',
-                                        opacity: 0.7,
-                                        transition: 'var(--transition-fast)'
-                                    }}
-                                >
-                                    אודות
-                                </Link>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">צור קשר</h3>
-                            <p style={{ color: 'var(--text-light)', opacity: 0.7 }}>info.helperontheway@gmail.com</p>
-                        </div>
-                    </div>
-                    <div className="mt-8 pt-8 text-center" style={{ 
-                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                        color: 'var(--text-light)',
-                        opacity: 0.7
-                    }}>
-                        <p>&copy; 2025 Helper on the Way. כל הזכויות שמורות.</p>
-                    </div>
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 };

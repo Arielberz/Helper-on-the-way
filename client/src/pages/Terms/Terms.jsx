@@ -1,5 +1,6 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from "react-router-dom";
+import Header from "../../components/Header/Header";
+import Footer from "../../components/Footer/Footer";
 
 const TERMS_TEXT = `תנאי שימוש – אפליקציית Helper on the Way
 
@@ -77,24 +78,7 @@ export default function Terms() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" dir="rtl">
-      {/* Header */}
-      <div className="bg-white shadow-md border-b border-blue-100 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            ← חזרה
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            className="text-blue-600 hover:text-blue-800 font-bold transition-colors flex items-center gap-2"
-          >
-            <span>🏠</span>
-            <span>עמוד הבית</span>
-          </button>
-        </div>
-      </div>
+      <Header />
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -133,9 +117,9 @@ export default function Terms() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-gray-600">
-          <p className="font-medium">© 2025 Helper on the Way. כל הזכויות שמורות.</p>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

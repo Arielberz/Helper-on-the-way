@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import { API_BASE } from '../../utils/apiConfig';
+import Header from "../../components/Header/Header";
+import Footer from "../../components/Footer/Footer";
 
 const Contact = () => {
-    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -96,49 +97,7 @@ const Contact = () => {
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--background)' }} dir="rtl">
-            {/* Hero Section with Navigation */}
-            <section 
-                style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)' }} 
-                className="text-white py-12"
-            >
-                <div className="container mx-auto px-6">
-                    {/* Navigation Buttons */}
-                    <div className="flex justify-between items-center mb-8">
-                        <button 
-                            onClick={() => navigate(-1)}
-                            className="glass text-white font-bold py-2 px-6 hover:scale-105 transform transition-all"
-                            style={{ 
-                                borderRadius: 'var(--rounded-full)',
-                                transition: 'var(--transition-mid)'
-                            }}
-                        >
-                            ← חזרה
-                        </button>
-                        <Link 
-                            to="/"
-                            className="glass text-white font-bold py-2 px-6 hover:scale-105 transform transition-all"
-                            style={{ 
-                                borderRadius: 'var(--rounded-full)',
-                                transition: 'var(--transition-mid)'
-                            }}
-                        >
-                            🏠 דף הבית
-                        </Link>
-                    </div>
-
-                    {/* Page Title */}
-                    <div className="text-center">
-                        <h1 className="text-5xl md:text-6xl font-bold mb-4">
-                            צור קשר
-                        </h1>
-                        <p className="text-xl text-white/90">
-                            יש לכם שאלה, בעיה או הצעה? נשמח לשמוע מכם.
-                        </p>
-                        <div className="w-24 h-1 bg-white mx-auto mt-4" style={{ borderRadius: 'var(--rounded-full)' }}></div>
-                    </div>
-                </div>
-            </section>
-
+            <Header />
             {/* Contact Form Section */}
             <section className="py-16">
                 <div className="container mx-auto px-6 max-w-2xl">
@@ -318,6 +277,8 @@ const Contact = () => {
                     </div>
                 </div>
             </section>
+            
+            <Footer />
         </div>
     );
 };
