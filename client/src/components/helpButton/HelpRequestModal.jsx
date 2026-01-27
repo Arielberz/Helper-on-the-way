@@ -110,6 +110,7 @@ export default function HelpRequestModal({
           <PaymentSection
             offeredAmount={formData.offeredAmount}
             currency={formData.currency}
+            problemType={formData.problemType}
             onChange={onInputChange}
           />
         );
