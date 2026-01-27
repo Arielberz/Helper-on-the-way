@@ -1,7 +1,20 @@
+/*
+  קובץ זה אחראי על:
+  - דף הצלחת תשלום PayPal
+  - קליטת עסקה בשרת אחרי אישור המשתמש
+  - ניתוב חזרה מ-PayPal עם פרמטרים
+
+  הקובץ משמש את:
+  - PayPal redirect - ניתוב אוטומטי מ-PayPal
+
+  הקובץ אינו:
+  - מעבד תשלום פיזי - נעשה בשרת
+  - שומר פרטי עסקה - רק מקליט
+*/
+
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getToken } from '../../utils/authUtils';
-import { API_BASE } from '../../utils/apiConfig';
+import { capturePayPalOrder } from '../../services/payments.service';
 
 export default function PayPalSuccess() {
   const [searchParams] = useSearchParams();
@@ -21,36 +34,12 @@ export default function PayPalSuccess() {
       }
 
       try {
-        const authToken = getToken();
-        
-        if (!authToken) {
-          setStatus('error');
-          setMessage('נא להתחבר מחדש');
-          setTimeout(() => navigate('/login'), 2000);
-          return;
-        }
+        const data = await capturePayPalOrder(paypalToken, requestId);
 
-        const response = await fetch(`${API_BASE}/api/payments/capture-order`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            orderId: paypalToken,
-            requestId,
-          }),
-        });
-
-        const data = await response.json();
-
-
-
-        if (response.ok && data.success) {
+        if (data.success) {
           setStatus('success');
           setMessage('התשלום בוצע בהצלחה! 🎉');
           
-          // Redirect to profile after 3 seconds
           setTimeout(() => {
             navigate('/profile');
           }, 3000);

@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - Hook לניהול מיקום המשתמש
+  - קבלת מיקום מדויק מ-GPS
+  - מצב טעינה ושגיאות של קבלת מיקום
+  - אינטגרציה עם שירותי המיקום
+*/
+
 import { useState } from 'react';
 import { getPreciseLocation } from '../../utils/locationUtils';
 
@@ -6,7 +14,6 @@ export function useLocation() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // Request GPS location only when user explicitly chooses "Use Current Location"
   const requestCurrentLocation = async () => {
     setIsLoadingLocation(true);
     setLocationError('');

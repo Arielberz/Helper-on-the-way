@@ -1,12 +1,29 @@
+/*
+  קובץ זה אחראי על:
+  - דף הצ'אט הראשי עם רשימת שיחות והודעות
+  - ניהול תשלומים בין עוזרים למבקשים
+  - סיום טיפול ואישור השלמת בקשה
+  - דיווח על משתמשים, מחיקת שיחות
+
+  הקובץ משמש את:
+  - משתמשים בשיחות עם עוזרים/מבקשים
+  - קישור מהתראות ואייקון הצ'אט במפה
+
+  הקובץ אינו:
+  - מנהל WebSocket server - רק מתחבר לסוקטים
+  - מעבד תשלום פיזי - רק מעדכן סטטוס
+*/
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useHelperRequest } from "../../context/HelperRequestContext";
 import { useRating } from "../../context/RatingContext";
-import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
-import { API_BASE } from "../../utils/apiConfig";
-import { apiFetch } from "../../utils/apiFetch";
+import { getUserId, clearAuthData, getToken } from "../../utils/authUtils";
+import { getConversations, getConversationById, markConversationAsRead, deleteConversation } from "../../services/chat.service";
+import { updateRequestStatus, updateRequestPayment } from "../../services/requests.service";
+import { submitReport } from "../../services/other.service";
+import { useChatSocketHandlers, sendSystemMessage } from "../../hooks/useChatSocketHandlers";
 
-// Components
 import Sidebar from "./components/Sidebar";
 import ChatHeader from "./components/ChatHeader";
 import MessageList from "./components/MessageList";
@@ -39,7 +56,6 @@ export default function Chat() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get current user ID from token
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -60,27 +76,21 @@ export default function Chat() {
     }
   }, [navigate]);
 
-  // Fetch conversations
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const response = await apiFetch(`${API_BASE}/api/chat/conversations`, {}, navigate);
+        const data = await getConversations(navigate);
 
-        if (response.ok) {
-          const data = await response.json();
-          const conversationsArray = data.data?.conversations || [];
-          setConversations(conversationsArray);
+        const conversationsArray = data.data?.conversations || [];
+        setConversations(conversationsArray);
 
-          const targetConversationId = location.state?.conversationId;
+        const targetConversationId = location.state?.conversationId;
 
-          if (targetConversationId) {
-            loadConversation(targetConversationId);
-          } else if (conversationsArray.length > 0) {
-            if (window.innerWidth >= 768) {
-              loadConversation(conversationsArray[0]._id);
-            } else {
-              setLoading(false);
-            }
+        if (targetConversationId) {
+          loadConversation(targetConversationId);
+        } else if (conversationsArray.length > 0) {
+          if (window.innerWidth >= 768) {
+            loadConversation(conversationsArray[0]._id);
           } else {
             setLoading(false);
           }
@@ -99,7 +109,6 @@ export default function Chat() {
     fetchConversations();
   }, [navigate, location.state]);
 
-  // Load conversation
   const loadConversation = async (conversationId) => {
     const token = getToken();
     if (!token) {
@@ -107,7 +116,6 @@ export default function Chat() {
       return;
     }
 
-    // Find the conversation in the current list for instant UI update
     const conversation = conversations.find(
       (conv) => conv._id === conversationId
     );
@@ -118,40 +126,17 @@ export default function Chat() {
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/chat/conversation/${conversationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const data = await getConversationById(conversationId);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
         const fullConversation = data.data?.conversation || data.data;
         setSelectedConversation(fullConversation);
         setMessages(fullConversation?.messages || []);
         setLoading(false);
 
-        // Mark as read
-        await fetch(
-          `${API_BASE}/api/chat/conversation/${conversationId}/read`,
-          {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        await markConversationAsRead(conversationId);
       } else {
-        const errorData = await response.json();
-        console.error("Failed to load conversation:", errorData);
-
-        if (response.status === 401 || response.status === 403) {
-          clearAuthData();
-          navigate("/login");
-        }
+        console.error("Failed to load conversation");
         setLoading(false);
       }
     } catch (error) {
@@ -160,51 +145,7 @@ export default function Chat() {
     }
   };
 
-  // Socket listeners
-  useEffect(() => {
-    if (!socket || !selectedConversation) return;
-
-    socket.emit("join_conversation", selectedConversation._id);
-
-    const handleNewMessage = (data) => {
-      if (data.conversationId === selectedConversation._id) {
-        setMessages((prev) => [...prev, data.message]);
-
-        // If payment was accepted, show rating modal to requester
-        if (data.message?.systemMessageType === "payment_accepted") {
-          const isRequester = currentUserId === selectedConversation.user?._id;
-          if (isRequester && selectedConversation.request) {
-            // Open rating modal for the requester
-            setTimeout(() => {
-              openRatingModal(selectedConversation.request);
-            }, 500);
-          }
-        }
-      }
-    };
-
-    // Handle ETA updates from the conversation room
-    const handleEtaUpdated = (data) => {
-      const requestId = selectedConversation?.request?._id;
-      if (data.requestId === requestId && setEtaForRequest) {
-        setEtaForRequest(requestId, {
-          etaMinutes: data.etaMinutes,
-          etaSeconds: data.etaSeconds,
-          distanceKm: data.distanceKm,
-          updatedAt: data.timestamp
-        });
-      }
-    };
-
-    socket.on("new_message", handleNewMessage);
-    socket.on("etaUpdated", handleEtaUpdated);
-
-    return () => {
-      socket.off("new_message", handleNewMessage);
-      socket.off("etaUpdated", handleEtaUpdated);
-      socket.emit("leave_conversation", selectedConversation._id);
-    };
-  }, [socket, selectedConversation]);
+  useChatSocketHandlers(socket, selectedConversation, currentUserId, setMessages, setEtaForRequest, openRatingModal);
 
   const handleSend = () => {
     if (!input.trim() || !selectedConversation || !socket) return;
@@ -227,11 +168,9 @@ export default function Chat() {
   const handleDeleteConversation = async (conversationId, e) => {
     e?.stopPropagation();
 
-    // Find the conversation to check request status
     const conversation = conversations.find(conv => conv._id === conversationId);
     if (conversation?.request) {
       const requestStatus = conversation.request.status;
-      // Prevent deletion if request is still open (not completed or cancelled)
       if (requestStatus !== 'completed' && requestStatus !== 'cancelled') {
         showAlert("לא ניתן למחוק שיחה כאשר בקשת העזרה עדיין פעילה. אנא המתן עד להשלמת הבקשה.");
         return;
@@ -241,31 +180,16 @@ export default function Chat() {
     showConfirm(
       "האם אתה בטוח שברצונך למחוק את השיחה הזו?",
       async () => {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-
         try {
-          const response = await fetch(
-            `${API_BASE}/api/chat/conversation/${conversationId}`,
-            {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          await deleteConversation(conversationId);
+
+          setConversations((prev) =>
+            prev.filter((conv) => conv._id !== conversationId)
           );
 
-          if (response.ok) {
-            setConversations((prev) =>
-              prev.filter((conv) => conv._id !== conversationId)
-            );
-
-            if (selectedConversation?._id === conversationId) {
-              setSelectedConversation(null);
-              setMessages([]);
-            }
-          } else {
-            showAlert("שגיאה במחיקת השיחה");
+          if (selectedConversation?._id === conversationId) {
+            setSelectedConversation(null);
+            setMessages([]);
           }
         } catch (error) {
           console.error("Error deleting conversation:", error);
@@ -281,7 +205,7 @@ export default function Chat() {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
 
     const reportedUserId =
@@ -290,77 +214,42 @@ export default function Chat() {
         : selectedConversation.user?._id;
 
     try {
-      const response = await fetch(`${API_BASE}/api/reports/report`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          reportedUserId,
-          conversationId: selectedConversation._id,
-          reason: reportReason,
-          description: reportDescription,
-        }),
+      await submitReport({
+        reportedUserId,
+        conversationId: selectedConversation._id,
+        reason: reportReason,
+        description: reportDescription,
       });
 
-      if (response.ok) {
-        showAlert("הדיווח נשלח בהצלחה. אנו נבדוק את הנושא בהקדם.");
-        setShowReportModal(false);
-        setReportReason("");
-        setReportDescription("");
-      } else {
-        const data = await response.json();
-        showAlert(data.message || "שגיאה בשליחת הדיווח");
-      }
+      showAlert("הדיווח נשלח בהצלחה. אנו נבדוק את הנושא בהקדם.");
+      setShowReportModal(false);
+      setReportReason("");
+      setReportDescription("");
     } catch (error) {
       console.error("Error submitting report:", error);
       showAlert("שגיאה בשליחת הדיווח");
     }
   };
 
-  // Check if current user is the helper
   const isHelper = currentUserId === selectedConversation?.helper?._id;
 
-  // Handle end treatment (helper only)
   const handleEndTreatment = async () => {
     if (!selectedConversation?.request?._id) return;
 
     setIsEndingTreatment(true);
-    const token = getToken();
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/requests/${selectedConversation.request._id}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ helperCompleted: true }),
-        }
-      );
+      await updateRequestStatus(selectedConversation.request._id, { helperCompleted: true });
 
-      if (response.ok) {
-        const data = await response.json();
-
-        // Send a system message via socket with end treatment notification
-        if (socket) {
-          socket.emit("send_message", {
-            conversationId: selectedConversation._id,
-            content: "🏁 העוזר סיים את הטיפול וממתין לאישור שלך",
-            isSystemMessage: true,
-            systemMessageType: "end_treatment",
-            requestId: selectedConversation.request._id,
-          });
-        }
-
-        showAlert(`✅ ${data.message || "ממתין לאישור המבקש"}`);
-      } else {
-        const responseData = await response.json();
-        showAlert(`❌ שגיאה: ${responseData.message || "לא ניתן לעדכן סטטוס"}`);
+      if (socket) {
+        sendSystemMessage(socket, selectedConversation._id, {
+          content: "🏁 העוזר סיים את הטיפול וממתין לאישור שלך",
+          type: "end_treatment",
+          requestId: selectedConversation.request._id
+        });
       }
+
+      showAlert("✅ ממתין לאישור המבקש");
     } catch (error) {
       console.error("Error ending treatment:", error);
       showAlert("❌ שגיאה בעדכון סטטוס");
@@ -369,38 +258,18 @@ export default function Chat() {
     }
   };
 
-  // Handle requester confirmation (from chat message)
   const handleConfirmCompletion = async (requestId) => {
-    const token = getToken();
-
     try {
-      const response = await fetch(
-        `${API_BASE}/api/requests/${requestId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ requesterConfirmed: true }),
-        }
-      );
+      await updateRequestStatus(requestId, { requesterConfirmed: true });
 
-      if (response.ok) {
-        // Show payment popup instead of alerting
-        setPaymentRequestId(requestId);
-        setShowPaymentPopup(true);
-      } else {
-        const data = await response.json();
-        showAlert(`❌ שגיאה: ${data.message || "לא ניתן לאשר השלמה"}`);
-      }
+      setPaymentRequestId(requestId);
+      setShowPaymentPopup(true);
     } catch (error) {
       console.error("Error confirming completion:", error);
       showAlert("❌ שגיאה באישור השלמה");
     }
   };
 
-  // Handle payment confirmation
   const handlePaymentConfirm = async () => {
     if (!paymentRequestId || !selectedConversation) return;
 
@@ -410,28 +279,21 @@ export default function Chat() {
       const isRequester = currentUserId === selectedConversation.user?._id;
 
       if (socket) {
-        // Send message for the requester (payment sent)
-        socket.emit("send_message", {
-          conversationId: selectedConversation._id,
+        sendSystemMessage(socket, selectedConversation._id, {
           content: "💰 התשלום שלך נשלח בהצלחה!",
-          isSystemMessage: true,
-          systemMessageType: "payment_sent",
+          type: "payment_sent",
           requestId: paymentRequestId,
-          recipientRole: "requester",
+          recipientRole: "requester"
         });
 
-        // Send message for the helper (payment pending - with accept button)
-        socket.emit("send_message", {
-          conversationId: selectedConversation._id,
+        sendSystemMessage(socket, selectedConversation._id, {
           content: "💰 המשתמש שלח לך תשלום. אנא אשר את קבלת התשלום",
-          isSystemMessage: true,
-          systemMessageType: "payment_pending",
+          type: "payment_pending",
           requestId: paymentRequestId,
-          recipientRole: "helper",
+          recipientRole: "helper"
         });
       }
 
-      // Close popup
       setShowPaymentPopup(false);
       setPaymentRequestId(null);
       showAlert("✅ תשלום בוצע בהצלחה!", { onClose: () => window.location.reload() });
@@ -444,32 +306,12 @@ export default function Chat() {
     }
   };
 
-  // Handle helper accepting payment
   const handleAcceptPayment = async (requestId) => {
     setIsAcceptingPayment(true);
-    const token = getToken();
 
     try {
-      // Update payment status in database
-      const response = await fetch(
-        `${API_BASE}/api/requests/${requestId}/payment`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ isPaid: true }),
-        }
-      );
+      const data = await updateRequestPayment(requestId, { isPaid: true });
 
-      if (!response.ok) {
-        throw new Error("Failed to update payment status");
-      }
-
-      const data = await response.json();
-
-      // Update local state immediately to hide the button
       setSelectedConversation((prev) => ({
         ...prev,
         request: {
@@ -482,14 +324,11 @@ export default function Chat() {
         },
       }));
 
-      // Send payment accepted message
       if (socket) {
-        socket.emit("send_message", {
-          conversationId: selectedConversation._id,
+        sendSystemMessage(socket, selectedConversation._id, {
           content: "✅ התשלום אושר! תודה על ההעברה.",
-          isSystemMessage: true,
-          systemMessageType: "payment_accepted",
-          requestId: requestId,
+          type: "payment_accepted",
+          requestId: requestId
         });
       }
 
@@ -516,7 +355,7 @@ export default function Chat() {
       className="flex h-screen bg-[var(--background)] font-sans text-[var(--text-main)]"
       dir="rtl"
     >
-      {/* Mobile overlay */}
+
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/30 md:hidden"
@@ -524,7 +363,7 @@ export default function Chat() {
         />
       )}
 
-      {/* Sidebar */}
+
       <Sidebar
         conversations={conversations}
         selectedConversation={selectedConversation}
@@ -535,11 +374,11 @@ export default function Chat() {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Chat Area */}
+
       <div className="flex flex-1 flex-col">
         {selectedConversation ? (
           <>
-            {/* Header */}
+
             <ChatHeader
               selectedConversation={selectedConversation}
               currentUserId={currentUserId}
@@ -550,7 +389,7 @@ export default function Chat() {
               setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
 
-            {/* Messages */}
+
             <MessageList
               messages={messages}
               currentUserId={currentUserId}
@@ -561,13 +400,11 @@ export default function Chat() {
               etaData={(() => {
                 const requestId = selectedConversation?.request?._id;
                 
-                // First check real-time ETA from context (socket updates)
                 const realtimeEta = requestId ? etaByRequestId[requestId] : null;
                 if (realtimeEta && typeof realtimeEta.etaMinutes === 'number' && !isNaN(realtimeEta.etaMinutes) && realtimeEta.etaMinutes >= 0) {
                   return realtimeEta;
                 }
                 
-                // Fallback: check server-stored ETA from the request
                 const serverEta = selectedConversation?.request?.etaData;
                 if (serverEta && serverEta.etaSeconds != null) {
                   return {
@@ -583,7 +420,7 @@ export default function Chat() {
               requestStatus={selectedConversation?.request?.status}
             />
 
-            {/* Input */}
+
             <MessageInput
               input={input}
               setInput={setInput}
@@ -592,12 +429,11 @@ export default function Chat() {
             />
           </>
         ) : (
-          // Empty state
           <EmptyState setIsMobileMenuOpen={setIsMobileMenuOpen} />
         )}
       </div>
 
-      {/* Report Modal */}
+
       {showReportModal && (
         <ReportModal
           reportReason={reportReason}
@@ -611,7 +447,7 @@ export default function Chat() {
         />
       )}
 
-      {/* Payment Popup */}
+
       {showPaymentPopup && (
         <PaymentModal
           selectedConversation={selectedConversation}

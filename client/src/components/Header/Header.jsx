@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - תצוגת שורת הניווט העליונה (Header) בכל עמודי האפליקציה
+  - תפריט ניווט רספונסיבי (mobile + desktop)
+  - קישורים לעמוה אודות, תקנון, צור קשר
+  - כפתורי התחברות והרשמה
+
+  הקובץ משמש את:
+  - דף Landing ודפים ציבוריים אחרים
+  - Layout כללי של האפליקציה
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית או קריאות API
+  - מטפל באימות או ניהול משתמשים
+*/
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
@@ -19,7 +35,7 @@ const Header = () => {
             <div className="container mx-auto px-6 h-20">
                 <div className="grid grid-cols-2 md:grid-cols-3 items-center h-full">
                     
-                    {/* Right Side (Visual Right, RTL Start) - Login */}
+
                     <div className="flex justify-start">
                         <Link 
                             to="/login" 
@@ -29,7 +45,7 @@ const Header = () => {
                         </Link>
                     </div>
 
-                    {/* Center - Navigation (Hidden on Mobile) */}
+
                     <div className="hidden md:flex items-center justify-center gap-8">
                         {navLinks.map((link) => (
                             <Link
@@ -44,9 +60,9 @@ const Header = () => {
                         ))}
                     </div>
 
-                    {/* Left Side (Visual Left, RTL End) - Logo & Mobile Menu Toggle */}
+
                     <div className="flex items-center justify-end gap-4">
-                        {/* Mobile Menu Button - shows next to logo on mobile */}
+
                         <button 
                             className="md:hidden text-gray-600 hover:text-blue-600 focus:outline-none"
                             onClick={toggleMenu}
@@ -64,7 +80,7 @@ const Header = () => {
                     </div>
                 </div>
 
-                {/* Mobile Menu Dropdown */}
+
                 {isMenuOpen && (
                     <div className="md:hidden absolute top-20 left-0 right-0 bg-white shadow-lg border-t border-gray-100 py-4 px-6 flex flex-col space-y-4">
                         {navLinks.map((link) => (

@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - דף צור קשר עם התמיכה/מנהלים
+  - שליחת הודעות לשרת לטיפול עתידי
+  - פורמט עם שם, אימייל, נושא ותוכן
+
+  הקובץ משמש את:
+  - משתמשים שרוצים ליצור קשר עם התמיכה
+  - קישור מה-Footer
+
+  הקובץ אינו:
+  - מנהל מערכת טיקיטים - רק שליחת הודעה
+  - שולח אימיילים - רק שומר בבסיס נתונים
+*/
+
 import { useState } from 'react';
 import { API_BASE } from '../../utils/apiConfig';
 import Header from "../../components/Header/Header";
@@ -22,13 +37,11 @@ const Contact = () => {
             ...prev,
             [name]: value
         }));
-        // Clear messages when user starts typing
         if (errorMessage) setErrorMessage('');
         if (successMessage) setSuccessMessage('');
     };
 
     const validateForm = () => {
-        // Check required fields
         if (!formData.fullName.trim()) {
             setErrorMessage('נא למלא את השם המלא');
             return false;
@@ -42,7 +55,6 @@ const Contact = () => {
             return false;
         }
 
-        // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             setErrorMessage('כתובת אימייל לא תקינה');
@@ -76,7 +88,6 @@ const Contact = () => {
 
             if (data.success) {
                 setSuccessMessage(data.message || 'ההודעה נשלחה בהצלחה, נחזור אליך בהקדם');
-                // Clear form
                 setFormData({
                     fullName: '',
                     email: '',
@@ -98,7 +109,7 @@ const Contact = () => {
     return (
         <div className="min-h-screen" style={{ background: 'var(--background)' }} dir="rtl">
             <Header />
-            {/* Contact Form Section */}
+
             <section className="py-16">
                 <div className="container mx-auto px-6 max-w-2xl">
                     <div 
@@ -109,7 +120,7 @@ const Contact = () => {
                             boxShadow: 'var(--shadow-lg)'
                         }}
                     >
-                        {/* Success Message */}
+
                         {successMessage && (
                             <div 
                                 className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-center"
@@ -119,7 +130,7 @@ const Contact = () => {
                             </div>
                         )}
 
-                        {/* Error Message */}
+
                         {errorMessage && (
                             <div 
                                 className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-center"
@@ -130,7 +141,7 @@ const Contact = () => {
                         )}
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Full Name */}
+
                             <div>
                                 <label 
                                     htmlFor="fullName" 
@@ -155,7 +166,7 @@ const Contact = () => {
                                 />
                             </div>
 
-                            {/* Email */}
+
                             <div>
                                 <label 
                                     htmlFor="email" 
@@ -180,7 +191,7 @@ const Contact = () => {
                                 />
                             </div>
 
-                            {/* Phone (Optional) */}
+
                             <div>
                                 <label 
                                     htmlFor="phone" 
@@ -204,7 +215,7 @@ const Contact = () => {
                                 />
                             </div>
 
-                            {/* Subject (Optional) */}
+
                             <div>
                                 <label 
                                     htmlFor="subject" 
@@ -228,7 +239,7 @@ const Contact = () => {
                                 />
                             </div>
 
-                            {/* Message */}
+
                             <div>
                                 <label 
                                     htmlFor="message" 
@@ -253,7 +264,7 @@ const Contact = () => {
                                 />
                             </div>
 
-                            {/* Submit Button */}
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -269,7 +280,7 @@ const Contact = () => {
                         </form>
                     </div>
 
-                    {/* Additional Contact Info */}
+
                     <div className="mt-8 text-center" style={{ color: 'var(--text-secondary)' }}>
                         <p className="text-lg">
                             או שלחו לנו אימייל ישירות: <a href="mailto:info.helperontheway@gmail.com" className="font-bold hover:underline" style={{ color: 'var(--primary)' }}>info.helperontheway@gmail.com</a>

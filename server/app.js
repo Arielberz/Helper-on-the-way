@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - אתחול שרת האקספרס והגדרת Socket.IO
+  - חיבור למסד הנתונים MongoDB
+  - רישום כל הנתיבים והראוטרים של האפליקציה
+  - הפעלת שירות הניקיון האוטומטי לבקשות ישנות
+
+  הקובץ משמש את:
+  - כל הקליינטים המתחברים לשרת
+  - כל הנתיבים והשירותים של המערכת
+
+  הקובץ אינו:
+  - מטפל בלוגיקה עסקית ספציפית - זה נעשה בקונטרולרים ובשירותים
+*/
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -18,26 +33,28 @@ const { initCleanupJob } = require('./api/services/cleanupService');
 
 const cors = require('cors');
 
-
-connectDB();
-
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO with proper CORS settings
 const allowedOrigins = (process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '').split(',').filter(Boolean);
 const corsOptions = {
     origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true
 };
-const io = new Server(server, { cors: corsOptions });
+const io = new Server(server, { 
+    cors: {
+        origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5173'],
+        methods: ['GET', 'POST'],
+        credentials: true
+    },
+    transports: ['websocket', 'polling']
+});
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ limit: '8mb', extended: true }));
 
-// Handle oversized payloads gracefully
 app.use((err, req, res, next) => {
     if (err && err.type === 'entity.too.large') {
         return res.status(413).json({ success: false, message: 'Payload too large. Max 8MB.' });
@@ -45,10 +62,17 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
-// Make io accessible to routes
 app.set('io', io);
 
-// API Routes
+// Health check endpoint for verification
+app.get('/', (req, res) => {
+    res.json({ success: true, message: 'Server is running', timestamp: new Date().toISOString() });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ success: true, status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 app.use('/api/users', userRouter);
 app.use('/api/requests', requestsRouter);
 app.use('/api/ratings', ratingRouter);
@@ -58,13 +82,23 @@ app.use('/api/payments', paymentRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/contact', contactRouter);
 
-// Initialize chat sockets (handles all socket connections)
 initializeChatSockets(io);
 
-// Start background cleanup job for expired requests
-initCleanupJob(io);
+// Start server after DB connection
+const startServer = async () => {
+    try {
+        await connectDB();
+        
+        initCleanupJob(io);
+        
+        const PORT = process.env.PORT || 3001;
+        server.listen(PORT, () => {
+            console.info(`Server is running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-    console.info(`Server is running on port ${PORT}`);
-});
+startServer();

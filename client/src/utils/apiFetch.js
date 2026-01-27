@@ -1,45 +1,54 @@
-/**
- * Authenticated API fetch helper
- * 
- * This utility provides a standardized way to make authenticated API requests.
- * It automatically:
- * - Retrieves and attaches the JWT token
- * - Handles 401/403 responses by clearing auth and redirecting to login
- * - Throws errors for missing tokens
- * 
- * @param {string} url - The full URL to fetch
- * @param {RequestInit} options - Standard fetch options (method, headers, body, etc.)
- * @param {Function} navigate - React Router's navigate function for redirects
- * @returns {Promise<Response>} - The fetch Response object
- * @throws {Error} - Throws "NO_TOKEN" or "UNAUTHORIZED" errors
- */
+/*
+  קובץ זה אחראי על:
+  - מנגנון מרכזי לביצוע בקשות API מאומתות
+  - הוספת טוכן JWT אוטומטית לכל בקשה
+  - טיפול בשגיאות אימות (401/403) והפניה להתחברות
+
+  הקובץ משמש את:
+  - כל קבצי ה-services (users, requests, chat, payments וכו')
+  - כל רכיב שצריך לשלוח בקשת API מאומתת
+
+  הקובץ אינו:
+  - מטפל בלוגיקה עסקית - רק wrapper ל-fetch
+  - תומך בבקשות ללא אימות - לכך יש להשתמש ב-fetch רגיל
+*/
 
 import { getToken, clearAuthData } from "./authUtils";
 
 export async function apiFetch(url, options = {}, navigate) {
+  const isPublic = options.public || false;
   const token = getToken();
   
-  if (!token) {
+  if (!isPublic && !token) {
     if (navigate) navigate("/login");
     throw new Error("NO_TOKEN");
   }
 
+  const headers = {
+    ...(options.headers || {}),
+  }
+
+  if (!isPublic && token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+
+  const { skipContentType, public: _public, ...fetchOptions } = options;
+
   const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
+    ...fetchOptions,
+    headers,
   });
 
-  // Handle authentication errors (expired token, invalid token, etc.)
   if (res.status === 401 || res.status === 403) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData = await res.json().catch(() => ({}))
     
-    // Clear expired/invalid token
-    clearAuthData();
+    clearAuthData()
     
-    // Redirect to login with helpful message
     if (navigate) {
       navigate("/login", { 
         state: { 

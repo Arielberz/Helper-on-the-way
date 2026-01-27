@@ -1,3 +1,16 @@
+/*
+  קובץ זה אחראי על:
+  - רשימת הודעות בשיחה
+  - הצגת הודעות רגילות ומערכת
+  - גלילה אוטומטית לתחתית
+
+  הקובץ משמש את:
+  - chat.jsx - אזור המרכזי של השיחה
+
+  הקובץ אינו:
+  - מנהל הודעות - מקבל מהאב
+  - שולח הודעות - יש MessageInput
+*/
 import React, { useEffect, useRef } from "react";
 
 export default function MessageList({
@@ -20,12 +33,9 @@ export default function MessageList({
     scrollToBottom();
   }, [messages]);
 
-  // Render persistent ETA message
   const renderEtaMessage = () => {
-    // Only show for assigned requests
     if (requestStatus !== 'assigned') return null;
     
-    // If no ETA data yet, show a "calculating" message
     if (!etaData) {
       return (
         <div className="sticky top-0 z-10 flex justify-center mb-4 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-gradient-to-b from-[var(--background)] via-[var(--background)] to-transparent">
@@ -91,7 +101,7 @@ export default function MessageList({
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
-      {/* Persistent ETA Message - Always visible at top */}
+
       {renderEtaMessage()}
       
       {messages.length === 0 ? (
@@ -107,7 +117,6 @@ export default function MessageList({
                 msg.sender?._id?.toString() || msg.sender?.toString() || "";
               const isMe = senderId === currentUserId;
 
-              // Check if this is a system message (end treatment notification or payment)
               const isSystemMessage =
                 msg.isSystemMessage ||
                 msg.systemMessageType === "end_treatment" ||
@@ -119,7 +128,6 @@ export default function MessageList({
               const isHelper =
                 currentUserId === selectedConversation.helper?._id;
 
-              // System message for end treatment or payment
               if (isSystemMessage) {
                 return (
                   <div key={idx} className="flex justify-center my-4">
@@ -140,7 +148,7 @@ export default function MessageList({
                         {msg.content}
                       </p>
 
-                      {/* End treatment confirmation button - for requester */}
+
                       {msg.systemMessageType === "end_treatment" &&
                         isRequester &&
                         selectedConversation.request?.status !== "completed" && (
@@ -161,7 +169,7 @@ export default function MessageList({
                           </button>
                         )}
 
-                      {/* Accept payment button - for helper */}
+
                       {msg.systemMessageType === "payment_pending" &&
                         isHelper &&
                         !selectedConversation.request?.payment?.isPaid && (
@@ -207,7 +215,6 @@ export default function MessageList({
                 );
               }
 
-              // Regular message
               return (
                 <div
                   key={idx}

@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - תפריט פרופיל המשתמש במפה
+  - ניווט לפרופיל, ארנק והגדרות
+  - כפתור התנתקות מהמערכת
+  - הצגת מידע משתמש בסיסי
+*/
+
 import React from "react";
 import { clearAuthData } from "../../../utils/authUtils";
 
@@ -26,7 +34,6 @@ export default function ProfileMenu({
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--glass-bg-strong)'; }}
         aria-label="Profile Menu"
       >
-        {/* Notification dot */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full ring-2 ring-white" />
         )}
@@ -43,10 +50,8 @@ export default function ProfileMenu({
         </svg>
       </button>
 
-      {/* Profile Dropdown Menu */}
       {showProfileMenu && (
         <>
-          {/* Backdrop to close menu */}
           <div
             className="fixed inset-0 z-[-1]"
             onClick={() => setShowProfileMenu(false)}

@@ -1,11 +1,27 @@
+/*
+  קובץ זה אחראי על:
+  - טבלת משתמשים בממשק המנהל
+  - סינון וחיפוש משתמשים
+  - עריכת סטטוס מנהל, מחיקת משתמשים
+
+  הקובץ משמש את:
+  - מנהלים לניהול משתמשים
+  - ניתוב מ-AdminLayout
+
+  הקובץ אינו:
+  - מנהל הרשאות - רק מציג
+  - מאמת פעולות - נעשה בשרת
+*/
+
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiFetch } from '../../utils/apiFetch';
-import { API_BASE } from '../../utils/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import { getUsers, blockUser, unblockUser } from '../../services/admin.service';
 import { useAlert } from '../../context/AlertContext';
 
 function UsersTable() {
   const { showAlert, showConfirm } = useAlert();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,11 +36,7 @@ function UsersTable() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE}/api/admin/users?page=${page}&limit=20`, {
-        method: 'GET',
-      });
-
-      const response = await res.json();
+      const response = await getUsers(page, navigate);
 
       if (response.success) {
         setUsers(response.data.users);
@@ -45,13 +57,7 @@ function UsersTable() {
       if (!reason) return;
 
       try {
-        const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/block`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason }),
-        });
-
-        const response = await res.json();
+        const response = await blockUser(userId, reason, navigate);
         if (response.success) {
           showAlert('User blocked successfully');
           fetchUsers();
@@ -67,11 +73,7 @@ function UsersTable() {
   const handleUnblockUser = async (userId, username) => {
     showConfirm(`Are you sure you want to unblock ${username}?`, async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/api/admin/users/${userId}/unblock`, {
-          method: 'POST',
-        });
-
-        const response = await res.json();
+        const response = await unblockUser(userId, navigate);
         if (response.success) {
           showAlert('User unblocked successfully');
           fetchUsers();
@@ -108,7 +110,7 @@ function UsersTable() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Users</h1>
@@ -116,7 +118,7 @@ function UsersTable() {
         </div>
       </div>
 
-      {/* Search */}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
         <input
@@ -128,7 +130,7 @@ function UsersTable() {
         />
       </div>
 
-      {/* Table */}
+
       <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -255,7 +257,7 @@ function UsersTable() {
         </div>
       </div>
 
-      {/* Pagination */}
+
       {pagination && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-400">

@@ -1,5 +1,11 @@
-// Multi-step modal component that guides users through the help request creation process
-// with steps for location, problem details, photos, and payment offering.
+/*
+  קובץ זה אחראי על:
+  - מודאל רב-שלבי ליצירת בקשת עזרה
+  - ניהול שלבי המיקום, פרטי בעיה, תמונות ותשלום
+  - תהליך מודרך ליצירת בקשה חדשה
+  - ולידציה ושליחה של הבקשה
+*/
+
 import React, { useState } from 'react';
 import { ErrorMessage } from './ErrorMessage';
 import LocationSection from './LocationSection';

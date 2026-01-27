@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - דף דירוג נפרד (ניתן לגשת בקישור)
+  - קבלת פרמטרים מה-URL (requestId, helperName)
+  - פתיחת מודל דירוג אוטומטית
+
+  הקובץ משמש את:
+  - ניתוב מקישורים חיצוניים
+  - שיתוף קישור לדירוג
+
+  הקובץ אינו:
+  - מודל הדירוג הגלובלי - יש GlobalRatingModal
+  - מנהל דירוגים - רק מציג UI
+*/
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import RatingModal from "../../components/RatingModal/RatingModal";
@@ -10,7 +25,6 @@ export default function Rating() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Get requestId and helperName from URL parameters
     const reqId = searchParams.get('requestId');
     const helper = searchParams.get('helperName');
     

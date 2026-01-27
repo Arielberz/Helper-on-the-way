@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - אימות טוקן JWT בכל בקשה מוגנת
+  - בדיקת תקפות המשתמש וסטטוס החסימה שלו
+  - הוספת פרטי המשתמש לאובייקט הבקשה (req.user, req.userId)
+
+  הקובץ משמש את:
+  - כל הנתיבים שדורשים אימות (routers)
+  - נתיבי פרופיל, בקשות, צ'אט, תשלומים ודירוגים
+
+  הקובץ אינו:
+  - יוצר או מנפיק טוכנים חדשים - זה נעשה בשירות המשתמשים
+  - מטפל בתהליכי רישום או התחברות
+*/
+
 const verifyToken = require('./utils/verifyToken');
 const User = require('./models/userModel');
 
@@ -6,11 +21,9 @@ const authMiddleware = async (req, res, next) => {
         const rawToken = req.header('Authorization') || '';
         const { decoded, userId } = verifyToken(rawToken);
         
-        // Attach decoded token and userId to request
         req.user = decoded;
         req.userId = userId;
 
-        // Check if user is blocked
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
@@ -32,7 +45,6 @@ const authMiddleware = async (req, res, next) => {
 
         next();
     } catch (error) {
-        // Handle NO_TOKEN error
         if (error.code === 'NO_TOKEN') {
             return res.status(401).json({
                 success: false,
@@ -41,7 +53,6 @@ const authMiddleware = async (req, res, next) => {
             });
         }
         
-        // Handle JWT-specific errors
         if (error.name === 'JsonWebTokenError') {
             return res.status(401).json({
                 success: false,
@@ -58,7 +69,6 @@ const authMiddleware = async (req, res, next) => {
             });
         }
         
-        // Generic server error
         console.error('Authentication error:', error);
         return res.status(500).json({
             success: false,
@@ -69,7 +79,6 @@ const authMiddleware = async (req, res, next) => {
     }
 };
 
-// Admin-only middleware
 const adminOnly = async (req, res, next) => {
     try {
         if (!req.userId) {

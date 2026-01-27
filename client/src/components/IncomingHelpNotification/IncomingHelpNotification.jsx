@@ -1,16 +1,32 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת נוטיפיקציה למבקש עזרה כשמעזר מתנדב לעזור
+  - חישוב מרחק וזמן הגעה (ETA) למעזר
+  - כפתורים לאישור או דחייה של המעזר
+  - מעבר אוטומטי לצ'אט לאחר אישור
+  - ניהול מצב בקשות פעילות ומעזרים מתנדבים
+
+  הקובץ משמש את:
+  - MapLive כמרכיב מוטמע בדף Home
+  - HelperRequestContext לניהול מצב מעזרים
+
+  הקובץ אינו:
+  - מנהל את המפה או מיקומי GPS
+  - מטפל בתשלומים
+*/
+
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useHelperRequest } from '../../context/HelperRequestContext'
-import { getToken } from '../../utils/authUtils'
-import { API_BASE } from '../../utils/apiConfig'
 import { useAlert } from '../../context/AlertContext'
 import { apiFetch } from '../../utils/apiFetch'
+import { getMyRequests, rejectHelper } from '../../services/requests.service'
+import { getConversationByRequest } from '../../services/chat.service'
+import { API_BASE } from '../../utils/apiConfig'
 
-// Helper function to calculate distance and ETA
 const calculateEta = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   
-  // Distance (Haversine formula)
   const R = 6371; // Earth curve radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -20,12 +36,10 @@ const calculateEta = (lat1, lon1, lat2, lon2) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distanceKm = R * c;
 
-  // Estimate time (assuming average speed of 40 km/h in city)
   const speedKmh = 40;
   const timeHours = distanceKm / speedKmh;
   const timeMinutes = Math.round(timeHours * 60);
 
-  // Return formatted strings
   return {
     distance: distanceKm < 1 ? `${(distanceKm * 1000).toFixed(0)} m` : `${distanceKm.toFixed(1)} km`,
     time: timeMinutes < 1 ? '< 1 min' : `${timeMinutes} mins`,
@@ -42,14 +56,12 @@ export default function IncomingHelpNotification() {
   const { pendingRequest } = useHelperRequest() // Socket updates trigger this
   const { showAlert } = useAlert()
 
-  // Poll for pending helpers
   useEffect(() => {
     fetchPendingHelpers()
     const interval = setInterval(fetchPendingHelpers, 5000)
     return () => clearInterval(interval)
   }, [])
 
-  // Listen to socket triggers
   useEffect(() => {
     if (pendingRequest) {
       fetchPendingHelpers()
@@ -58,24 +70,13 @@ export default function IncomingHelpNotification() {
 
   const fetchPendingHelpers = async () => {
     try {
-      const token = getToken()
-      if (!token) return
-
-      const response = await fetch(`${API_BASE}/api/requests/my-requests`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      if (!response.ok) return
-
-      const data = await response.json()
-      // Find active request with pending helpers
+      const data = await getMyRequests()
       const request = data.data?.find(
         req => req.status === 'pending' && req.pendingHelpers?.length > 0
       )
 
       if (request) {
         setActiveRequest(request)
-        // Just take the first helper for the notification
         setFirstHelper(request.pendingHelpers[0])
       } else {
         setActiveRequest(null)
@@ -89,12 +90,18 @@ export default function IncomingHelpNotification() {
   const handleAccept = async () => {
     if (!activeRequest || !firstHelper) return
     setIsProcessing(true)
-    const token = getToken()
     const requestId = activeRequest._id
-    const helperId = firstHelper.user._id
+    
+    // Extract helper ID - handle both populated and unpopulated user field
+    const helperId = firstHelper.user?._id || firstHelper.user
+    
+    if (!helperId) {
+      showAlert('לא ניתן לזהות את המעזר. אנא נסה שוב.')
+      setIsProcessing(false)
+      return
+    }
 
     try {
-      // 1. Confirm Helper
       const response = await apiFetch(
         `${API_BASE}/api/requests/${requestId}/confirm-helper`,
         {
@@ -110,16 +117,9 @@ export default function IncomingHelpNotification() {
         throw new Error(errorData.message || 'Failed to confirm helper')
       }
 
-      // 2. Open Chat
-      const chatResponse = await fetch(
-        `${API_BASE}/api/chat/conversation/request/${requestId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
+      const chatData = await getConversationByRequest(requestId);
 
-      if (chatResponse.ok) {
-        const chatData = await chatResponse.json()
+      if (chatData) {
         const conversationId = chatData.data?.conversation?._id || chatData.data?._id
         if (conversationId) {
           navigate('/chat', { state: { conversationId } })
@@ -144,26 +144,10 @@ export default function IncomingHelpNotification() {
     setIsProcessing(true)
     const requestId = activeRequest._id
     const helperId = firstHelper.user._id
-    const token = getToken()
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/requests/${requestId}/reject-helper`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ helperId })
-        }
-      )
+      await rejectHelper(requestId, helperId)
 
-      if (!response.ok) {
-        throw new Error('Failed to reject helper')
-      }
-
-      // Refresh to see if there are other helpers
       await fetchPendingHelpers()
 
     } catch (error) {
@@ -174,7 +158,6 @@ export default function IncomingHelpNotification() {
     }
   }
 
-  // Calculate ETA - Must be before any early return!
   const eta = useMemo(() => {
     if (!activeRequest?.location || !firstHelper?.location) return null;
     return calculateEta(
@@ -187,7 +170,6 @@ export default function IncomingHelpNotification() {
 
   if (!activeRequest || !firstHelper) return null
 
-  // Format Helper Name
   const user = firstHelper.user || {}
   const helperName = user.username || 'Unknown Helper'
   const helperRating = user.rating || user.averageRating ? (user.rating || user.averageRating).toFixed(1) : 'New'
@@ -197,14 +179,14 @@ export default function IncomingHelpNotification() {
     <div className="fixed top-24 md:top-8 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-top-4 fade-in duration-500 w-[90%] max-w-md">
       <div className="bg-white/90 backdrop-blur-xl border border-blue-200 shadow-2xl rounded-2xl p-5 relative overflow-hidden">
         
-        {/* Decorative elements */}
+
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
         <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col gap-4">
           
           <div className="flex items-center gap-4">
-            {/* Avatar / Icon */}
+
             <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner shrink-0">
                {helperAvatar ? (
                  <img src={helperAvatar} alt={helperName} className="w-full h-full rounded-full object-cover" />

@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - רשימת בקשות עזרה סמוכות
+  - הצגת בקשות עם מרחק, סוג בעיה ופרטים
+  - אינטראקציה עם בקשות (צפייה ופתיחה)
+  - סינון והצגה של בקשות רלוונטיות
+*/
+
 import React from 'react';
 import { CloseIcon, SettingsIcon } from './Icons';
 import { PROBLEM_LABELS } from '../utils/nearbyUtils';
@@ -16,13 +24,10 @@ export default function NearbyRequestsList({
 }) {
   if (!showList) return null;
 
-  // Sidebar mode - fixed on the right side
   if (asSidebar) {
     return (
       <div 
         className={`flex flex-col h-full ${
-            // If embedded, fill parent. If not (legacy/right-side panel), use fixed styles.
-            // We assume 'embedded' means "I am inside a flex container, just fill it".
             embedded 
             ? 'w-full bg-transparent rounded-none shadow-none' 
             : 'bg-white rounded-theme-xl shadow-theme-lg w-80 max-h-[calc(100vh-160px)]'
@@ -78,7 +83,7 @@ export default function NearbyRequestsList({
                 } border rounded-2xl p-4 cursor-pointer transition-all duration-300 group relative mb-3 last:mb-0`}
                 onClick={() => { onSelectRequest(req); closeList() }}
               >
-                {/* Header: Type & Distance */}
+
                 <div className="flex items-center justify-between mb-3">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${
                     embedded ? 'bg-blue-500/10 text-blue-700' : 'bg-blue-50 text-blue-600'
@@ -91,7 +96,7 @@ export default function NearbyRequestsList({
                   </span>
                 </div>
 
-                {/* Content */}
+
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
@@ -117,7 +122,7 @@ export default function NearbyRequestsList({
                     </div>
                   )}
                   
-                  {/* Footer: Date & Price */}
+
                   <div className="pt-3 mt-1 border-t border-gray-100/50 flex items-center justify-between">
                      <span className="text-[10px] text-gray-400 font-medium">
                         {new Date(req.createdAt).toLocaleString('he-IL', {
@@ -125,12 +130,15 @@ export default function NearbyRequestsList({
                         })}
                      </span>
                      
-                     {req.payment?.offeredAmount > 0 && (
-                        <div className="flex items-center gap-1 text-green-600 font-bold text-sm bg-green-50/80 px-2 py-0.5 rounded-lg">
-                           <span>₪</span>
-                           {req.payment.offeredAmount}
-                        </div>
-                     )}
+                     {req.payment?.offeredAmount > 0 && (() => {
+                        const helperAmount = req.payment?.helperAmount || Math.round(req.payment.offeredAmount * 0.9 * 10) / 10;
+                        return (
+                           <div className="flex items-center gap-1 text-green-600 font-bold text-sm bg-green-50/80 px-2 py-0.5 rounded-lg">
+                              <span>₪</span>
+                              {helperAmount}
+                           </div>
+                        );
+                     })()}
                   </div>
                 </div>
               </div>
@@ -141,7 +149,6 @@ export default function NearbyRequestsList({
     );
   }
 
-  // Modal mode - centered on screen
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[2100] p-4" onClick={closeList}>
       <div className="bg-white rounded-theme-xl shadow-theme-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()} dir="rtl">
@@ -194,7 +201,6 @@ export default function NearbyRequestsList({
                 {req.description && <div className="text-text-secondary text-sm mb-2">{req.description}</div>}
                 {req.location?.address && <div className="text-text-light text-sm mb-2">📍 {req.location.address}</div>}
                 {req.payment?.offeredAmount > 0 && (() => {
-                  // Calculate helper amount (90% rounded to 1 decimal)
                   const helperAmount = req.payment?.helperAmount || Math.round(req.payment.offeredAmount * 0.9 * 10) / 10;
                   return (
                     <div className="text-success font-semibold mb-2">💰 {helperAmount} {req.payment.currency || 'ILS'}</div>

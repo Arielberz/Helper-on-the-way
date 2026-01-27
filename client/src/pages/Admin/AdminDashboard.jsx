@@ -1,15 +1,31 @@
+/*
+  קובץ זה אחראי על:
+  - לוח המחוונים הראשי של המנהל
+  - סטטיסטיקות כלליות (משתמשים, בקשות, עמלות, דוחות)
+  - גרפים ואיורים של נתוני המערכת
+
+  הקובץ משמש את:
+  - מנהלים לצפייה בסטטיסטיקות
+  - ניתוב מ-AdminLayout
+
+  הקובץ אינו:
+  - מנהל משתמשים - יש UsersTable
+  - מעריך נתונים - רק מציג
+*/
+
 import { useEffect, useState } from 'react';
 import { Users, FileText, CheckCircle, AlertCircle, DollarSign, UserX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import UsersBarChart from '../../components/Admin/UsersBarChart';
 import SourcesPieChart from '../../components/Admin/SourcesPieChart';
-import { apiFetch } from '../../utils/apiFetch';
-import { API_BASE } from '../../utils/apiConfig';
+import { getAdminOverview, getCommissionStats } from '../../services/admin.service';
 
 function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [commissionData, setCommissionData] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDashboardData();
@@ -19,17 +35,9 @@ function AdminDashboard() {
     try {
       setLoading(true);
       
-      // Fetch overview data
-      const res = await apiFetch(`${API_BASE}/api/admin/overview`, {
-        method: 'GET',
-      });
-      const response = await res.json();
+      const response = await getAdminOverview(navigate);
 
-      // Fetch commission stats
-      const commRes = await apiFetch(`${API_BASE}/api/admin/commission-stats`, {
-        method: 'GET',
-      });
-      const commResponse = await commRes.json();
+      const commResponse = await getCommissionStats(navigate);
 
       if (response.success) {
         setData(response.data);
@@ -104,13 +112,13 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div>
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
         <p className="text-slate-400 mt-1">Welcome to the admin dashboard</p>
       </div>
 
-      {/* Stats Cards */}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {stats.map((stat, index) => (
           <div
@@ -130,15 +138,15 @@ function AdminDashboard() {
         ))}
       </div>
 
-      {/* Charts */}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart */}
+
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
           <h2 className="text-xl font-bold text-white mb-4">User Growth</h2>
           <UsersBarChart data={data?.barData || []} />
         </div>
 
-        {/* Pie Chart */}
+
         <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
           <h2 className="text-xl font-bold text-white mb-4">Request Types</h2>
           <SourcesPieChart data={data?.pieData || []} />

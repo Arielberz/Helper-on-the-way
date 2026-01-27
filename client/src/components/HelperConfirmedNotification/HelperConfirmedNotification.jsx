@@ -1,8 +1,24 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת נוטיפיקציה למבקש עזרה כשהוא מאשר מעזר
+  - יצירת שיחה אוטומטית בין מבקש למעזר
+  - מעבר אוטומטי לדף הצ'אט עם השיחה הפתוחה
+  - ניקוי מצב לאחר מעבר לצ'אט
+
+  הקובץ משמש את:
+  - App.jsx כמרכיב גלובלי
+  - HelperRequestContext לניהול מצב אישור מעזר
+
+  הקובץ אינו:
+  - מטפל בתקשורת Socket.IO או מיקום
+  - מנהל את המפה או בקשות העזרה
+*/
+
 import { useEffect, useState } from 'react'
 import { useHelperRequest } from '../../context/HelperRequestContext'
 import { useNavigate } from 'react-router-dom'
-import { API_BASE } from '../../utils/apiConfig'
 import { useAlert } from '../../context/AlertContext'
+import { getOrCreateConversation } from '../../services/chat.service'
 
 export default function HelperConfirmedNotification() {
   const { showAlert } = useAlert()
@@ -27,35 +43,17 @@ export default function HelperConfirmedNotification() {
     if (!helperConfirmed?.request?._id) return
 
     setIsLoadingChat(true)
-    const token = localStorage.getItem('token')
     const requestId = helperConfirmed.request._id
 
     try {
-      // Get or create conversation for this request
-      const response = await fetch(
-        `${API_BASE}/api/chat/conversation/request/${requestId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
+      const chatData = await getOrCreateConversation(requestId, navigate)
+      const conversationId = chatData.data?.conversation?._id || chatData.data?._id
 
-      if (response.ok) {
-        const chatData = await response.json()
-        const conversationId = chatData.data?.conversation?._id || chatData.data?._id
-
-        if (conversationId) {
-
-          // Navigate to chat with conversation ID
-          navigate('/chat', { state: { conversationId } })
-          clearHelperConfirmed()
-        } else {
-          console.error('No conversation ID received')
-          showAlert('Unable to open chat. Please try again.')
-        }
+      if (conversationId) {
+        navigate('/chat', { state: { conversationId } })
+        clearHelperConfirmed()
       } else {
-        console.error('Failed to get conversation:', response.status)
+        console.error('No conversation ID received')
         showAlert('Unable to open chat. Please try again.')
       }
     } catch (error) {
@@ -73,7 +71,7 @@ export default function HelperConfirmedNotification() {
   return (
     <div className="fixed bottom-4 right-8 z-[9999] animate-in slide-in-from-bottom-10 fade-in duration-500">
       <div className="bg-white/80 backdrop-blur-xl border border-blue-200/50 shadow-2xl rounded-3xl p-5 w-80 flex flex-col gap-4 relative overflow-hidden">
-        {/* Decorative glass gradient blob */}
+
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-400/20 rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="relative z-10">

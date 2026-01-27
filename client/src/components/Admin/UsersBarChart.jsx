@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - גרף עמודות להצגת נתוני משתמשים
+  - ויזואליזציה של סטטיסטיקות משתמשים
+  - רכיב תצוגה למנהל המערכת
+*/
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function UsersBarChart({ data }) {

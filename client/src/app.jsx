@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת מסלולי הניתוב (Routes) הראשיים של האפליקציה
+  - עטיפת קומפוננטות בספקי קשר (RatingProvider, HelperRequestProvider)
+  - הגדרת מסלולים מוגנים (ProtectedRoute) ופומביים (PublicRoute)
+  - מבנה כללי של ניווט בין דפי המשתמש, אדמין, צ'אט ומפה
+
+  הקובץ משמש את:
+  - main.jsx שמרנדר אותו בתוך BrowserRouter
+  - React Router לצורך ניווט בין דפים
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית או קריאות API
+  - מטפל באימות משתמשים (זה תפקיד ProtectedRoute)
+*/
+
 import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/landing/landing";
 import Register from "./pages/register/register";
@@ -130,7 +146,7 @@ function App() {
           }
         />
         
-        {/* Admin Routes */}
+
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="users" element={<UsersTable />} />
@@ -140,7 +156,7 @@ function App() {
           <Route path="contact-messages" element={<ContactMessagesTable />} />
         </Route>
 
-        {/* Admin Debug Page */}
+
         <Route path="/admin-debug" element={<AdminDebugPage />} />
 
          <Route path="*" element={<NotFound />} />      </Routes>

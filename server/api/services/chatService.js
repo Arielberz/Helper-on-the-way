@@ -1,21 +1,23 @@
-/**
- * Chat Service - Shared business logic for chat operations
- * Used by both HTTP controllers and Socket.IO handlers
- */
+/*
+  קובץ זה אחראי על:
+  - לוגיקה עסקית של צ'אט: יצירת שיחות, שליחת הודעות
+  - שאילות מורכבות למסד הנתונים
+  - סימון הודעות כנקראות וביטול סימון
+  - חישוב הודעות שלא נקראו
+  - אכיפת הרשאות למשתתפים בשיחה
+
+  הקובץ משמש את:
+  - chatController.js
+  - chatSockets.js (לשיחות בזמן אמת)
+  - requestsService.js (יוצר שיחות לבקשות)
+
+  הקובץ אינו:
+  - מטפל בבקשות HTTP - זה בקונטרולר
+  - משדר הודעות Socket.IO - זה ב-sockets
+*/
+
 const Conversation = require('../models/chatModel');
 
-/**
- * Append a new message to a conversation
- * @param {Object} params - Parameters object
- * @param {String} params.conversationId - Conversation ID
- * @param {String} params.senderId - User ID of the sender
- * @param {String} params.content - Message content
- * @param {Boolean} params.isSystemMessage - Whether this is a system message
- * @param {String} params.systemMessageType - Type of system message (e.g., 'end_treatment')
- * @param {String} params.requestId - Request ID for system messages
- * @returns {Object} { conversation, message } - Updated conversation and the new message
- * @throws {Error} With code property for specific error handling
- */
 async function appendMessage({ conversationId, senderId, content, isSystemMessage, systemMessageType, requestId }) {
   const conversation = await Conversation.findById(conversationId);
   
@@ -25,7 +27,6 @@ async function appendMessage({ conversationId, senderId, content, isSystemMessag
     throw err;
   }
 
-  // Verify user is a participant
   const isParticipant =
     conversation.user.toString() === senderId ||
     conversation.helper.toString() === senderId;
@@ -36,7 +37,6 @@ async function appendMessage({ conversationId, senderId, content, isSystemMessag
     throw err;
   }
 
-  // Create new message
   const message = {
     sender: senderId,
     content,
@@ -44,7 +44,6 @@ async function appendMessage({ conversationId, senderId, content, isSystemMessag
     read: false
   };
 
-  // Add system message properties if applicable
   if (isSystemMessage) {
     message.isSystemMessage = true;
     if (systemMessageType) {
@@ -58,20 +57,11 @@ async function appendMessage({ conversationId, senderId, content, isSystemMessag
   conversation.messages.push(message);
   await conversation.save();
 
-  // Return the saved message (with _id)
   const savedMessage = conversation.messages[conversation.messages.length - 1];
   
   return { conversation, message: savedMessage };
 }
 
-/**
- * Mark messages as read in a conversation
- * @param {Object} params - Parameters object
- * @param {String} params.conversationId - Conversation ID
- * @param {String} params.userId - User ID marking messages as read
- * @returns {Object} conversation - Updated conversation
- * @throws {Error} With code property for specific error handling
- */
 async function markConversationRead({ conversationId, userId }) {
   const conversation = await Conversation.findById(conversationId);
   
@@ -81,7 +71,6 @@ async function markConversationRead({ conversationId, userId }) {
     throw err;
   }
 
-  // Verify user is a participant
   const isParticipant =
     conversation.user.toString() === userId ||
     conversation.helper.toString() === userId;
@@ -92,7 +81,6 @@ async function markConversationRead({ conversationId, userId }) {
     throw err;
   }
 
-  // Mark all messages not sent by this user as read
   let updated = false;
   for (const msg of conversation.messages) {
     if (msg.sender.toString() !== userId && !msg.read) {

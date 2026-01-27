@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - קבלת והעברת רפרנס למפת Leaflet
+  - חיבור אירועי המפה עם הקומפוננטה
+  - מתן גישה למפה מרכיבים אחרים
+*/
+
 import React, { useEffect } from "react";
 import { useMapEvents } from "react-leaflet";
 

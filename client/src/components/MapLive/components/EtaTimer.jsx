@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - טיימר ספירה לאחור לזמן הגעה משוער (ETA)
+  - עדכון זמן בזמן אמת עם אנימציות
+  - הצגת זמן הגעה לעוזר ולמבקש עזרה
+  - חישוב והצגת זמן נותר
+*/
+
 import React, { useState, useEffect, useRef } from 'react';
 import './EtaTimer.css';
 
@@ -6,20 +14,16 @@ const EtaTimer = ({ etaSeconds, lastUpdated }) => {
     const lastServerUpdateRef = useRef(lastUpdated);
     
     useEffect(() => {
-        // Calculate elapsed time since server update for accurate sync
         const elapsedSinceUpdate = lastUpdated 
             ? Math.floor((Date.now() - lastUpdated) / 1000)
             : 0;
         
-        // Reset remaining time accounting for elapsed time
         const adjustedSeconds = Math.max(0, etaSeconds - elapsedSinceUpdate);
         setRemainingSeconds(adjustedSeconds);
         lastServerUpdateRef.current = lastUpdated;
     }, [etaSeconds, lastUpdated]);
     
     useEffect(() => {
-        // Countdown timer that ticks every second for smoother updates
-        // Use 1-second interval but only update display every minute
         const interval = setInterval(() => {
             setRemainingSeconds(prev => Math.max(0, prev - 1));
         }, 1000);
@@ -27,7 +31,6 @@ const EtaTimer = ({ etaSeconds, lastUpdated }) => {
         return () => clearInterval(interval);
     }, [lastUpdated]); // Reset interval when new server data arrives
     
-    // Calculate minutes, show "Arriving" when very close
     const minutes = Math.ceil(remainingSeconds / 60);
     const isArriving = remainingSeconds <= 30; // Less than 30 seconds
     

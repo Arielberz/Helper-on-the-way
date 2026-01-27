@@ -1,5 +1,10 @@
-// Error message display components with theme-based styling for showing validation
-// and error messages throughout the help request flow.
+/*
+  קובץ זה אחראי על:
+  - רכיבי הצגת הודעות שגיאה
+  - עיצוב הודעות על בסיס ערכת הנושא
+  - הצגת הודעות ולידציה בתהליך בקשת עזרה
+*/
+
 import React from 'react';
 
 export function ErrorMessage({ message }) {

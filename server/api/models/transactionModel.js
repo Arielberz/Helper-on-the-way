@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת סכימת העסקאות הכספיות במסד הנתונים
+  - שדות: משתמש, סוג (הפקדה/משיכה), סכום, סטטוס, יד פייפאל
+  - תמיכה בעמולות ויירואות שונים
+  - מעקב היסטוריית תנועות בארנק המשתמש
+
+  הקובץ משמש את:
+  - שירות וקונטרולר התשלומים
+  - שירות המשתמשים לייצוג יתרת הארנק
+  - קונטרולר המנהל להצגת עסקאות
+
+  הקובץ אינו:
+  - מבצע עסקאות פייפאל - זה בשירות paypalService
+*/
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
@@ -75,7 +91,6 @@ const transactionSchema = new Schema({
     }
 });
 
-// Index for efficient queries
 transactionSchema.index({ user: 1, createdAt: -1 });
 transactionSchema.index({ user: 1, type: 1 });
 

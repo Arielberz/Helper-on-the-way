@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת סכימת בקשת הסיוע במסד הנתונים
+  - שדות: מבקש, מסייע, מיקום, סטטוס, סוג בעיה, תשלום, תיאור
+  - אינדקסים גיאוגרפיים לחיפוש בקשות קרובות
+  - מחזור חיים של בקשה: ממתינה → משוייכת → בטיפול → הושלמה/בוטלה
+
+  הקובץ משמש את:
+  - שירות וקונטרולר הבקשות
+  - שירות הצ'אט (לקישור בין בקשה לשיחה)
+  - שירות הניקיון האוטומטי
+
+  הקובץ אינו:
+  - מטפל בלוגיקת שיוך או עדכונים - זה בשירותים ובקונטרולרים
+*/
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const REQUEST_STATUS = require('../constants/requestStatus');
@@ -131,7 +147,6 @@ const requestSchema = new Schema({
     type: Date,
     default: null,
   },
-  // Live ETA tracking data
   etaData: {
     etaSeconds: {
       type: Number,
@@ -154,27 +169,23 @@ const requestSchema = new Schema({
     offeredAmount: {
       type: Number,
       default: 0,
-      // NOTE: Stored in agorot (1 ILS = 100 agorot) to avoid floating-point errors
-      // Example: 50 ILS = 5000 agorot
     },
     helperAmount: {
       type: Number,
       default: 0,
-      // NOTE: Stored in agorot
     },
     commissionAmount: {
       type: Number,
       default: 0,
-      // NOTE: Stored in agorot
     },
     commissionRate: {
       type: Number,
-      default: 10, // 10% commission
+      default: 10,
     },
     currency: {
       type: String,
       default: 'ILS',
-      enum: ['ILS']  // Only ILS supported
+      enum: ['ILS']
     },
     isPaid: {
       type: Boolean,
@@ -200,24 +211,21 @@ const requestSchema = new Schema({
   }
 });
 
-// Update the updatedAt timestamp on save
 requestSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   if (this.location && typeof this.location.lat === 'number' && typeof this.location.lng === 'number') {
     this.geo = { type: 'Point', coordinates: [this.location.lng, this.location.lat] };
   }
   
-  // Calculate commission and helper amount automatically (amounts are in agorot)
   if (this.payment && this.payment.offeredAmount > 0) {
     const commissionRate = this.payment.commissionRate || 10;
-    const totalAgorot = this.payment.offeredAmount;
+    const totalIls = this.payment.offeredAmount;
     
-    // Calculate commission in agorot
-    const commissionAgorot = Math.round(totalAgorot * (commissionRate / 100));
-    const helperAgorot = totalAgorot - commissionAgorot;
+    const commissionIls = totalIls * (commissionRate / 100);
+    const helperIls = totalIls - commissionIls;
     
-    this.payment.helperAmount = helperAgorot;
-    this.payment.commissionAmount = commissionAgorot;
+    this.payment.helperAmount = helperIls;
+    this.payment.commissionAmount = commissionIls;
   } else if (this.payment) {
     this.payment.helperAmount = 0;
     this.payment.commissionAmount = 0;
@@ -226,7 +234,6 @@ requestSchema.pre('save', function(next) {
   next();
 });
 
-// Index for geospatial queries
 requestSchema.index({ 'location.lat': 1, 'location.lng': 1 });
 requestSchema.index({ status: 1, createdAt: -1 });
 requestSchema.index({ user: 1, createdAt: -1 });

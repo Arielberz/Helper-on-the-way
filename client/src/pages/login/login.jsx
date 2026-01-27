@@ -1,8 +1,23 @@
+/*
+  קובץ זה אחראי על:
+  - דף התחברות למשתמשים קיימים
+  - אימות עם שם משתמש/אימייל/טלפון וסיסמה
+  - שמירת טוקן JWT ב-localStorage
+  - המרת טלפון אוטומטית מ-05 ל-+9725
+
+  הקובץ משמש את:
+  - משתמשים שרוצים להתחבר למערכת
+  - ניתוב מ-PublicRoute כשמשתמש מנסה לגשת לדף מוגן
+
+  הקובץ אינו:
+  - מאמת סיסמה בצד לקוח - נעשה בשרת
+  - מנהל סשנים - רק התחברות
+*/
+
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
 import { setAuthData } from "../../utils/authUtils";
-import { API_BASE } from "../../utils/apiConfig";
+import { login as loginUser } from "../../services/users.service";
 
 
 
@@ -14,7 +29,6 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check for session expiration message
   useEffect(() => {
     if (location.state?.expired) {
       setError(location.state.message || "ההתחברות שלך פגה. אנא התחבר שוב.");
@@ -27,41 +41,35 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Auto-convert phone numbers starting with 05 to +9725 format
       let identifierToSend = identifier.trim();
       if (identifierToSend.startsWith('05') && /^05\d{8}$/.test(identifierToSend)) {
         identifierToSend = '+972' + identifierToSend.substring(1);
       }
       
-      const response = await axios.post(`${API_BASE}/api/users/login`, {
+      const response = await loginUser({
         identifier: identifierToSend,
         password
       });
 
-      if (response.data.success) {
-        // Store token in localStorage
-        localStorage.setItem("token", response.data.data.token);
-        if (response.data.data.user) {
-          localStorage.setItem("user", JSON.stringify(response.data.data.user));
-          // Store userId for Socket.IO room management
-          localStorage.setItem("userId", response.data.data.user.id);
+      if (response.success) {
+        localStorage.setItem("token", response.data.token);
+        if (response.data.user) {
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          localStorage.setItem("userId", response.data.user.id);
         }
         
-        // Redirect based on user role
-        if (response.data.data.user?.role === 'admin') {
+        if (response.data.user?.role === 'admin') {
           navigate("/admin");
         } else {
           navigate("/home");
         }
       }
     } catch (err) {
-      const serverMsg = err.response?.data?.message;
-      const isBlocked = err.response?.data?.isBlocked;
+      const serverMsg = err.message;
       let msg = "שגיאה בהתחברות. נסה שוב.";
       
-      // If account is blocked, show the exact message from server
-      if (isBlocked || (serverMsg && serverMsg.includes('blocked'))) {
-        msg = serverMsg || "החשבון שלך חסום. אנא צור קשר עם התמיכה למידע נוסף.";
+      if (serverMsg && serverMsg.includes('blocked')) {
+        msg = serverMsg;
       } else {
         switch (serverMsg) {
           case "identifier and password are required":

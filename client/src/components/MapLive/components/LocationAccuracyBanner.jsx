@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת באנר התראה על דיוק המיקום
+  - התראה כשדיוק המיקום נמוך
+  - הצגת מידע על רמת הדיוק הנוכחית
+*/
+
 import React from "react";
 
 export default function LocationAccuracyBanner({

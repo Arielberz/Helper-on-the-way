@@ -1,5 +1,10 @@
-// Optional payment offering section where users can specify an amount and currency
-// they are willing to pay for assistance.
+/*
+  קובץ זה אחראי על:
+  - סקציית תשלום אופציונלי בבקשת עזרה
+  - הזנת סכום ומטבע לתשלום
+  - הצעת תמורה כספית לעוזר
+*/
+
 import React from 'react';
 
 export default function PaymentSection({

@@ -1,12 +1,28 @@
+/*
+  קובץ זה אחראי על:
+  - דף debug למנהלים/מפתחים
+  - כפתורי איפוס מטמון, מחיקת נתונים
+  - כלים לבדיקה ותחזוקה
+
+  הקובץ משמש את:
+  - מפתחים לתחזוקה
+  - אינו חשוף למשתמשים רגילים
+
+  הקובץ אינו:
+  - חלק מהמערכת הראשית - כלי עזר
+  - מומלץ להסיר בפרודקשן
+*/
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getToken } from '../../utils/authUtils';
 
 function AdminDebugPage() {
   const [debugInfo, setDebugInfo] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const userStr = localStorage.getItem('user');
     
     let user = null;

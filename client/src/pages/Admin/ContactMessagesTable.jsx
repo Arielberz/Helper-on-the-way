@@ -1,11 +1,27 @@
+/*
+  קובץ זה אחראי על:
+  - טבלת הודעות צור קשר בממשק המנהל
+  - סינון לפי סטטוס, תאריך
+  - סימון הודעות כנקראו/מטופלות
+
+  הקובץ משמש את:
+  - מנהלים לשירות לקוחות
+  - ניתוב מ-AdminLayout
+
+  הקובץ אינו:
+  - שולח תשובות - רק מציג
+  - מנהל אימיילים - רק הודעות נכנסות
+*/
+
 import { useEffect, useState } from 'react';
 import { Search, Mail, MailOpen, Trash2, Eye, X } from 'lucide-react';
-import { apiFetch } from '../../utils/apiFetch';
-import { API_BASE } from '../../utils/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import { getContactMessages, markContactMessageAsRead, deleteContactMessage } from '../../services/admin.service';
 import { useAlert } from '../../context/AlertContext';
 
 function ContactMessagesTable() {
   const { showAlert, showConfirm } = useAlert();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,11 +36,7 @@ function ContactMessagesTable() {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE}/api/admin/contact-messages`, {
-        method: 'GET',
-      });
-
-      const response = await res.json();
+      const response = await getContactMessages(navigate);
 
       if (response.success) {
         setMessages(response.data.messages);
@@ -40,13 +52,7 @@ function ContactMessagesTable() {
 
   const handleMarkAsRead = async (messageId, currentStatus) => {
     try {
-      const res = await apiFetch(`${API_BASE}/api/admin/contact-messages/${messageId}/read`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: !currentStatus }),
-      });
-
-      const response = await res.json();
+      const response = await markContactMessageAsRead(messageId, navigate);
       if (response.success) {
         showAlert(currentStatus ? 'סומן כלא נקרא' : 'סומן כנקרא');
         fetchMessages();
@@ -61,11 +67,7 @@ function ContactMessagesTable() {
   const handleDeleteMessage = async (messageId, fullName) => {
     showConfirm(`האם אתה בטוח שברצונך למחוק את ההודעה של ${fullName}?`, async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/api/admin/contact-messages/${messageId}`, {
-          method: 'DELETE',
-        });
-
-        const response = await res.json();
+        const response = await deleteContactMessage(messageId, navigate);
         if (response.success) {
           showAlert('ההודעה נמחקה בהצלחה');
           fetchMessages();
@@ -80,7 +82,6 @@ function ContactMessagesTable() {
 
   const handleViewMessage = (message) => {
     setSelectedMessage(message);
-    // Mark as read when opening
     if (!message.isRead) {
       handleMarkAsRead(message._id, false);
     }
@@ -137,7 +138,7 @@ function ContactMessagesTable() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">הודעות צור קשר</h1>
@@ -147,9 +148,9 @@ function ContactMessagesTable() {
         </div>
       </div>
 
-      {/* Filters and Search */}
+
       <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
+
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
@@ -165,7 +166,7 @@ function ContactMessagesTable() {
           />
         </div>
 
-        {/* Filter */}
+
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -178,7 +179,7 @@ function ContactMessagesTable() {
         </select>
       </div>
 
-      {/* Messages Table */}
+
       <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full" dir="rtl">
@@ -291,7 +292,7 @@ function ContactMessagesTable() {
         </div>
       </div>
 
-      {/* Message Detail Modal */}
+
       {selectedMessage && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" dir="rtl">

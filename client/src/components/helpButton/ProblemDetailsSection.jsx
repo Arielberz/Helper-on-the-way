@@ -1,5 +1,10 @@
-// Problem type selection and description component with icon-based buttons for common roadside issues
-// and a text area for detailed problem descriptions.
+/*
+  קובץ זה אחראי על:
+  - בחירת סוג בעיה ותיאור בבקשת עזרה
+  - כפתורים עם אייקונים לבעיות נפוצות בכביש
+  - שדה טקסט לתיאור מפורט של הבעיה
+*/
+
 import React from 'react';
 
 const problemOptions = [

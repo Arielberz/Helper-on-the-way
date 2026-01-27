@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - גרף עוגה להצגת מקורות נתונים
+  - ויזואליזציה של נתוני אנליטיקס
+  - רכיב תצוגה למנהל המערכת
+*/
+
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];

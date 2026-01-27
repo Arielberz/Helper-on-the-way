@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - סייד-בר צד המפה המציג בקשות סמוכות
+  - כפתורי פילטר והגדרות
+  - תפריט ניווט צדדי במפה
+  - אינטגרציה עם רשימת הבקשות הסמוכות
+*/
+
 import React, { useState } from 'react';
 import NearbyRequestsList from '../../NearbyRequestsButton/components/NearbyRequestsList';
 import FilterSettingsModal from '../../NearbyRequestsButton/components/FilterSettingsModal';
@@ -12,7 +20,6 @@ export default function MapSidebar({
   const [isOpen, setIsOpen] = useState(true);
   const [showHelperSettings, setShowHelperSettings] = useState(false);
   
-  // Filter state managed here since we're decoupled
   const [filterSettings, setFilterSettings] = useState({
     maxDistance: 100,
     destination: '',
@@ -23,11 +30,9 @@ export default function MapSidebar({
 
   const hasActiveFilters = filterSettings.maxDistance < 100 || filterSettings.problemTypes.length > 0 || filterSettings.minPayment > 0;
 
-  // We need to calculate distances and sort/filter
   const sortedRequests = React.useMemo(() => {
     if (!userPosition || !requests) return [];
     
-    // Simple distance calc
     const calculateDistance = (lat1, lon1, lat2, lon2) => {
       const R = 6371; // km
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -74,7 +79,7 @@ export default function MapSidebar({
 
   return (
     <>
-      {/* Floating Toggle Button - Visible only when sidebar is closed */}
+
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -92,12 +97,12 @@ export default function MapSidebar({
         </button>
       )}
 
-      {/* Full Sidebar - Visible only when open */}
+
       {isOpen && (
         <div 
           className="fixed top-0 left-0 h-full z-[2000] w-80 transition-transform duration-300 ease-in-out font-sans"
         >
-          {/* Sidebar Content Container */}
+
           <div 
             className="h-full w-full flex flex-col overflow-hidden"
             style={{
@@ -108,9 +113,9 @@ export default function MapSidebar({
               boxShadow: 'var(--glass-shadow)',
             }}
           >
-            {/* Header Section (Toggle + Helper Link) */}
+
             <div className="p-4 border-b border-white/20 shrink-0 space-y-4">
-               {/* Top Toolbar: Toggle + Logo */}
+
                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setIsOpen(false)}
@@ -120,7 +125,7 @@ export default function MapSidebar({
                      <MenuIcon />
                   </button>
 
-                  {/* Logo Section */}
+
                   <div className="flex-1">
                     <button
                       onClick={() => {
@@ -144,7 +149,7 @@ export default function MapSidebar({
                </div>
 
               
-              {/* Native Section Title & Filters */}
+
               <div className="flex items-end justify-between px-2" dir="rtl">
                  <div>
                     <h3 className="text-lg font-bold text-gray-800">בקשות קרובות</h3>
@@ -162,7 +167,7 @@ export default function MapSidebar({
               </div>
             </div>
 
-            {/* List Section */}
+
             <div className="flex-1 overflow-hidden relative">
               <NearbyRequestsList
                 showList={true}
@@ -180,7 +185,7 @@ export default function MapSidebar({
         </div>
       )}
       
-      {/* Settings Modal (kept outside to layer properly) */}
+
       <FilterSettingsModal
         showHelperSettings={showHelperSettings}
         setShowHelperSettings={setShowHelperSettings}

@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - ניהול מרכזי של התראות והודעות מערכת באפליקציה
+  - ספק קשר (Context Provider) להצגת alerts מכל קומפוננטה
+  - מערכת alert אחידה לכל האפליקציה (success, error, warning, info, confirm)
+  - Hook useAlert לשימוש בכל קומפוננטה
+
+  הקובץ משמש את:
+  - main.jsx שמעטף את כל האפליקציה ב-AlertProvider
+  - כל קומפוננטה שקוראת ל-useAlert()
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית או קריאות API
+  - מציג את ה-UI עצמו (זה תפקיד AlertPopup)
+*/
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import AlertPopup from '../components/UI/AlertPopup';
 
@@ -45,7 +61,6 @@ export const AlertProvider = ({ children }) => {
       customOnClose = typeOrOptions.onClose || null;
     }
 
-    // Auto-detect type from emojis common in the codebase
     let cleanMessage = message;
     if (typeof message === 'string') {
       if (message.includes('✅')) {
@@ -62,7 +77,6 @@ export const AlertProvider = ({ children }) => {
         if (!title) title = 'שים לב';
       }
       
-      // Clean up common "Error:" prefixes if type is error
       if (type === 'error' && cleanMessage.toLowerCase().startsWith('error:')) {
          cleanMessage = cleanMessage.substring(6).trim();
       }

@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת סכימת הודעות צור קשר במסד הנתונים
+  - שדות: שם, אימייל, נושא, הודעה, סטטוס
+  - מעקב פניות מאתר האינטרנט
+  - אינדקסים לחיפוש לפי סטטוס ותאריך
+
+  הקובץ משמש את:
+  - קונטרולר צור הקשר
+  - נתיב צור הקשר באפליקציה
+  - מנהלים לטיפול בפניות
+
+  הקובץ אינו:
+  - שולח אימיילים - זה נעשה בשירות האימייל
+*/
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
@@ -36,7 +52,6 @@ const contactMessageSchema = new Schema({
     }
 });
 
-// Index for faster queries
 contactMessageSchema.index({ createdAt: -1 });
 contactMessageSchema.index({ isRead: 1 });
 

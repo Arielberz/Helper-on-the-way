@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת סכימת דירוגי המסייעים במסד הנתונים
+  - שדות: מדרג, מסייע, מבקש, בקשת סיוע, תגובה
+  - ולידציה לדירוג ייחודי אחד לכל בקשה
+  - אינדקסים לחיפוש דירוגים לפי מסייע
+
+  הקובץ משמש את:
+  - שירות וקונטרולר הדירוגים
+  - נתיבי המשתמשים לתצוגת דירוגי מסייעים
+  - הצד הקליינט להצגת דירוגים
+
+  הקובץ אינו:
+  - מטפל בחישוב ממוצעים - זה נעשה בשירות הדירוגים
+*/
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
@@ -19,7 +35,7 @@ const ratingSchema = new Schema({
         ref: 'Request',
         required: true,
         index: true,
-        unique: true  // Each request can only be rated once
+        unique: true
     },
     score: {
         type: Number,
@@ -47,16 +63,13 @@ const ratingSchema = new Schema({
     }
 });
 
-// Update the updatedAt timestamp on save
 ratingSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
     next();
 });
 
-// Compound index to ensure a user can only rate a request once
 ratingSchema.index({ request: 1, rater: 1 }, { unique: true });
 
-// Index for querying ratings by helper
 ratingSchema.index({ helper: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Rating', ratingSchema);

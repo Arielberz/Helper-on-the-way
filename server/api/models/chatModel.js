@@ -1,7 +1,22 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת סכימת שיחת הצ'אט במסד הנתונים
+  - שתי סכימות: Conversation (שיחה) ו-Message (הודעה)
+  - שדות לשיחה: משתתפים, בקשת סיוע, הודעה אחרונה, סטטוס קריאה
+  - שדות להודעה: שולח, תוכן, זמן שליחה, סטטוס קריאה
+
+  הקובץ משמש את:
+  - שירות וקונטרולר הצ'אט
+  - Socket.IO לשיחות בזמן אמת (chatSockets)
+  - הצד הקליינט לתצוגת שיחות
+
+  הקובץ אינו:
+  - מטפל בשליחת הודעות - זה בשירות וב-sockets
+*/
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Schema for individual messages
 const messageSchema = new Schema({
   sender: {
     type: Schema.Types.ObjectId,
@@ -37,7 +52,6 @@ const messageSchema = new Schema({
   }
 });
 
-// Schema for conversations
 const conversationSchema = new Schema({
   request: {
     type: Schema.Types.ObjectId,
@@ -73,7 +87,6 @@ const conversationSchema = new Schema({
   }
 });
 
-// Update timestamps on save
 conversationSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
   if (this.messages && this.messages.length > 0) {
@@ -82,7 +95,6 @@ conversationSchema.pre('save', function(next) {
   next();
 });
 
-// Indexes for efficient queries
 conversationSchema.index({ user: 1, lastMessageAt: -1 });
 conversationSchema.index({ helper: 1, lastMessageAt: -1 });
 conversationSchema.index({ request: 1 });

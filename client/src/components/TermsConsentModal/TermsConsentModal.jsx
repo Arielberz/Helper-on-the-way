@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - מודאל אישור תנאי שימוש ומדיניות פרטיות
+  - הצגת דרישה לאישור התנאים לפני שימוש במערכת
+  - ניווט לדפי תנאי השימוש והפרטיות
+  - ניהול מצב האישור ושמירתו
+*/
+
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -33,14 +41,14 @@ export default function TermsConsentModal({
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
-        {/* Header */}
+
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
           <h2 className="text-2xl font-bold text-gray-800 text-right">
             תנאי שימוש ופרטיות
           </h2>
         </div>
 
-        {/* Content */}
+
         <div className="p-6 text-right">
           <div className="space-y-4 text-gray-700 leading-relaxed">
             <p className="font-semibold text-lg">לפני ההרשמה, אנא קרא/י את הנקודות הבאות:</p>
@@ -60,7 +68,7 @@ export default function TermsConsentModal({
               </li>
             </ul>
 
-            {/* Links to full pages */}
+
             <div className="flex flex-col gap-2 mt-6 pt-4 border-t border-gray-200">
               <button
                 onClick={handleTermsClick}
@@ -76,7 +84,7 @@ export default function TermsConsentModal({
               </button>
             </div>
 
-            {/* Consent Checkbox */}
+
             <div className="mt-6 pt-4 border-t border-gray-200">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
@@ -99,7 +107,7 @@ export default function TermsConsentModal({
           </div>
         </div>
 
-        {/* Footer Buttons */}
+
         <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6 rounded-b-2xl flex gap-3 justify-end">
           <button
             onClick={onCancel}

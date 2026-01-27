@@ -1,3 +1,21 @@
+/*
+  קובץ זה אחראי על:
+  - דף הנחיתה הראשי למבקרים חדשים
+  - הצגת מידע על השירות, יתרונות, איך זה עובד
+  - קישורים להתחברות והרשמה
+
+  הקובץ משמש את:
+  - משתמשים שטרם התחברו (ניתוב "/")
+  - שיווק והסבר המערכת
+
+  הקובץ לא משמש:
+  - דף הבית של משתמשים מחוברים - יש home.jsx
+
+  הקובץ אינו:
+  - דף פונקציונלי - רק שיווק
+  - מציג נתונים דינמיים - תוכן סטטי
+*/
+
 import { Link } from "react-router-dom";
 import Header from "../../components/Header/Header";
 import Footer from "../../components/Footer/Footer";
@@ -15,7 +33,7 @@ const Landing = () => {
             <Header />
             
             <main>
-                {/* Hero Section */}
+
                 <section className="relative pt-6 pb-0 overflow-hidden">
                     <div className="container mx-auto px-6">
                         <div className={`relative z-20 flex flex-col items-center text-center max-w-5xl mx-auto mb-0 transition-all duration-1000 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
@@ -50,7 +68,7 @@ const Landing = () => {
                             </div>
                         </div>
 
-                        {/* Hero Image */}
+
                         <div className={`relative mx-auto max-w-6xl md:-mt-24 transition-all duration-1000 delay-300 transform ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
                             <div className="relative z-10 group">
                                 <img 
@@ -59,14 +77,11 @@ const Landing = () => {
                                     className="relative w-full  mx-auto h-auto object-contain transform group-hover:scale-[1.01] transition-transform duration-700 mix-blend-multiply drop-shadow-xl"
                                 />
                             </div>
-                            {/* Hidden blur: Was causing background artifacts with mix-blend-mode 
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-[80px] -z-10 rounded-full"></div>
-                            */}
                         </div>
                     </div>
                 </section>
 
-                {/* Statistics / Trust Indicators */}
+
                 <section className="py-12 border-y border-gray-100 bg-gray-50/50">
                     <div className="container mx-auto px-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 justify-items-center opacity-80">
@@ -85,8 +100,8 @@ const Landing = () => {
                     </div>
                 </section>
 
-                {/* Features Grid */}
-                   {/* Features Section */}
+
+
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-6" dir="rtl">
                     <div className="text-center mb-16">
@@ -99,7 +114,7 @@ const Landing = () => {
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8">
-                        {/* Feature 1 */}
+
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">🚗</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">סיוע מהיר</h3>
@@ -108,7 +123,7 @@ const Landing = () => {
                             </p>
                         </div>
 
-                        {/* Feature 2 */}
+
                         <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">🗺️</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">מעקב בזמן אמת</h3>
@@ -117,7 +132,7 @@ const Landing = () => {
                             </p>
                         </div>
 
-                        {/* Feature 3 */}
+
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">💬</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">תקשורת ישירה</h3>
@@ -126,7 +141,7 @@ const Landing = () => {
                             </p>
                         </div>
 
-                        {/* Feature 4 */}
+
                         <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">⭐</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">דירוגים וביקורות</h3>
@@ -135,7 +150,7 @@ const Landing = () => {
                             </p>
                         </div>
 
-                        {/* Feature 5 */}
+
                         <div className="bg-gradient-to-br from-red-50 to-red-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">💳</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">תשלום גמיש</h3>
@@ -144,7 +159,7 @@ const Landing = () => {
                             </p>
                         </div>
 
-                        {/* Feature 6 */}
+
                         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300">
                             <div className="text-5xl mb-4">🔒</div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">בטוח ומאובטח</h3>
@@ -158,7 +173,7 @@ const Landing = () => {
 
 
 
-                {/* CTA Section */}
+
                 <section className="py-20 bg-white">
                 <div className="container mx-auto px-6 text-center" dir="rtl">
                     <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">

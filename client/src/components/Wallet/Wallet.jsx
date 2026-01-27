@@ -1,8 +1,15 @@
+/*
+  קובץ זה אחראי על:
+  - רכיב הארנק הראשי המציג את מצב הארנק של המשתמש
+  - ניהול יתרה, עסקאות ומשיכת כספים
+  - תצוגת היסטוריית עסקאות ופעולות כספיות
+  - אינטגרציה עם מערכת התשלומים והארנק
+*/
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../utils/authUtils';
-import { API_BASE } from '../../utils/apiConfig';
-import { apiFetch } from '../../utils/apiFetch';
+import { getWallet, withdrawFunds } from '../../services/users.service';
 import { WalletSummary } from './WalletSummary';
 import { WalletTransactions } from './WalletTransactions';
 import { WithdrawModal } from './WithdrawModal';
@@ -28,17 +35,10 @@ export default function Wallet() {
 
   const fetchWallet = async () => {
     try {
-      const response = await apiFetch(`${API_BASE}/api/users/wallet`, {}, navigate);
-
-      if (response.ok) {
-        const data = await response.json();
-        setWalletData(data.data);
-      } else {
-        console.error('Failed to fetch wallet');
-      }
+      const data = await getWallet(navigate);
+      setWalletData(data.data);
     } catch (err) {
       if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
-        // Already handled by apiFetch
         return;
       }
       console.error('Error fetching wallet:', err);
@@ -75,40 +75,19 @@ export default function Wallet() {
     setWithdrawing(true);
 
     try {
-      const response = await apiFetch(
-        `${API_BASE}/api/users/wallet/withdraw`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            amount,
-            method: withdrawMethod,
-            accountInfo,
-          }),
-        },
-        navigate
-      );
+      const data = await withdrawFunds(amount, accountInfo, navigate);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        showAlert('✅ בקשת משיכה נשלחה בהצלחה! הכסף יועבר בתוך 3-5 ימי עסקים');
-        setShowWithdrawModal(false);
-        setWithdrawAmount('');
-        setAccountInfo('');
-        fetchWallet(); // Refresh wallet data
-      } else {
-        setError(data.message || 'שגיאה בשליחת בקשת משיכה');
-      }
+      showAlert('✅ בקשת משיכה נשלחה בהצלחה! הכסף יועבר בתוך 3-5 ימי עסקים');
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      setAccountInfo('');
+      fetchWallet(); // Refresh wallet data
     } catch (err) {
       if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
-        // Already handled by apiFetch
         return;
       }
       console.error('Error withdrawing:', err);
-      setError('שגיאה בשליחת בקשת משיכה');
+      setError(err.message || 'שגיאה בשליחת בקשת משיכה');
     } finally {
       setWithdrawing(false);
     }
@@ -150,13 +129,13 @@ export default function Wallet() {
 
   return (
     <div className="space-y-4">
-      {/* Balance Card */}
+
       <WalletSummary 
         balance={walletData?.balance}
         totalEarnings={walletData?.totalEarnings}
       />
 
-      {/* Withdraw Button */}
+
       {walletData?.balance > 0 && (
         <button
           onClick={() => setShowWithdrawModal(true)}
@@ -169,7 +148,7 @@ export default function Wallet() {
         </button>
       )}
 
-      {/* Transaction History Toggle */}
+
       <WalletTransactions
         transactions={walletData?.transactions}
         showTransactions={showTransactions}
@@ -178,7 +157,7 @@ export default function Wallet() {
         getTransactionColor={getTransactionColor}
       />
 
-      {/* Withdraw Modal */}
+
       <WithdrawModal
         isOpen={showWithdrawModal}
         balance={walletData?.balance}

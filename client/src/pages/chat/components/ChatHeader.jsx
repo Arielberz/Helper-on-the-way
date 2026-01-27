@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - כותרת שיחה עם שם המשתתף
+  - כפתורים לסיום טיפול, דיווח, פרופיל
+  - הצגת ETA אם קיים
+
+  הקובץ משמש את:
+  - chat.jsx - חלק עליון של אזור השיחה
+
+  הקובץ אינו:
+  - מנהל מצב - מקבל מהאב
+  - מחשב ETA - רק מציג
+*/
+
 import React from "react";
 
 export default function ChatHeader({
@@ -12,7 +26,7 @@ export default function ChatHeader({
   return (
     <div className="flex h-16 items-center border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:px-6">
       <div className="flex items-center gap-3 flex-1">
-        {/* Hamburger (mobile) */}
+
         <button
           onClick={() => setIsMobileMenuOpen(true)}
           className="md:hidden"
@@ -60,7 +74,7 @@ export default function ChatHeader({
         </div>
       </div>
 
-      {/* End Treatment Button (Helper only) - Centered */}
+
       {isHelper &&
         selectedConversation.request?.status !== "completed" && (
           <button

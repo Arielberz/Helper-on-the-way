@@ -1,6 +1,22 @@
+/*
+  קובץ זה אחראי על:
+  - מודל תשלום בצ'אט (בין עוזר למבקש)
+  - הזנת סכום ובחירת שיטת תשלום
+  - המרה בין שקלים לאגורות
+
+  הקובץ משמש את:
+  - chat.jsx - נפתח על ידי העוזר
+
+  הקובץ אינו:
+  - מעבד תשלום - רק שולח בקשה
+  - מנהל PayPal - האב מטפל
+*/
+
 import React, { useState, useEffect } from "react";
 import { getToken } from "../../../utils/authUtils";
 import { API_BASE } from '../../../utils/apiConfig';
+import { getWallet } from '../../../services/users.service';
+import { createPayPalOrder, payWithBalance } from '../../../services/payments.service';
 
 import { useAlert } from "../../../context/AlertContext";
 
@@ -21,14 +37,8 @@ export default function PaymentModal({
 
   const fetchUserBalance = async () => {
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/users/wallet`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
+      const data = await getWallet();
+      if (data.success) {
         setUserBalance(data.data.balance || 0);
       }
     } catch (error) {
@@ -57,24 +67,10 @@ export default function PaymentModal({
         return;
       }
 
-      // ✅ Backend now calculates amount from request - don't send amount from frontend
-      const response = await fetch(`${API_BASE}/api/payments/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          requestId
-          // Amount is NOT sent - backend calculates it from the request
-        }),
-      });
+      const data = await createPayPalOrder({ requestId });
 
-      const data = await response.json();
-
-      if (response.ok && data.success && data.data.approvalUrl) {
+      if (data.success && data.data.approvalUrl) {
         console.log('✅ PayPal order created:', data.data);
-        // Redirect to PayPal
         window.location.href = data.data.approvalUrl;
       } else {
         showAlert(data.message || 'שגיאה ביצירת תשלום PayPal');
@@ -97,21 +93,11 @@ export default function PaymentModal({
 
     setIsProcessingBalance(true);
     try {
-      const token = getToken();
       const requestId = selectedConversation?.request?._id;
 
-      const response = await fetch(`${API_BASE}/api/payments/pay-with-balance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ requestId }),
-      });
+      const data = await payWithBalance({ requestId });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (data.success) {
         setShowPaymentPopup(false);
         const hasPayment = (selectedConversation?.request?.payment?.offeredAmount || 0) > 0;
         const message = hasPayment ? 'התשלום בוצע בהצלחה!' : 'העזרה הסתיימה בהצלחה!';
@@ -143,7 +129,7 @@ export default function PaymentModal({
           boxShadow: "var(--glass-shadow)",
         }}
       >
-        {/* Header */}
+
         <div
           className="px-6 py-4 border-b flex items-center justify-between"
           style={{
@@ -162,7 +148,7 @@ export default function PaymentModal({
           </button>
         </div>
 
-        {/* Content */}
+
         <div className="p-6 space-y-6">
           <div className="text-center">
             <p className="text-sm mb-2" style={{ color: "var(--text-secondary)" }}>
@@ -173,7 +159,7 @@ export default function PaymentModal({
             </p>
           </div>
 
-          {/* Commission breakdown - only if amount > 0 */}
+
           {(selectedConversation?.request?.payment?.offeredAmount || 0) > 0 && (
             <div
               className="p-4 rounded-lg text-sm space-y-2"
@@ -233,7 +219,7 @@ export default function PaymentModal({
           </div>
         </div>
 
-        {/* Footer */}
+
         <div
           className="px-6 py-4 border-t space-y-3"
           style={{ borderColor: "var(--glass-border)" }}

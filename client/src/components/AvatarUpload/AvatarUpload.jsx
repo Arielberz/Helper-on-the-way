@@ -1,6 +1,13 @@
+/*
+  קובץ זה אחראי על:
+  - העלאת ועריכת תמונת פרופיל (אווטר) של המשתמש
+  - תצוגה מקדימה של התמונה לפני העלאה
+  - מחיקה והחלפה של תמונת הפרופיל
+  - ניהול תהליך העלאה עם הודעות משוב למשתמש
+*/
+
 import React, { useState } from 'react';
-import { getToken } from '../../utils/authUtils';
-import { API_BASE } from '../../utils/apiConfig';
+import { uploadAvatar, deleteAvatar } from '../../services/users.service';
 
 export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
   const [imagePreview, setImagePreview] = useState(currentAvatar);
@@ -11,14 +18,12 @@ export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('נא לבחור קובץ תמונה תקין');
       e.target.value = '';
       return;
     }
 
-    // Validate file size (max 2MB for avatar)
     if (file.size > 2 * 1024 * 1024) {
       setError('גודל התמונה חייב להיות פחות מ-2MB');
       e.target.value = '';
@@ -28,36 +33,18 @@ export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
     setError('');
     setUploading(true);
 
-    // Create preview and convert to base64
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64Image = reader.result;
       setImagePreview(base64Image);
 
-      // Upload to server
       try {
-        const token = getToken();
-        const response = await fetch(`${API_BASE}/api/users/avatar`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ avatar: base64Image }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          onAvatarUpdate(data.data.user.avatar);
-          setError('');
-        } else {
-          const data = await response.json();
-          setError(data.message || 'שגיאה בהעלאת התמונה');
-          setImagePreview(currentAvatar);
-        }
+        const data = await uploadAvatar(base64Image);
+        onAvatarUpdate(data.data.user.avatar);
+        setError('');
       } catch (err) {
         console.error('Error uploading avatar:', err);
-        setError('שגיאה בהעלאת התמונה');
+        setError(err.message || 'שגיאה בהעלאת התמונה');
         setImagePreview(currentAvatar);
       } finally {
         setUploading(false);
@@ -74,25 +61,13 @@ export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
 
     setUploading(true);
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/users/avatar`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setImagePreview(null);
-        onAvatarUpdate(null);
-        setError('');
-      } else {
-        const data = await response.json();
-        setError(data.message || 'שגיאה במחיקת התמונה');
-      }
+      await deleteAvatar();
+      setImagePreview(null);
+      onAvatarUpdate(null);
+      setError('');
     } catch (err) {
       console.error('Error deleting avatar:', err);
-      setError('שגיאה במחיקת התמונה');
+      setError(err.message || 'שגיאה במחיקת התמונה');
     } finally {
       setUploading(false);
     }
@@ -100,7 +75,7 @@ export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Avatar Display */}
+
       <div className="relative group">
         <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center">
           {imagePreview ? (
@@ -123,14 +98,14 @@ export default function AvatarUpload({ currentAvatar, onAvatarUpdate }) {
         )}
       </div>
 
-      {/* Error Message */}
+
       {error && (
         <div className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg border border-red-200">
           {error}
         </div>
       )}
 
-      {/* Action Buttons */}
+
       <div className="flex gap-2">
         <label
           htmlFor="avatar-upload"

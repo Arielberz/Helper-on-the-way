@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת מרקרים של בקשות עזרה על המפה
+  - פופאפים עם פרטי הבקשה ואפשרות להקצאה
+  - אייקונים שונים לסוגי בעיות שונים
+  - אינטראקציה עם בקשות על המפה
+*/
+
 import React from "react";
 import { Marker, Popup } from "react-leaflet";
 import { getUserId } from "../../../utils/authUtils";
@@ -29,11 +37,9 @@ export default function RequestMarkers({
         .filter((m) => m.location?.lat && m.location?.lng)
         .filter((m) => m.status !== 'cancelled' && m.status !== 'completed')
         .map((m) => {
-          // Check if current user is the requester
           const isMyRequest =
             m.user?._id === currentUserId || m.user?.id === currentUserId;
 
-          // Check if current user has already requested to help
           const alreadyRequested = m.pendingHelpers?.some(
             (ph) =>
               ph.user?._id === currentUserId || ph.user?.id === currentUserId
@@ -52,12 +58,10 @@ export default function RequestMarkers({
             >
               <Popup className="request-popup">
                 <div className="request-popup-content">
-                  {/* Requester Name */}
                   <div className="popup-header">
                     {m.user?.username || "Unknown User"}
                   </div>
 
-                  {/* Image (only if exists) */}
                   {m.photos && m.photos.length > 0 && m.photos[0] && (
                     <img
                       src={typeof m.photos[0] === 'string' ? m.photos[0] : m.photos[0].url}
@@ -66,7 +70,6 @@ export default function RequestMarkers({
                     />
                   )}
 
-                  {/* Problem Type + Payment + Status */}
                   <div className="popup-info">
                     <span className="popup-type">
                       {getProblemTypeLabel(m.problemType)}
@@ -83,19 +86,16 @@ export default function RequestMarkers({
                     </span>
                   </div>
 
-                  {/* Description */}
                   {m.description && (
                     <div className="popup-description">{m.description}</div>
                   )}
 
-                  {/* Route Info */}
                   {routeInfo && (
                     <div className="popup-route-info">
                       🚗 {(routeInfo.distance / 1000).toFixed(1)} km • ⏱️ {Math.round(routeInfo.duration / 60)} min
                     </div>
                   )}
 
-                  {/* Route Button */}
                   {!routeInfo && !isMyRequest && position && position[0] && position[1] && (
                     <button
                       onClick={() =>
@@ -113,7 +113,6 @@ export default function RequestMarkers({
                     </button>
                   )}
 
-                  {/* Action Buttons for non-requesters */}
                   {!isMyRequest && (
                     <>
                       {m.status === "pending" && !alreadyRequested && (

@@ -1,7 +1,21 @@
+/*
+  קובץ זה אחראי על:
+  - דף שחזור סיסמה - שלב ראשון (הזנת אימייל)
+  - שליחת קישור איפוס לאימייל המשתמש
+  - ניהול שגיאות והודעות הצלחה
+
+  הקובץ משמש את:
+  - משתמשים ששכחו את הסיסמה
+  - קישור מדף ההתחברות
+
+  הקובץ אינו:
+  - מאפס סיסמה - רק שולח קישור
+  - משנה סיסמה ישירות - לכך יש ResetPassword
+*/
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { API_BASE } from "../../utils/apiConfig";
+import { forgotPassword as forgotPasswordService } from "../../services/users.service";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -17,16 +31,14 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/api/users/forgot-password`, {
-        email: email.trim()
-      });
+      const response = await forgotPasswordService(email.trim());
 
-      if (response.data.success) {
-        setSuccess(response.data.message);
+      if (response.success) {
+        setSuccess(response.message);
         setEmail("");
       }
     } catch (err) {
-      const serverMsg = err.response?.data?.message;
+      const serverMsg = err.message;
       let msg = "שגיאה בשליחת בקשת איפוס סיסמה. נסה שוב.";
       
       if (serverMsg === "email is required") {

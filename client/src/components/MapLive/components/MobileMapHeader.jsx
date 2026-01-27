@@ -1,9 +1,16 @@
+/*
+  קובץ זה אחראי על:
+  - כותרת המפה במובייל עם תפריטים
+  - תפריט המבורגר לניווט במובייל
+  - הצגת בקשות סמוכות ופילטרים
+  - תפריט פרופיל וכפתורי פעולה
+*/
+
 import React, { useState, useMemo } from 'react';
 import NearbyRequestsList from '../../NearbyRequestsButton/components/NearbyRequestsList';
 import FilterSettingsModal from '../../NearbyRequestsButton/components/FilterSettingsModal';
 import { clearAuthData } from '../../../utils/authUtils';
 
-// Simple distance calculation (Haversine)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -81,9 +88,9 @@ export default function MobileMapHeader({
 
   return (
     <>
-      {/* Fixed Header Bar */}
+
       <div className="fixed top-4 left-4 right-4 z-[2000] flex items-center justify-between gap-3">
-        {/* Logo Button - Left */}
+
         <button
           onClick={() => {
             if (mapRef && userPosition) {
@@ -101,7 +108,7 @@ export default function MobileMapHeader({
           />
         </button>
 
-        {/* Nearby Button - Center */}
+
         <button
           onClick={() => setShowNearbyList(true)}
           className="h-12 px-5 flex items-center justify-center gap-2 flex-1 max-w-[180px] transition-transform hover:scale-105"
@@ -117,7 +124,7 @@ export default function MobileMapHeader({
           </span>
         </button>
 
-        {/* Profile Button - Right */}
+
         <button
           onClick={() => setShowProfileMenu(!showProfileMenu)}
           className="relative h-12 w-12 flex items-center justify-center shrink-0 transition-transform hover:scale-105"
@@ -133,7 +140,7 @@ export default function MobileMapHeader({
         </button>
       </div>
 
-      {/* Profile Dropdown */}
+
       {showProfileMenu && (
         <>
           <div className="fixed inset-0 z-[2001]" onClick={() => setShowProfileMenu(false)} />
@@ -164,7 +171,7 @@ export default function MobileMapHeader({
         </>
       )}
 
-      {/* Nearby Requests Modal */}
+
       <NearbyRequestsList
         showList={showNearbyList}
         closeList={() => setShowNearbyList(false)}
@@ -177,7 +184,7 @@ export default function MobileMapHeader({
         embedded={false}
       />
 
-      {/* Filter Settings Modal */}
+
       <FilterSettingsModal
         showHelperSettings={showHelperSettings}
         setShowHelperSettings={setShowHelperSettings}

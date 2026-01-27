@@ -1,7 +1,22 @@
+/*
+  קובץ זה אחראי על:
+  - דף הפרופיל האישי של המשתמש
+  - הצגת פרטי משתמש, דירוגים, ארנק
+  - ניהול בקשות עזרה (שלי ושעזרתי בהן)
+  - עריכת תמונת פרופיל, שליחת דירוגים
+
+  הקובץ משמש את:
+  - משתמשים מחוברים לצפייה ועריכת פרופיל
+  - קישור מתפריט נפתח במפה
+
+  הקובץ אינו:
+  - מנהל אימות - משתמש ב-ProtectedRoute
+  - מציג פרופילים של אחרים
+*/
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthData, getToken } from '../../utils/authUtils';
-import RatingModal from "../../components/RatingModal/RatingModal";
 import { useRating } from "../../context/RatingContext";
 import AvatarUpload from "../../components/AvatarUpload/AvatarUpload";
 import Wallet from "../../components/Wallet/Wallet";
@@ -9,7 +24,10 @@ import { API_BASE } from '../../utils/apiConfig';
 import { ProfileHeader } from './ProfileHeader';
 import { ProfileContactSection } from './ProfileContactSection';
 import { getProblemTypeLabel, getStatusLabel } from '../../utils/profileUtils';
-
+import { getCurrentUser, getUserRatings } from '../../services/users.service';
+import { getMyRequests, getRequestsByHelper, updateRequestStatus, cancelHelp, cancelRequest, confirmHelper } from '../../services/requests.service';
+import { checkRatingExists } from '../../services/other.service';
+import { getConversationByRequest } from '../../services/chat.service';
 import { useAlert } from "../../context/AlertContext";
 
 const Profile = () => {
@@ -24,8 +42,6 @@ const Profile = () => {
   const [userRatings, setUserRatings] = useState([]);
   const [showRatings, setShowRatings] = useState(false);
   const [ratingCount, setRatingCount] = useState(0);
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
   const [myRequests, setMyRequests] = useState([]);
   const [ratedRequests, setRatedRequests] = useState(new Set());
   const navigate = useNavigate();
@@ -33,75 +49,35 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = getToken();
-
-
       try {
-
-        const response = await fetch(`${API_BASE}/api/users/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-
-
-        if (!response.ok) {
-          console.error("Failed to fetch user profile");
-          setLoading(false);
-          return;
-        }
-
-        const data = await response.json();
+        const data = await getCurrentUser(navigate);
 
         const userData = data.data?.user || data.user;
         setUser(userData);
         setRating(userData?.averageRating || 0);
         setRatingCount(userData?.ratingCount || 0);
         
-        // Get the user ID - the sanitizeUser function returns 'id', not '_id'
         const userId = userData?.id || userData?._id;
 
         
-        // Fetch user's ratings (as helper)
         if (userId && typeof userId === 'string' && userId.length > 0) {
           try {
-            const ratingsResponse = await fetch(`${API_BASE}/api/users/${userId}/ratings`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-            if (ratingsResponse.ok) {
-              const ratingsData = await ratingsResponse.json();
-
-              if (ratingsData.success) {
-                setUserRatings(ratingsData.data?.ratings || []);
-              }
+            const ratingsData = await getUserRatings(userId);
+            if (ratingsData.success) {
+              setUserRatings(ratingsData.data?.ratings || []);
             }
           } catch (error) {
             console.error("Failed to fetch ratings:", error);
           }
         }
         
-        // Fetch user's requests (help asked for)
-        const requestsResponse = await fetch(`${API_BASE}/api/requests/my-requests`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const requestsData = await getMyRequests(navigate);
         
-        // Fetch requests where user is the helper - only if we have a valid user ID
-        let helperResponse = null;
+        let helperData = null;
         
         if (userId && typeof userId === 'string' && userId.length > 0) {
-
           try {
-            helperResponse = await fetch(`${API_BASE}/api/requests?helperId=${userId}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
+            helperData = await getRequestsByHelper(userId, navigate);
           } catch (error) {
             console.error("Error fetching helper requests:", error);
           }
@@ -111,14 +87,11 @@ const Profile = () => {
         
         const allActions = [];
         
-        if (requestsResponse.ok) {
-          const requestsData = await requestsResponse.json();
-
+        if (requestsData) {
           const requests = requestsData.data || [];
 
           setMyRequests(requests);
           
-          // Check which completed requests have been rated
           const ratedSet = new Set();
           for (const req of requests) {
             if (req.status === 'completed' && req.helper && req.requesterConfirmedAt) {
@@ -130,14 +103,13 @@ const Profile = () => {
           }
           setRatedRequests(ratedSet);
           
-          // Format requests as actions
           const requestActions = requests.map(req => ({
             title: `בקשת עזרה: ${getProblemTypeLabel(req.problemType)}`,
             time: new Date(req.createdAt).toLocaleDateString('he-IL'),
             status: req.status,
             type: 'requested',
             address: req.location?.address || 'כתובת לא זמינה',
-            location: req.location, // Include full location for distance calculation
+            location: req.location,
             requestId: req._id,
             helper: req.helper,
             helperCompletedAt: req.helperCompletedAt,
@@ -147,17 +119,14 @@ const Profile = () => {
           
           allActions.push(...requestActions);
         } else {
-          console.error("Failed to fetch my requests:", requestsResponse.status);
+          console.error("Failed to fetch my requests:", requestsData.status);
         }
         
-        if (helperResponse && helperResponse.ok) {
+        if (helperData) {
           try {
-            const helperData = await helperResponse.json();
-
             const myHelps = helperData.data || [];
 
             
-            // Format help actions
             const helpActions = myHelps.map(req => ({
               title: `עזרתי ב: ${getProblemTypeLabel(req.problemType)}`,
               time: new Date(req.createdAt).toLocaleDateString('he-IL'),
@@ -182,7 +151,6 @@ const Profile = () => {
         
 
         
-        // Sort all actions by date (newest first)
         allActions.sort((a, b) => new Date(b.time) - new Date(a.time));
         setRecentActions(allActions);
         
@@ -202,22 +170,16 @@ const Profile = () => {
   };
 
   const handleRateHelper = (action) => {
-    // Find the full request object
     const request = myRequests.find(req => req._id === action.requestId);
     if (request) {
-      setSelectedRequest(request);
-      setShowRatingModal(true);
+      openRatingModal(request);
     }
   };
 
-  const handleRatingSuccess = () => {
-    setShowRatingModal(false);
-    // Add the request to rated set
-    if (selectedRequest?._id) {
-      setRatedRequests(prev => new Set([...prev, selectedRequest._id]));
+  const handleRatingSuccess = (requestId) => {
+    if (requestId) {
+      setRatedRequests(prev => new Set([...prev, requestId]));
     }
-    setSelectedRequest(null);
-    // Refresh the page data to show updated ratings
     window.location.reload();
   };
 
@@ -227,38 +189,20 @@ const Profile = () => {
 
   const checkIfRequestRated = async (requestId) => {
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/ratings/${requestId}/check`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return data.data?.alreadyRated || false;
-      }
+      const data = await checkRatingExists(requestId);
+      return data.data?.alreadyRated || false;
     } catch (error) {
       console.error("Error checking rating status:", error);
+      return false;
     }
-    return false;
   };
 
 
 
   const handleHelperMarkCompleted = async (requestId) => {
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ helperCompleted: true })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const data = await updateRequestStatus(requestId, null, null);
+      if (data) {
         const request = data.data;
         const hasPayment = request?.payment?.offeredAmount > 0;
         const message = hasPayment 
@@ -280,17 +224,8 @@ const Profile = () => {
       'האם אתה בטוח שברצונך לבטל את העזרה? הבקשה תחזור להיות זמינה לעוזרים אחרים.',
       async () => {
         try {
-          const token = getToken();
-          const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel-help`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
+          const data = await cancelHelp(requestId);
+          if (data) {
             showAlert(`✅ ${data.message || 'ביטלת את העזרה בהצלחה'}`, { onClose: () => window.location.reload() });
           } else {
             const data = await response.json();
@@ -309,17 +244,8 @@ const Profile = () => {
       'האם אתה בטוח שברצונך לבטל את הבקשה? פעולה זו לא ניתנת לביטול.',
       async () => {
         try {
-          const token = getToken();
-          const response = await fetch(`${API_BASE}/api/requests/${requestId}/cancel`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
+          const data = await cancelRequest(requestId);
+          if (data) {
             showAlert(`✅ ${data.message || 'הבקשה בוטלה בהצלחה'}`, { onClose: () => window.location.reload() });
           } else {
             const data = await response.json();
@@ -335,18 +261,8 @@ const Profile = () => {
 
   const handleRequesterConfirmCompletion = async (action) => {
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${action.requestId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ requesterConfirmed: true })
-      });
-
-      if (response.ok) {
-        // Show rating modal using global context (works across all pages)
+      const data = await updateRequestStatus(action.requestId, null, null);
+      if (data) {
         const request = myRequests.find(req => req._id === action.requestId);
         if (request) {
           openRatingModal(request);
@@ -363,48 +279,23 @@ const Profile = () => {
 
   const handleConfirmHelper = async (requestId, helperId, helperName) => {
     try {
-      const token = getToken();
-      const response = await fetch(`${API_BASE}/api/requests/${requestId}/confirm-helper`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ helperId })
-      });
-
-      if (response.ok) {
-        // Get or create conversation with the confirmed helper
+      const data = await confirmHelper(requestId);
+      if (data) {
         try {
-          const chatResponse = await fetch(`${API_BASE}/api/chat/conversation/request/${requestId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+          const chatData = await getConversationByRequest(requestId);
+          const conversationId = chatData.data?.conversation?._id || chatData.data?._id;
+          
+          showAlert(`✅ ${helperName} confirmed as helper! Opening chat...`, {
+             onClose: () => navigate("/chat", { state: { conversationId } })
           });
-
-          if (chatResponse.ok) {
-            const chatData = await chatResponse.json();
-            const conversationId = chatData.data?.conversation?._id || chatData.data?._id;
-            
-            // Navigate to chat with the conversation
-            showAlert(`✅ ${helperName} confirmed as helper! Opening chat...`, {
-               onClose: () => navigate("/chat", { state: { conversationId } })
-            });
-          } else {
-            console.error('Failed to get conversation');
-            showAlert(`✅ ${helperName} confirmed! But unable to open chat now.`, { onClose: () => window.location.reload() });
-          }
         } catch (chatError) {
           console.error("Error opening chat:", chatError);
           showAlert(`✅ ${helperName} confirmed! But unable to open chat now.`, { onClose: () => window.location.reload() });
         }
-      } else {
-        const data = await response.json();
-        showAlert(`❌ שגיאה: ${data.message || 'לא ניתן לאשר עוזר'}`);
       }
     } catch (error) {
       console.error("Error confirming helper:", error);
-      showAlert('❌ שגיאה באישור עוזר');
+      showAlert(`❌ שגיאה: ${error.message || 'לא ניתן לאשר עוזר'}`);
     }
   };
 
@@ -422,7 +313,6 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 py-4 sm:py-12 px-3 sm:px-4" dir="rtl">
       <div className="max-w-4xl mx-auto">
-        {/* Header Card */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden mb-4 sm:mb-6">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 sm:px-8 py-4 sm:py-6 flex items-center gap-3 sm:gap-6">
             <img 
@@ -437,7 +327,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Avatar Upload Card */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2 justify-center">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -452,7 +341,6 @@ const Profile = () => {
           />
         </div>
 
-        {/* Wallet Card */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -463,7 +351,6 @@ const Profile = () => {
           <Wallet />
         </div>
 
-        {/* User Info Card */}
         <ProfileContactSection
           user={user}
           showEmail={showEmail}
@@ -472,7 +359,6 @@ const Profile = () => {
           onTogglePhone={() => setShowPhone(!showPhone)}
         />
 
-        {/* Rating Card */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -502,7 +388,6 @@ const Profile = () => {
             )}
           </div>
 
-          {/* Show Ratings Button */}
           {userRatings.length > 0 && (
             <div className="text-center mt-4">
               <button
@@ -515,7 +400,6 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Ratings List */}
         {showRatings && userRatings.length > 0 && (
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
             <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
@@ -575,7 +459,6 @@ const Profile = () => {
           </div>
         )}
 
-        {/* Recent Actions Card */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -641,7 +524,7 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Pending Helpers - Now handled via popup */}
+
                   {action.type === 'requested' && action.status === 'pending' && action.pendingHelpers && action.pendingHelpers.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-amber-200 bg-amber-50 p-2 sm:p-3 rounded-lg">
                       <p className="text-xs sm:text-sm text-amber-700 font-medium flex items-center gap-2">
@@ -654,7 +537,6 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Cancel Request Button - only for pending requests */}
                   {action.type === 'requested' && action.status === 'pending' && (
                     <div className="mt-3 pt-3 border-t border-red-200">
                       <button
@@ -667,7 +549,7 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* Requester Confirmation Button - waiting for helper to finish */}
+
                   {action.type === 'requested' && action.helperCompletedAt && !action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-blue-200 bg-blue-50 p-2 sm:p-3 rounded-lg">
                       <p className="text-xs sm:text-sm text-blue-700 font-medium mb-2 flex items-center gap-2">
@@ -684,7 +566,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Rating Button for completed requests */}
+
                   {action.type === 'requested' && action.status === 'completed' && action.helper && action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       {ratedRequests.has(action.requestId) ? (
@@ -704,7 +586,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Status Update Buttons for helpers */}
+
                   {action.type === 'helped' && action.status !== 'completed' && action.status !== 'cancelled' && !action.helperCompletedAt && (
                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
                       <p className="text-xs text-gray-600 mb-2">עדכן סטטוס:</p>
@@ -731,7 +613,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Helper waiting for requester confirmation */}
+
                   {action.type === 'helped' && action.helperCompletedAt && !action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-yellow-200 bg-yellow-50 p-2 sm:p-3 rounded-lg">
                       <p className="text-xs sm:text-sm text-yellow-700 flex items-center gap-2">
@@ -741,7 +623,7 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Show info for completed helped requests */}
+
                   {action.type === 'helped' && action.status === 'completed' && action.requesterConfirmedAt && (
                     <div className="mt-3 pt-3 border-t border-green-200">
                       <p className="text-xs sm:text-sm text-green-700 flex items-center gap-2">
@@ -756,7 +638,7 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Action Buttons */}
+
         <div className="flex gap-3 sm:gap-4">
           <button 
             onClick={() => navigate("/home")}
@@ -779,19 +661,6 @@ const Profile = () => {
           </button>
         </div>
       </div>
-
-      {/* Rating Modal */}
-      {showRatingModal && selectedRequest && (
-        <RatingModal
-          requestId={selectedRequest._id}
-          helperName={selectedRequest.helper?.username}
-          onClose={() => {
-            setShowRatingModal(false);
-            setSelectedRequest(null);
-          }}
-          onSubmitSuccess={handleRatingSuccess}
-        />
-      )}
     </div>
   );
 };

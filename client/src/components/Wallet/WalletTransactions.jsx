@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת רשימת העסקאות בארנק
+  - תצוגת פרטי עסקה בודדת עם אייקון וצבע
+  - עיצוב וארגון של היסטוריית העסקאות
+*/
+
 import React from 'react';
 
 function WalletTransactionRow({ transaction, getTransactionIcon, getTransactionColor }) {

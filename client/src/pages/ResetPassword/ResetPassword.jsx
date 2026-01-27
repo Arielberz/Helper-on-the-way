@@ -1,7 +1,21 @@
+/*
+  קובץ זה אחראי על:
+  - דף איפוס סיסמה - שלב שני (הזנת סיסמה חדשה)
+  - קבלת טוקן איפוס מה-URL
+  - וולידציה ואישור סיסמאות תואמות
+
+  הקובץ משמש את:
+  - משתמשים שלחצו על קישור באימייל
+  - ניתוב מקישור שחזור סיסמה
+
+  הקובץ אינו:
+  - שולח אימיילים - רק משנה סיסמה
+  - מאמת טוקן - נעשה בשרת
+*/
+
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
-import { API_BASE } from "../../utils/apiConfig";
+import { resetPassword as resetPasswordService } from "../../services/users.service";
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
@@ -17,13 +31,11 @@ export default function ResetPassword() {
     setError("");
     setSuccess("");
 
-    // Validate passwords match
     if (newPassword !== confirmPassword) {
       setError("הסיסמאות אינן תואמות");
       return;
     }
 
-    // Validate password length
     if (newPassword.length < 8) {
       setError("הסיסמה חייבת להכיל לפחות 8 תווים");
       return;
@@ -32,20 +44,19 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/api/users/reset-password`, {
+      const response = await resetPasswordService({
         token,
         newPassword
       });
 
-      if (response.data.success) {
-        setSuccess(response.data.message);
-        // Redirect to login after 2 seconds
+      if (response.success) {
+        setSuccess(response.message);
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       }
     } catch (err) {
-      const serverMsg = err.response?.data?.message;
+      const serverMsg = err.message;
       let msg = "שגיאה באיפוס הסיסמה. נסה שוב.";
 
       if (serverMsg === "token and new password are required") {
