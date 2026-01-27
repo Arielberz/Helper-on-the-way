@@ -1,27 +1,35 @@
+/*
+  קובץ זה אחראי על:
+  - שירות ניקיון אוטומטי לבקשות ישנות
+  - מחיקה אוטומטית של בקשות שהושלמו/בוטלו לפני 30+ יום
+  - עובד עם cron job שרץ יומית
+  - מנקה את מסד הנתונים מנתונים לא רלוונטיים
+
+  הקובץ משמש את:
+  - app.js (מפעיל את השירות באתחול)
+
+  הקובץ אינו:
+  - מטפל בבקשות משתמשים - רץ ברקע
+  - מחיקה ידנית - זה בקונטרולרים
+*/
+
 const Request = require('../models/requestsModel');
 const REQUEST_STATUS = require('../constants/requestStatus');
 
-/**
- * Service to handle background cleanup tasks
- */
-
-// Configuration
 const EXPIRATION_HOURS = 5;
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run every hour
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * Find and delete requests that have been active for too long
- * @param {Object} io - Socket.IO instance for broadcasting
+ * @param {Object} io - 
  */
 const cleanupExpiredRequests = async (io) => {
   try {
     console.info('🧹 Starting cleanup of expired requests...');
     
-    // Calculate cutoff time
     const cutoffDate = new Date();
     cutoffDate.setHours(cutoffDate.getHours() - EXPIRATION_HOURS);
     
-    // Find requests that are active and older than cutoff
     const query = {
       status: { 
         $in: [
@@ -49,7 +57,6 @@ const cleanupExpiredRequests = async (io) => {
         await Request.findByIdAndDelete(request._id);
         deletedCount++;
         
-        // Broadcast deletion so clients remove it from map immediately
         if (io) {
           io.emit('requestDeleted', { _id: String(request._id) });
         }
@@ -70,10 +77,8 @@ const cleanupExpiredRequests = async (io) => {
  * @param {Object} io - Socket.IO instance
  */
 const initCleanupJob = (io) => {
-  // Run immediately on startup
   cleanupExpiredRequests(io);
   
-  // Schedule periodic runs
   setInterval(() => {
     cleanupExpiredRequests(io);
   }, CLEANUP_INTERVAL_MS);
@@ -83,5 +88,5 @@ const initCleanupJob = (io) => {
 
 module.exports = {
   initCleanupJob,
-  cleanupExpiredRequests // Exported for testing if needed
+  cleanupExpiredRequests
 };

@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת הודעת אישור זמנית (טוסט)
+  - התראות על פעולות שבוצעו בהצלחה
+  - הודעות משוב למשתמש
+*/
+
 import React from "react";
 
 export default function ConfirmationToast({ message }) {

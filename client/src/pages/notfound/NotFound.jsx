@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - דף 404 - הדף לא נמצא
+  - הצגה כשמנסים לגשת לנתיב שאינו קיים
+  - עיצוב פשוט וברור
+
+  הקובץ משמש את:
+  - React Router - כשאין התאמה לנתיב
+  - משתמשים שטעו בכתובת
+
+  הקובץ אינו:
+  - מטפל בשגיאות שרת - רק נתיבים
+  - מציג הודעות שגיאה - רק הודעה בסיסית
+*/
+
 export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6" dir="rtl">

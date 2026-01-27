@@ -1,14 +1,16 @@
-/**
- * Standardized response helper
- * Ensures consistent API response format across all controllers
- * 
- * @param {Object} res - Express response object
- * @param {Number} status - HTTP status code
- * @param {Boolean} success - Whether the operation was successful
- * @param {String} message - Response message
- * @param {*} data - Optional data payload (default: null)
- * @returns {Object} JSON response
- */
+/*
+  קובץ זה אחראי על:
+  - פונקציית עזר לשליחת תגובות API אחידות
+  - מבטיחה פורמט קבוע לכל התגובות
+  - מפשטת טיפול בהצלחות ובשגיאות
+
+  הקובץ משמש את:
+  - כל הקונטרולרים במערכת
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית - רק פונקציית עזר
+*/
+
 function sendResponse(res, status, success, message, data = null) {
   return res.status(status).json({ success, message, data });
 }

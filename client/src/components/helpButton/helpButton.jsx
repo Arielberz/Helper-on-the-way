@@ -1,5 +1,20 @@
-// Main help request button component that manages the modal state and handles
-// the complete flow of creating a help request including location, problem details, photos, and payment.
+/*
+  קובץ זה אחראי על:
+  - כפתור קריאת עזרה הראשי (SOS button) באפליקציה
+  - ניהול מודל יצירת בקשת עזרה עם כל השלבים
+  - איסוף מיקום (ידני/GPS), תיאור בעיה, תמונות, וסכום תשלום מוצע
+  - שילוב hooks לניהול מיקום והעלאת תמונות
+  - שליחת בקשת עזרה לשרת ועדכון מפה
+
+  הקובץ משמש את:
+  - MapLive כמרכיב מרכזי בדף ה-Home
+  - HelpRequestModal, LocationSection, ProblemDetailsSection, PaymentSection
+
+  הקובץ אינו:
+  - מציג את המפה (זה תפקיד MapLive)
+  - מטפל באימות או ניתוב
+*/
+
 import React, { useState } from 'react';
 import HelpRequestModal from './HelpRequestModal';
 import { useImageUpload } from './useImageUpload';

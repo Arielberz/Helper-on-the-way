@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - רכיב כותרת הפרופיל עם תמונה ודירוג
+  - הצגת שם משתמש וכוכבים
+  - כפתור לפתיחת מודל דירוגים
+
+  הקובץ משמש את:
+  - profile.jsx - חלק עליון של דף הפרופיל
+
+  הקובץ אינו:
+  - מנהל מצב - מקבל מהאב
+  - עורך תמונה - יש AvatarUpload נפרד
+*/
+
 import React from 'react';
 
 export function ProfileHeader({ user, rating, ratingCount, onOpenRatingModal }) {
@@ -6,7 +20,7 @@ export function ProfileHeader({ user, rating, ratingCount, onOpenRatingModal }) 
   return (
     <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8 mb-4 sm:mb-6">
       <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-        {/* Avatar Section */}
+
         <div className="relative">
           {user?.avatar ? (
             <img 
@@ -23,13 +37,13 @@ export function ProfileHeader({ user, rating, ratingCount, onOpenRatingModal }) 
           )}
         </div>
 
-        {/* User Info */}
+
         <div className="flex-1 text-center sm:text-right">
           <h1 className="text-2xl sm:text-4xl font-bold text-white mb-2 sm:mb-3 drop-shadow-lg">
             {user?.username || "משתמש"}
           </h1>
           
-          {/* Rating Display */}
+
           <button
             onClick={onOpenRatingModal}
             className="inline-flex items-center gap-1 sm:gap-2 bg-white/20 backdrop-blur-md hover:bg-white/30 text-white font-bold py-2 sm:py-3 px-3 sm:px-6 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"

@@ -1,9 +1,25 @@
+/*
+  קובץ זה אחראי על:
+  - טבלת בקשות עזרה בממשק המנהל
+  - סינון לפי סטטוס, תאריך, סוג בעיה
+  - הצגת פרטי בקשה ומעורבים
+
+  הקובץ משמש את:
+  - מנהלים למעקב אחרי בקשות
+  - ניתוב מ-AdminLayout
+
+  הקובץ אינו:
+  - מנהל בקשות - רק מציג
+  - משנה סטטוס - משתמשים/עוזרים עושים את זה
+*/
+
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiFetch } from '../../utils/apiFetch';
-import { API_BASE } from '../../utils/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import { getRequests } from '../../services/admin.service';
 
 function RequestsTable() {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,11 +34,7 @@ function RequestsTable() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE}/api/admin/requests?page=${page}&limit=20`, {
-        method: 'GET',
-      });
-
-      const response = await res.json();
+      const response = await getRequests(page, navigate);
 
       if (response.success) {
         setRequests(response.data.requests);
@@ -75,7 +87,7 @@ function RequestsTable() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Requests</h1>
@@ -83,7 +95,7 @@ function RequestsTable() {
         </div>
       </div>
 
-      {/* Search */}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
         <input
@@ -95,7 +107,7 @@ function RequestsTable() {
         />
       </div>
 
-      {/* Table */}
+
       <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -170,7 +182,7 @@ function RequestsTable() {
         </div>
       </div>
 
-      {/* Pagination */}
+
       {pagination && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-400">

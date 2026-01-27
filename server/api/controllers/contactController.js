@@ -1,23 +1,34 @@
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP מטופס צור הקשר
+  - שמירת הודעות צור קשר במסד הנתונים
+  - ולידציה של שדות הטופס
+  - שליחת אימייל למנהלי המערכת
+
+  הקובץ משמש את:
+  - נתיב צור הקשר (contactRouter)
+  - דף צור קשר בצד הקליינט
+
+  הקובץ אינו:
+  - מטפל בפניות מיידיות - זה נעשה בפאנל המנהל
+*/
+
 const ContactMessage = require('../models/contactMessageModel');
 const sendResponse = require('../utils/sendResponse');
 
-// POST /api/contact - Submit new contact message
 exports.submitContactMessage = async (req, res) => {
     try {
         const { fullName, email, phone, subject, message } = req.body;
 
-        // Validate required fields
         if (!fullName || !email || !message) {
             return sendResponse(res, 400, false, 'שם מלא, אימייל והודעה הם שדות חובה');
         }
 
-        // Validate email format
         const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
         if (!emailRegex.test(email)) {
             return sendResponse(res, 400, false, 'כתובת אימייל לא תקינה');
         }
 
-        // Create new contact message
         const contactMessage = new ContactMessage({
             fullName: fullName.trim(),
             email: email.trim().toLowerCase(),
@@ -35,7 +46,7 @@ exports.submitContactMessage = async (req, res) => {
     }
 };
 
-// GET /api/admin/contact-messages - Get all contact messages (Admin only)
+
 exports.getAllContactMessages = async (req, res) => {
     try {
         const messages = await ContactMessage.find()
@@ -49,7 +60,7 @@ exports.getAllContactMessages = async (req, res) => {
     }
 };
 
-// PATCH /api/admin/contact-messages/:id/read - Mark message as read (Admin only)
+
 exports.markMessageAsRead = async (req, res) => {
     try {
         const { id } = req.params;
@@ -71,7 +82,6 @@ exports.markMessageAsRead = async (req, res) => {
     }
 };
 
-// DELETE /api/admin/contact-messages/:id - Delete message (Admin only)
 exports.deleteContactMessage = async (req, res) => {
     try {
         const { id } = req.params;

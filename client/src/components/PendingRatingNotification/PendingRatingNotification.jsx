@@ -1,63 +1,38 @@
+/*
+  קובץ זה אחראי על:
+  - התראה על דירוגים ממתינים שהמשתמש צריך לתת
+  - בדיקה והצגה של בקשות שממתינות לדירוג
+  - ניהול תהליך פתיחת מודאל הדירוג
+  - אינטגרציה עם קונטקסט הדירוגים
+
+  הקובץ משמש את:
+  - דף הבית ודפים אחרים
+
+  הקובץ אינו:
+  - מבצע לוגיקת בדיקת דירוגים (זה ב-RatingContext)
+  - מטפל בתשלומים או צ'אט
+*/
+
 import React, { useState, useEffect } from 'react';
 import { useRating } from '../../context/RatingContext';
-import { getToken } from '../../utils/authUtils';
-import { API_BASE } from '../../utils/apiConfig';
 
 const PendingRatingNotification = () => {
   const [pendingCount, setPendingCount] = useState(0);
-  const { openRatingModal } = useRating();
+  const { openRatingModal, checkPendingRatings } = useRating();
   const [pendingRequests, setPendingRequests] = useState([]);
 
   useEffect(() => {
-    checkPendingRatings();
+    fetchPendingRatings();
     
-    // Check every 30 seconds for new pending ratings
-    const interval = setInterval(checkPendingRatings, 30000);
+    const interval = setInterval(fetchPendingRatings, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const checkPendingRatings = async () => {
+  const fetchPendingRatings = async () => {
     try {
-      const token = getToken();
-      if (!token) return;
-
-      const response = await fetch(`${API_BASE}/api/requests/my-requests`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const requests = data.data || [];
-        
-        // Find completed requests that need rating
-        const needsRating = [];
-        
-        for (const req of requests) {
-          if (req.status === 'completed' && req.requesterConfirmedAt) {
-            // Check if already rated
-            const ratingCheckResponse = await fetch(
-              `${API_BASE}/api/ratings/${req._id}/check`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-
-            if (ratingCheckResponse.ok) {
-              const ratingCheckData = await ratingCheckResponse.json();
-              if (!ratingCheckData.data?.alreadyRated) {
-                needsRating.push(req);
-              }
-            }
-          }
-        }
-
-        setPendingCount(needsRating.length);
-        setPendingRequests(needsRating);
-      }
+      const needsRating = await checkPendingRatings();
+      setPendingCount(needsRating.length);
+      setPendingRequests(needsRating);
     } catch (error) {
       console.error("Error checking pending ratings:", error);
     }
@@ -65,7 +40,6 @@ const PendingRatingNotification = () => {
 
   const handleClick = () => {
     if (pendingRequests.length > 0) {
-      // Open rating modal for the first pending request
       openRatingModal(pendingRequests[0]);
     }
   };

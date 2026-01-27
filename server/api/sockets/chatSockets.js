@@ -1,3 +1,20 @@
+/*
+  קובץ זה אחראי על:
+  - מטפלי Socket.IO לשיחות בזמן אמת
+  - אימות משתמשים בחיבורי Socket
+  - שליחת וקבלת הודעות בזמן אמת
+  - עדכוני ETA וסטטוס קריאה
+  - שידור הודעות למשתתפי שיחה
+
+  הקובץ משמש את:
+  - app.js (מפעיל את המטפלים)
+  - הצד הקליינט לשיחות בזמן אמת
+
+  הקובץ אינו:
+  - מטפל בבקשות HTTP - רק Socket.IO
+  - מכיל לוגיקת עזר - זה ב-chatService
+*/
+
 const Conversation = require('../models/chatModel');
 const Request = require('../models/requestsModel');
 const verifyToken = require('../utils/verifyToken');
@@ -5,7 +22,6 @@ const chatService = require('../services/chatService');
 const { isConversationParticipant } = require('../utils/conversationUtils');
 const { calculateETAWithDistance } = require('../utils/etaUtils');
 
-// Socket.IO authentication middleware
 const authenticateSocket = (socket, next) => {
   try {
     const rawToken = socket.handshake.auth.token || socket.handshake.headers.authorization;
@@ -27,9 +43,7 @@ const authenticateSocket = (socket, next) => {
   }
 };
 
-// Initialize chat socket handlers
 const initializeChatSockets = (io) => {
-  // Use authentication middleware
   io.use(authenticateSocket);
 
   io.on('connection', (socket) => {
@@ -37,9 +51,6 @@ const initializeChatSockets = (io) => {
     socket.join(`user:${socket.userId}`);
 
 
-    // Note: Removed insecure 'join' and client-sourced global broadcasts ('newRequest', 'toggleHelper')
-
-    // Join a specific conversation room
     socket.on('join_conversation', async (conversationId) => {
       try {
         const conversation = await Conversation.findById(conversationId);
@@ -48,7 +59,6 @@ const initializeChatSockets = (io) => {
           return socket.emit('chat:error', { message: 'Conversation not found' });
         }
 
-        // Verify user is part of this conversation
         if (!isConversationParticipant(conversation, socket.userId)) {
           return socket.emit('chat:error', { message: 'Access denied' });
         }
@@ -66,7 +76,6 @@ const initializeChatSockets = (io) => {
       socket.emit('left_conversation', { conversationId });
     });
 
-    // Send a message
     socket.on('send_message', async (data) => {
       try {
         const { conversationId, content, isSystemMessage, systemMessageType, requestId } = data;
@@ -75,7 +84,6 @@ const initializeChatSockets = (io) => {
           return socket.emit('chat:error', { message: 'Message content is required' });
         }
 
-        // Use chat service to append message
         const { conversation, message } = await chatService.appendMessage({
           conversationId,
           senderId: socket.userId,
@@ -85,7 +93,6 @@ const initializeChatSockets = (io) => {
           requestId
         });
 
-        // Emit to all users in this conversation
         io.to(`conversation:${conversationId}`).emit('new_message', {
           conversationId,
           message
@@ -102,18 +109,15 @@ const initializeChatSockets = (io) => {
       }
     });
 
-    // Mark messages as read
     socket.on('mark_as_read', async (data) => {
       try {
         const { conversationId } = data;
 
-        // Use chat service to mark messages as read
         const conversation = await chatService.markConversationRead({
           conversationId,
           userId: socket.userId
         });
 
-        // Notify other user that messages were read
         const otherUserId = conversation.user.toString() === socket.userId 
           ? conversation.helper.toString() 
           : conversation.user.toString();
@@ -136,11 +140,9 @@ const initializeChatSockets = (io) => {
       }
     });
 
-    // User is typing indicator
     socket.on('typing', (data) => {
       const { conversationId, isTyping } = data || {};
       const room = `conversation:${conversationId}`;
-      // Verify socket joined the conversation room to prevent noise/abuse
       if (!conversationId || !socket.rooms.has(room)) return;
       socket.volatile.to(room).emit('user_typing', {
         conversationId,
@@ -149,8 +151,6 @@ const initializeChatSockets = (io) => {
       });
     });
 
-    // ========== ETA FEATURE ==========
-    // Helper sends location updates for ETA calculation
     socket.on('helperLocationUpdate', async (data) => {
       try {
 
@@ -161,29 +161,24 @@ const initializeChatSockets = (io) => {
           return socket.emit('eta:error', { message: 'Invalid location data' });
         }
         
-        // Validate coordinates
         if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
           return socket.emit('eta:error', { message: 'Invalid coordinates' });
         }
         
-        // Fetch the request
         const request = await Request.findById(requestId).populate('user', 'username');
         
         if (!request) {
           return socket.emit('eta:error', { message: 'Request not found' });
         }
         
-        // Verify helper is assigned to this request
         if (request.helper?.toString() !== socket.userId) {
           return socket.emit('eta:error', { message: 'Not authorized' });
         }
         
-        // Only calculate ETA for assigned requests
         if (request.status !== 'assigned') {
           return;
         }
         
-        // Calculate ETA and distance using OSRM
         const etaResult = await calculateETAWithDistance(
           latitude,
           longitude,
@@ -202,7 +197,6 @@ const initializeChatSockets = (io) => {
           timestamp: now
         };
         
-        // Store ETA in database for persistence
         await Request.findByIdAndUpdate(requestId, {
           etaData: {
             etaSeconds: etaResult.etaSeconds,
@@ -212,28 +206,23 @@ const initializeChatSockets = (io) => {
           }
         });
         
-        // Emit ETA to requester's personal room
         io.to(`user:${request.user._id}`).emit('etaUpdated', etaPayload);
         
-        // Also emit to the conversation room so requester gets it even if only in chat
         const conversation = await Conversation.findOne({ request: requestId });
         if (conversation) {
           io.to(`conversation:${conversation._id}`).emit('etaUpdated', etaPayload);
         }
 
-        
       } catch (error) {
         console.error('Error handling helper location update:', error);
         socket.emit('eta:error', { message: 'Failed to update ETA' });
       }
     });
 
-    // Handle disconnection
     socket.on('disconnect', () => {
 
     });
 
-    // Error handling for socket-level errors
     socket.on('error', (error) => {
       console.error('Socket error:', error);
     });

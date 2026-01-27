@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - דף מדיניות הפריטיות המלאה
+  - הסבר כיצד אוספים ומשתמשים במידע אישי
+  - נגיש מ-Footer וממודל ההסכמה בהרשמה
+
+  הקובץ משמש את:
+  - משתמשים בהרשמה - חובה לקרוא
+  - מסך ההסכמה ב-register
+  - קישור מה-Footer
+
+  הקובץ אינו:
+  - מנהל הסכמות - רק מציג תוכן
+  - מטפל באבטחת מידע - רק מסמך
+*/
+
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -127,7 +143,7 @@ export default function Privacy() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" dir="rtl">
-      {/* Header */}
+
       <div className="bg-white shadow-md border-b border-blue-100 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <button
@@ -146,10 +162,10 @@ export default function Privacy() {
         </div>
       </div>
 
-      {/* Content */}
+
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 border border-blue-100">
-          {/* Header Section */}
+
           <div className="text-center mb-8 pb-6 border-b-2 border-blue-100">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               מדיניות פרטיות
@@ -163,7 +179,7 @@ export default function Privacy() {
             </div>
           </div>
 
-          {/* Bottom Navigation */}
+
           <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center">
             <button
               onClick={() => navigate('/terms')}
@@ -181,7 +197,7 @@ export default function Privacy() {
           </div>
         </div>
 
-        {/* Footer */}
+
         <div className="mt-8 text-center text-gray-600">
           <p className="font-medium">© 2025 Helper on the Way. כל הזכויות שמורות.</p>
         </div>

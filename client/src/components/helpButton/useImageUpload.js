@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - Hook לניהול העלאת תמונות
+  - מצב של תמונה נבחרת ותצוגה מקדימה
+  - ולידציה של קבצי תמונה
+  - טיפול בשגיאות העלאה
+*/
+
 import { useState } from 'react';
 
 export function useImageUpload() {
@@ -8,14 +16,12 @@ export function useImageUpload() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         setImageError('Please select a valid image file');
         e.target.value = '';
         return;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setImageError('Image size must be less than 5MB');
         e.target.value = '';
@@ -25,7 +31,6 @@ export function useImageUpload() {
       setImageError('');
       setSelectedImage(file);
 
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);

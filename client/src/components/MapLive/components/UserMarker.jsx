@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - מרקר המיקום של המשתמש על המפה
+  - הצגת דיוק המיקום בפופאפ
+  - אייקון מותאם למשתמש
+*/
+
 import React from "react";
 import { Marker, Popup } from "react-leaflet";
 import { getUserPositionIcon } from "../../../utils/iconUtils";

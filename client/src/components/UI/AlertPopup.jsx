@@ -1,10 +1,25 @@
+/*
+  קובץ זה אחראי על:
+  - תצוגת חלונות קופצים להודעות מערכת (alerts)
+  - סוגי הודעות: success, error, warning, info, confirm
+  - עיצוב דינמי לפי סוג ההודעה (צבע, איקון)
+  - תמיכה בכפתורי אישור/ביטול
+
+  הקובץ משמש את:
+  - AlertContext לניהול מרכזי של התראות
+  - כל קומפוננטה שצריכה להציג הודעות למשתמש
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית
+  - מטפל בקריאות API
+*/
+
 import React from 'react';
 import { X, Check, AlertTriangle, Info } from 'lucide-react';
 
 export default function AlertPopup({ isOpen, message, type = 'info', title, onClose, onConfirm }) {
   if (!isOpen) return null;
 
-  // Determine styles and icon based on type
   const getStyles = () => {
     switch (type) {
       case 'success':
@@ -58,7 +73,7 @@ export default function AlertPopup({ isOpen, message, type = 'info', title, onCl
 
 
         <div className="flex flex-col items-center p-6 text-center space-y-4">
-          {/* Icon Container with Glass Effect */}
+
           <div className={`p-3 rounded-full ${styles.bgColor} border ${styles.borderColor} shadow-sm`}>
             {styles.icon}
           </div>

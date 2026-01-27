@@ -1,4 +1,19 @@
-// Helper function to convert problem type codes to Hebrew labels
+/*
+  קובץ זה אחראי על:
+  - תרגום סוגי בעיות לעברית
+  - תרגום סטטוסים של בקשות עזרה עם אימוג'ים
+  - מיפוי צבעים לסטטוסים שונים
+
+  הקובץ משמש את:
+  - דף הפרופיל - הצגת בקשות
+  - רשימת בקשות קרובות
+  - פופאפים על המפה
+
+  הקובץ אינו:
+  - מנהל לוגיקת בקשות - רק תצוגה
+  - מבצע פעולות על בקשות
+*/
+
 export const getProblemTypeLabel = (type) => {
   const labels = {
     'flat_tire': 'פנצ\'ר',
@@ -13,7 +28,6 @@ export const getProblemTypeLabel = (type) => {
   return labels[type] || type;
 };
 
-// Helper function to get status labels with emojis
 export const getStatusLabel = (status) => {
   const labels = {
     'pending': '⏳ ממתין',
@@ -25,7 +39,6 @@ export const getStatusLabel = (status) => {
   return labels[status] || status;
 };
 
-// Helper function to get status colors
 export const getStatusColor = (status) => {
   const colors = {
     'pending': 'bg-yellow-100 text-yellow-800',

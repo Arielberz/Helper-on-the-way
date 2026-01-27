@@ -1,5 +1,11 @@
-// Image upload component that allows users to select and preview a photo for their help request
-// with drag-and-drop style interface and validation.
+/*
+  קובץ זה אחראי על:
+  - רכיב העלאת תמונה לבקשת עזרה
+  - תצוגה מקדימה של התמונה שנבחרה
+  - ממשק גרירה ושחרור לבחירת תמונות
+  - ולידציה של קבצי תמונה
+*/
+
 import React from 'react';
 import { InlineError } from './ErrorMessage';
 

@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - דף אודות המערכת - מידע על הפרויקט
+  - הסבר על השירות, צוות הפיתוח, חזון
+  - עיצוב מודרני עם Header ו-Footer
+
+  הקובץ משמש את:
+  - משתמשים שרוצים לדעת על המערכת
+  - קישור מה-Footer
+
+  הקובץ אינו:
+  - דף פונקציונלי - רק תוכן סטטי
+  - דף landing - יש landing.jsx נפרד
+*/
+
 import { Link } from "react-router-dom";
 import Header from "../../components/Header/Header";
 import Footer from "../../components/Footer/Footer";
@@ -7,14 +22,14 @@ const About = () => {
         <div className="min-h-screen" style={{ background: 'var(--background)' }} dir="rtl">
             <Header />
             
-            {/* Hero Section */}
+
             
 
-            {/* Main Content */}
+
             <section className="py-16">
                 <div className="container mx-auto px-6 max-w-4xl">
                     
-                    {/* Story Origin */}
+
                     <div className="glass bg-white mb-8" style={{ 
                         borderRadius: 'var(--rounded-xl)',
                         padding: 'var(--space-xxl)',
@@ -51,7 +66,7 @@ const About = () => {
                         </div>
                     </div>
 
-                    {/* Why We Exist */}
+
                     <div className="glass mb-8" style={{ 
                         background: 'var(--background-dark)',
                         borderRadius: 'var(--rounded-xl)',
@@ -89,7 +104,7 @@ const About = () => {
                         </div>
                     </div>
 
-                    {/* How It Works */}
+
                     <div className="glass bg-white mb-8" style={{ 
                         borderRadius: 'var(--rounded-xl)',
                         padding: 'var(--space-xxl)',
@@ -137,7 +152,7 @@ const About = () => {
                         </div>
                     </div>
 
-                    {/* Our Values */}
+
                     <div className="glass mb-8" style={{ 
                         background: 'var(--background-dark)',
                         borderRadius: 'var(--rounded-xl)',
@@ -195,7 +210,7 @@ const About = () => {
                         </div>
                     </div>
 
-                    {/* Vision */}
+
                     <div className="glass mb-8" style={{ 
                         background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
                         color: 'var(--text-inverted)',
@@ -223,7 +238,7 @@ const About = () => {
                         </div>
                     </div>
 
-                    {/* CTA Section */}
+
                     <div className="glass bg-white text-center" style={{ 
                         borderRadius: 'var(--rounded-xl)',
                         padding: 'var(--space-xxl)',
@@ -269,7 +284,7 @@ const About = () => {
                 </div>
             </section>
 
-            {/* Footer */}
+
             <Footer />
         </div>
     );

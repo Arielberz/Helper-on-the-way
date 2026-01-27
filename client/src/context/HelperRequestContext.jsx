@@ -1,3 +1,20 @@
+/*
+  קובץ זה אחראי על:
+  - ניהול מצב גלובלי של בקשות עזרה ומעזרים
+  - חיבור Socket.IO לעדכונים בזמן אמת
+  - מעקב בקשות ממתינות, מעזרים מאושרים, ו-ETA
+  - שמירה ב-localStorage לשמירת מצב בין רענוני עמוד
+  - Hook useHelperRequest לגישה למצב ופונקציות
+
+  הקובץ משמש את:
+  - App.jsx שמעטף את ה-Routes ב-HelperRequestProvider
+  - MapLive, IncomingHelpNotification, HelperConfirmedNotification
+
+  הקובץ אינו:
+  - מציג UI של הנוטיפיקציות
+  - מכיל לוגיקת מפה או ניתוב
+*/
+
 import { createContext, useContext, useState, useEffect } from 'react'
 import { io } from 'socket.io-client'
 import { getToken } from '../utils/authUtils'
@@ -17,7 +34,6 @@ export const HelperRequestProvider = ({ children }) => {
   const [pendingRequest, setPendingRequest] = useState(null)
   const [helperConfirmed, setHelperConfirmed] = useState(null)
   const [socket, setSocket] = useState(null)
-  // Initialize ETA from localStorage for persistence across page refreshes
   const [etaByRequestId, setEtaByRequestId] = useState(() => {
     try {
       const saved = localStorage.getItem('etaByRequestId');
@@ -27,7 +43,6 @@ export const HelperRequestProvider = ({ children }) => {
     }
   })
 
-  // Track auth token reactively (updates on storage changes)
   const [authToken, setAuthToken] = useState(getToken())
 
   useEffect(() => {
@@ -40,10 +55,8 @@ export const HelperRequestProvider = ({ children }) => {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  // Initialize Socket.IO connection
   useEffect(() => {
     if (!authToken) {
-      // Close any existing socket when logging out / no token
       if (socket) {
         try { socket.close() } catch {}
         setSocket(null)
@@ -76,7 +89,6 @@ export const HelperRequestProvider = ({ children }) => {
       } catch (e) {}
     })
 
-    // Listen for ETA updates from server - this ensures ETA is available everywhere
     newSocket.on('etaUpdated', (data) => {
       const { requestId, etaSeconds, timestamp } = data;
       if (requestId && typeof etaSeconds === 'number') {
@@ -90,7 +102,6 @@ export const HelperRequestProvider = ({ children }) => {
               updatedAt: timestamp || Date.now() 
             }
           };
-          // Persist to localStorage
           try {
             localStorage.setItem('etaByRequestId', JSON.stringify(newData));
           } catch (e) {
@@ -113,7 +124,6 @@ export const HelperRequestProvider = ({ children }) => {
       console.error('❌ [Socket.IO] Connection error:', error)
     })
 
-    // Application-level socket errors
     newSocket.on('chat:error', (payload) => {
       console.error('❌ [Socket.IO] Chat error:', payload)
     })
@@ -139,7 +149,6 @@ export const HelperRequestProvider = ({ children }) => {
         ...prev,
         [requestId]: etaData,
       };
-      // Persist to localStorage
       try {
         localStorage.setItem('etaByRequestId', JSON.stringify(newData));
       } catch (e) {
@@ -149,7 +158,6 @@ export const HelperRequestProvider = ({ children }) => {
     })
   }
 
-  // Clear ETA data for a specific request (e.g., when completed)
   const clearEtaForRequest = (requestId) => {
     setEtaByRequestId(prev => {
       const newData = { ...prev };

@@ -1,129 +1,77 @@
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP לדירוגים: יצירה, שליפה, עדכון
+  - קבלת דירוגים לפי מסייע וחישוב ממוצעים
+  - בדיקת דירוגים ממתינים לבקשות
+  - אכיפת הרשאות: רק מבקש יכול לדרג מסייע
+
+  הקובץ משמש את:
+  - נתיב הדירוגים (ratingRouter)
+  - נתיב המשתמשים (userRouter) להצגת דירוגי מסייע
+  - הצד הקליינט לתצוגת דירוגים
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית (זה ב-ratingsService)
+*/
+
 const Rating = require('../models/ratingModel');
 const Request = require('../models/requestsModel');
 const User = require('../models/userModel');
 const sendResponse = require('../utils/sendResponse');
+const ratingsService = require('../services/ratingsService');
 
-/**
- * Helper function to recalculate and update a helper's average rating
- */
-async function updateHelperRating(helperId) {
-    try {
-        const ratings = await Rating.find({ helper: helperId });
-        
-        if (ratings.length === 0) {
-            await User.findByIdAndUpdate(helperId, {
-                averageRating: 0,
-                ratingCount: 0
-            });
-            return;
-        }
-
-        const totalScore = ratings.reduce((sum, rating) => sum + rating.score, 0);
-        const averageRating = totalScore / ratings.length;
-
-        await User.findByIdAndUpdate(helperId, {
-            averageRating: Math.round(averageRating * 100) / 100, // Round to 2 decimal places
-            ratingCount: ratings.length
-        });
-    } catch (error) {
-        console.error('Error updating helper rating:', error);
-        throw error;
-    }
-}
-
-/**
- * Create a new rating
- * POST /api/ratings
- * Protected route - requires authentication
- */
 exports.createRating = async (req, res) => {
     try {
         const { requestId, score, review } = req.body;
-        const raterId = req.userId; // From auth middleware
+        const raterId = req.userId;
 
-        // Validate required fields
         if (!requestId || !score) {
             return sendResponse(res, 400, false, 'Request ID and score are required');
         }
 
-        // Validate score
         if (!Number.isInteger(score) || score < 1 || score > 5) {
             return sendResponse(res, 400, false, 'Score must be an integer between 1 and 5');
         }
 
-        // Find the request
         const request = await Request.findById(requestId).populate('user helper');
         if (!request) {
             return sendResponse(res, 404, false, 'Request not found');
         }
 
-        // Check if the request is completed
         if (request.status !== 'completed') {
             return sendResponse(res, 400, false, 'Only completed requests can be rated');
         }
 
-        // Check if the rater is the owner of the request
         if (request.user._id.toString() !== raterId) {
             return sendResponse(res, 403, false, 'Only the request owner can rate the helper');
         }
 
-        // Check if there is a helper assigned
         if (!request.helper) {
             return sendResponse(res, 400, false, 'No helper assigned to this request');
         }
 
         const helperId = request.helper._id;
 
-        // Check if a rating already exists for this request
         const existingRating = await Rating.findOne({ request: requestId });
         if (existingRating) {
             return sendResponse(res, 409, false, 'This request has already been rated. Use update to modify the rating.');
         }
 
-        // Create the rating
-        const newRating = new Rating({
-            helper: helperId,
-            rater: raterId,
-            request: requestId,
+        const result = await ratingsService.createRating({
+            helperId,
+            raterId,
+            requestId,
             score,
             review: review || ''
         });
 
-        await newRating.save();
-
-        // Update helper's average rating
-        await updateHelperRating(helperId);
-
-        // Get updated helper info
-        const updatedHelper = await User.findById(helperId, 'username averageRating ratingCount');
-
-        // Populate the rating with user and request details (rater stays anonymous)
-        const populatedRating = await Rating.findById(newRating._id)
-            .populate('helper', 'username email averageRating ratingCount')
-            .populate('request', 'problemType description');
-
-
-
-        sendResponse(res, 201, true, 'Rating created successfully', {
-            rating: populatedRating,
-            updatedHelper: {
-                id: updatedHelper._id,
-                username: updatedHelper.username,
-                averageRating: updatedHelper.averageRating,
-                ratingCount: updatedHelper.ratingCount
-            }
-        });
+        sendResponse(res, 201, true, 'Rating created successfully', result);
     } catch (error) {
         console.error('Error creating rating:', error);
         sendResponse(res, 500, false, 'Server error while creating rating', error.message);
     }
 };
 
-/**
- * Get all ratings for a specific helper
- * GET /api/users/:id/ratings
- * Public route
- */
 exports.getRatingsByHelper = async (req, res) => {
     try {
         const { id: helperId } = req.params;
@@ -140,7 +88,6 @@ exports.getRatingsByHelper = async (req, res) => {
 
         const [ratings, totalCount, helper] = await Promise.all([
             Rating.find({ helper: helperId })
-                // Don't populate rater to keep ratings anonymous
                 .populate('request', 'problemType createdAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -178,85 +125,55 @@ exports.getRatingsByHelper = async (req, res) => {
     }
 };
 
-/**
- * Update an existing rating
- * PUT /api/ratings/:id
- * Protected route - requires authentication
- */
 exports.updateRating = async (req, res) => {
     try {
         const { id: ratingId } = req.params;
         const { score, review } = req.body;
-        const raterId = req.userId; // From auth middleware
+        const raterId = req.userId;
 
-        // Find the rating
         const rating = await Rating.findById(ratingId);
         if (!rating) {
             return sendResponse(res, 404, false, 'Rating not found');
         }
 
-        // Check if the user is the owner of the rating
         if (rating.rater.toString() !== raterId) {
             return sendResponse(res, 403, false, 'You can only update your own ratings');
         }
 
-        // Update fields if provided
         if (score !== undefined) {
             if (!Number.isInteger(score) || score < 1 || score > 5) {
                 return sendResponse(res, 400, false, 'Score must be an integer between 1 and 5');
             }
-            rating.score = score;
         }
 
-        if (review !== undefined) {
-            rating.review = review;
-        }
+        const updatedRating = await ratingsService.updateRating(ratingId, { score, review });
 
-        await rating.save();
-
-        // Update helper's average rating
-        await updateHelperRating(rating.helper);
-
-        // Populate the updated rating
-        const populatedRating = await Rating.findById(rating._id)
-            .populate('helper', 'username email')
-            .populate('rater', 'username email')
-            .populate('request', 'problemType description');
-
-        sendResponse(res, 200, true, 'Rating updated successfully', populatedRating);
+        sendResponse(res, 200, true, 'Rating updated successfully', updatedRating);
     } catch (error) {
         console.error('Error updating rating:', error);
         sendResponse(res, 500, false, 'Server error while updating rating', error.message);
     }
 };
 
-/**
- * Delete a rating
- * DELETE /api/ratings/:id
- * Protected route - requires authentication
- */
 exports.deleteRating = async (req, res) => {
     try {
         const { id: ratingId } = req.params;
-        const raterId = req.userId; // From auth middleware
+        const raterId = req.userId;
 
-        // Find the rating
         const rating = await Rating.findById(ratingId);
         if (!rating) {
             return sendResponse(res, 404, false, 'Rating not found');
         }
 
-        // Check if the user is the owner of the rating
         if (rating.rater.toString() !== raterId) {
             return sendResponse(res, 403, false, 'You can only delete your own ratings');
         }
 
-        const helperId = rating.helper;
+        const deleted = await ratingsService.deleteRating(ratingId);
 
-        await Rating.findByIdAndDelete(ratingId);
-
-        // Update helper's average rating
-        await updateHelperRating(helperId);
+        if (!deleted) {
+            return sendResponse(res, 404, false, 'Rating not found');
+        }
 
         sendResponse(res, 200, true, 'Rating deleted successfully');
     } catch (error) {
@@ -265,11 +182,6 @@ exports.deleteRating = async (req, res) => {
     }
 };
 
-/**
- * Get a specific rating by ID
- * GET /api/ratings/:id
- * Public route
- */
 exports.getRatingById = async (req, res) => {
     try {
         const { id: ratingId } = req.params;
@@ -290,17 +202,11 @@ exports.getRatingById = async (req, res) => {
     }
 };
 
-/**
- * Check if a request has been rated
- * GET /api/ratings/:requestId/check
- * Protected route - requires authentication
- */
 exports.checkIfRated = async (req, res) => {
     try {
         const { requestId } = req.params;
-        const userId = req.userId; // From auth middleware
+        const userId = req.userId;
 
-        // Find if there's a rating for this request by this user
         const rating = await Rating.findOne({ request: requestId, rater: userId });
 
         sendResponse(res, 200, true, 'Rating check completed', {

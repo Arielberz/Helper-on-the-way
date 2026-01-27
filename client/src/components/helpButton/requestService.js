@@ -1,4 +1,12 @@
-import { API_BASE } from '../../utils/apiConfig';
+/*
+  קובץ זה אחראי על:
+  - שירותי יצירת בקשת עזרה
+  - Geocoding של כתובות למיקום GPS
+  - טיפול בתמונות והעלאה לשרת
+  - אינטגרציה עם API של בקשות
+*/
+
+import { createRequest } from '../../services/requests.service';
 
 export async function geocodeAddress(address) {
   try {
@@ -24,55 +32,14 @@ export async function geocodeAddress(address) {
 
 export async function createHelpRequest(requestData, token) {
   try {
-    const response = await fetch(`${API_BASE}/api/requests`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(requestData)
-    });
+    const response = await createRequest(requestData);
 
-    // Handle specific HTTP error codes
-    if (response.status === 413) {
-      throw new Error('The uploaded image is too large. Please select a smaller image (max 5MB).');
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to create request');
     }
 
-    if (response.status === 401) {
-      // Import clearAuthData dynamically to avoid circular dependencies
-      const { clearAuthData } = await import('../../utils/authUtils');
-      clearAuthData();
-      window.location.href = '/login';
-      throw new Error('Your session has expired. Please log in again.');
-    }
-
-    if (response.status === 500) {
-      throw new Error('Server error. Please try again later.');
-    }
-
-    // Try to parse JSON response for both success and error cases
-    let result;
-    try {
-      result = await response.json();
-    } catch (parseError) {
-      if (!response.ok) {
-        throw new Error('Network error. Please check your connection and try again.');
-      }
-      throw new Error('Unable to process server response. Please try again.');
-    }
-
-    // Handle error responses (400, etc.) with server message
-    if (!response.ok) {
-      throw new Error(result.message || 'Network error. Please check your connection and try again.');
-    }
-
-    if (!result.success) {
-      throw new Error(result.message || 'Failed to create request');
-    }
-
-    return result.data;
+    return response.data;
   } catch (error) {
-    // Re-throw our custom errors
     if (error.message.includes('image is too large') || 
         error.message.includes('session has expired') ||
         error.message.includes('Server error') ||
@@ -82,13 +49,7 @@ export async function createHelpRequest(requestData, token) {
       throw error;
     }
     
-    // Handle network failures
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Please check your internet connection.');
-    }
-    
-    // Generic error fallback
-    throw new Error('Failed to create help request. Please try again.');
+    throw new Error(error.message || 'Failed to create help request. Please try again.');
   }
 }
 

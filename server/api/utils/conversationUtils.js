@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - פונקציות עזר לניהול שיחות
+  - בדיקה אם משתמש הוא משתתף בשיחה
+  - אכיפת הרשאות לגישה לשיחות
+  - ולידציות של משתתפים
+
+  הקובץ משמש את:
+  - chatController.js
+  - chatSockets.js
+  - reportController.js
+
+  הקובץ אינו:
+  - מבצע שאילות מסד נתונים - רק פונקציות עזר
+*/
+
 /**
  * Conversation Utility Functions
  * Helper functions for conversation-related operations
@@ -14,22 +30,17 @@ function isConversationParticipant(conversation, userId) {
   
   const userIdStr = userId.toString();
   
-  // Helper function to extract ID from either ObjectId or populated object
   const extractId = (field) => {
     if (!field) return null;
-    // If populated, field will have _id property
     if (field._id) return field._id.toString();
-    // If not populated, it's the ObjectId itself
     return field.toString();
   };
   
-  // Check if user is the requester
   const conversationUserId = extractId(conversation.user);
   if (conversationUserId === userIdStr) {
     return true;
   }
   
-  // Check if user is the helper (handle null/undefined helper)
   const conversationHelperId = extractId(conversation.helper);
   if (conversationHelperId === userIdStr) {
     return true;

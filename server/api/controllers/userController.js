@@ -1,149 +1,39 @@
-const User = require('../models/userModel');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP למשתמשים: רישום, התחברות, פרופיל
+  - אימות אימייל, שחזור סיסמה, עדכון פרופיל
+  - העלאת תמונת פרופיל וקבלת מיקום לפי IP
+  - קורא לשירות usersService ללוגיקה עסקית
+
+  הקובץ משמש את:
+  - נתיב המשתמשים (userRouter)
+  - הצד הקליינט לפעולות משתמש
+
+  הקובץ אינו:
+  - מגדיר מודלים או נתיבים - זה בקבצים אחרים
+  - מבצע פעולות מסד נתונים - זה בשירותים
+*/
+
 const sendResponse = require('../utils/sendResponse');
-const { sendEmail } = require('../utils/email');
-const generateCode = require('../utils/generateCode');
-
-function normalizeEmail(email) {
-    return String(email || '').trim().toLowerCase();
-}
-
-function normalizeUsername(username) {
-    return String(username || '').trim().toLowerCase();
-}
-
-function normalizePhone(phone) {
-    let s = String(phone || '').trim();
-    // Remove all non-digit characters except +
-    s = s.replace(/[^\d+]/g, '');
-    
-    // If starts with 05, convert to +9725
-    if (s.startsWith('05')) {
-        s = '+972' + s.substring(1);
-    }
-    // If starts with 9725, add +
-    else if (s.startsWith('9725')) {
-        s = '+' + s;
-    }
-    
-    return s;
-}
-
-function isValidEmail(email) {
-    const re = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-    return re.test(email);
-}
-
-function isValidUsername(username) {
-    // 3-30 chars, letters, numbers, underscore, dot
-    return /^[a-z0-9_.]{3,30}$/.test(username);
-}
-
-function isValidPhone(phone) {
-    // Israeli mobile number: must be +9725XXXXXXXX (10 digits total after +972)
-    return /^\+9725\d{8}$/.test(phone);
-}
-
-function sanitizeUser(user) {
-    return {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        averageRating: user.averageRating || 0,
-        ratingCount: user.ratingCount || 0,
-        avatar: user.avatar || null,
-        balance: user.balance || 0,
-        totalEarnings: user.totalEarnings || 0,
-        totalWithdrawals: user.totalWithdrawals || 0,
-        emailVerified: user.emailVerified || false,
-        role: user.role || 'user'
-    };
-}
+const usersService = require('../services/usersService');
 
 exports.register = async (req, res) => {
     try {
         const { username: rawUsername, email: rawEmail, password, phone: rawPhone, termsAccepted } = req.body || {};
-
-        if (!rawUsername || !rawEmail || !password || !rawPhone) {
-            return sendResponse(res, 400, false, "all fields are required");
-        }
         
-        // Enforce terms acceptance
-        if (!termsAccepted || termsAccepted !== true) {
-            return sendResponse(res, 400, false, "Must accept Terms & Privacy");
-        }
-        
-        const username = normalizeUsername(rawUsername);
-        const email = normalizeEmail(rawEmail);
-        const phone = normalizePhone(rawPhone);
-
-        if (!isValidUsername(username)) {
-            return sendResponse(res, 400, false, "invalid username format");
-        }
-        if (!isValidEmail(email)) {
-            return sendResponse(res, 400, false, "invalid email format");
-        }
-        if (!isValidPhone(phone)) {
-            return sendResponse(res, 400, false, "invalid phone format");
-        }
-        if (String(password).length < 8) {
-            return sendResponse(res, 400, false, "password must be at least 8 characters");
-        }
-
-        const existingUser = await User.findOne({ $or: [ { email }, { phone } ] });
-        if (existingUser) {
-            return sendResponse(res, 409, false, "email or phone already in use");
-        }
-
-        const saltRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
-        const hashedPassword = await bcrypt.hash(password, isNaN(saltRounds) ? 10 : saltRounds);
-
-        const newUser = new User({ 
-            username, 
-            email, 
-            password: hashedPassword, 
-            phone,
-            termsAccepted: true,
-            termsAcceptedAt: new Date()
+        const result = await usersService.registerUser({
+            rawUsername,
+            rawEmail,
+            password,
+            rawPhone,
+            termsAccepted
         });
-        
-        // Check if this is the admin email
-        const adminEmail = process.env.ADMIN_EMAIL || 'info.helperontheway@gmail.com';
-        if (email === adminEmail.toLowerCase()) {
-            newUser.role = 'admin';
-        }
-        
-        // Generate verification code
-        const verificationCode = generateCode(6);
-        const hashedCode = crypto.createHash('sha256').update(verificationCode).digest('hex');
-        
-        // Set verification fields
-        newUser.emailVerificationCode = hashedCode;
-        newUser.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-        newUser.emailVerified = false;
-        
-        await newUser.save();
-        
-        // Send verification email
-        try {
-            await sendEmail({
-                to: email,
-                subject: 'Verify your email',
-                text: `Your verification code is: ${verificationCode}`,
-                html: `<p>Your verification code is: <b>${verificationCode}</b></p>`
-            });
 
-        } catch (emailError) {
-            console.error('Failed to send verification email:', emailError);
-            // Continue with registration even if email fails
-        }
-
-        // Do NOT return a token - user must verify email first
-        sendResponse(res, 201, true, "User registered. Verification email sent. Please check your inbox and enter the code.", { user: sanitizeUser(newUser) }); 
+        sendResponse(res, 201, true, "User registered. Verification email sent. Please check your inbox and enter the code.", result); 
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error(error);
         sendResponse(res, 500, false, "server error");
     }};
@@ -151,61 +41,23 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { identifier: rawIdentifier, password } = req.body || {};
-        if (!rawIdentifier || !password) {
-            return sendResponse(res, 400, false, "identifier and password are required");
-        }
-        const identifier = String(rawIdentifier).trim();
+        
+        const result = await usersService.loginUser({ rawIdentifier, password });
 
-        let query = null;
-        const idLower = identifier.toLowerCase();
-        if (isValidEmail(idLower)) {
-            query = { email: idLower };
-        } else {
-            // Try to normalize and validate phone
-            const normalizedPhone = normalizePhone(identifier);
-            if (isValidPhone(normalizedPhone)) {
-                query = { phone: normalizedPhone };
-            } else {
-                return sendResponse(res, 400, false, "please use email or phone to login");
-            }
-        }
-
-        const user = await User.findOne(query);
-        if (!user) {
-            return sendResponse(res, 400, false, "invalid credentials");
-        }
-        
-        // Check if user is blocked
-        if (user.isBlocked) {
-            return sendResponse(res, 403, false, `החשבון שלך נחסם. סיבה: ${user.blockReason || 'הפרת תנאי השימוש'}. אנא צור קשר עם התמיכה למידע נוסף.`, null, { isBlocked: true });
-        }
-        
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return sendResponse(res, 400, false, "invalid credentials");
-        }
-        
-        // Check if email is verified
-        if (!user.emailVerified) {
-            return sendResponse(res, 403, false, "Please verify your email before logging in. Check your inbox for the verification code.");
-        }
-        
-        if (!process.env.JWT_SECRET) {
-            return sendResponse(res, 500, false, "server misconfiguration: missing JWT secret");
-        }
-        const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn });
-
-        if (String(process.env.JWT_COOKIE).toLowerCase() === 'true') {
-            res.cookie('token', token, {
+        if (result.setCookie) {
+            res.cookie('token', result.token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax'
             });
         }
 
-        sendResponse(res, 200, true, "login successful", { token, user: sanitizeUser(user) });
+        sendResponse(res, 200, true, "login successful", { token: result.token, user: result.user });
     } catch (error) {
+        if (error.statusCode) {
+            const extraData = error.isBlocked ? { isBlocked: true } : null;
+            return sendResponse(res, error.statusCode, false, error.message, extraData);
+        }
         console.error(error);
         sendResponse(res, 500, false, "server error");
     }
@@ -215,54 +67,21 @@ exports.verifyEmail = async (req, res) => {
     try {
         const { email: rawEmail, code } = req.body || {};
         
-        if (!rawEmail || !code) {
-            return sendResponse(res, 400, false, "email and code are required");
-        }
-        
-        const email = normalizeEmail(rawEmail);
-        
-        // Find user by email
-        const user = await User.findOne({ email });
-        
-        if (!user || !user.emailVerificationCode) {
-            return sendResponse(res, 400, false, "verification code not found");
-        }
-        
-        // Check if verification code has expired
-        if (!user.emailVerificationExpires || user.emailVerificationExpires < Date.now()) {
-            return sendResponse(res, 400, false, "verification code expired");
-        }
-        
-        // Hash the provided code and compare with stored hash
-        const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-        
-        if (hashedCode !== user.emailVerificationCode) {
-            return sendResponse(res, 400, false, "invalid verification code");
-        }
-        
-        // Verification successful - update user
-        user.emailVerified = true;
-        user.emailVerificationCode = undefined;
-        user.emailVerificationExpires = undefined;
-        await user.save();
-        
-        // Generate JWT token for immediate login after verification
-        if (!process.env.JWT_SECRET) {
-            return sendResponse(res, 500, false, "server misconfiguration: missing JWT secret");
-        }
-        const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn });
+        const result = await usersService.verifyEmail({ rawEmail, code });
 
-        if (String(process.env.JWT_COOKIE).toLowerCase() === 'true') {
-            res.cookie('token', token, {
+        if (result.setCookie) {
+            res.cookie('token', result.token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax'
             });
         }
         
-        sendResponse(res, 200, true, "email verified successfully", { token, user: sanitizeUser(user) });
+        sendResponse(res, 200, true, "email verified successfully", { token: result.token, user: result.user });
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error(error);
         sendResponse(res, 500, false, "server error");
     }
@@ -270,20 +89,13 @@ exports.verifyEmail = async (req, res) => {
 
 exports.getMe = async (req, res) => {
     try {
-        const userId = req.userId; // Set by authMiddleware
+        const result = await usersService.getMyProfile(req.userId);
         
-        if (!userId) {
-            return sendResponse(res, 401, false, "unauthorized");
-        }
-
-        const user = await User.findById(userId).select('-password');
-        
-        if (!user) {
-            return sendResponse(res, 404, false, "user not found");
-        }
-
-        sendResponse(res, 200, true, "user profile retrieved successfully", { user: sanitizeUser(user) });
+        sendResponse(res, 200, true, "user profile retrieved successfully", result);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error getting user profile:', error);
         sendResponse(res, 500, false, "server error");
     }
@@ -291,102 +103,11 @@ exports.getMe = async (req, res) => {
 
 exports.getLocationFromIP = async (req, res) => {
     try {
-        // Helper to check if IP is private/internal
-        const isPrivateIP = (ip) => {
-            return ip === '::1' || 
-                   ip === '127.0.0.1' || 
-                   ip.includes('localhost') ||
-                   ip.startsWith('10.') || 
-                   ip.startsWith('192.168.') || 
-                   (ip.startsWith('172.') && parseInt(ip.split('.')[1], 10) >= 16 && parseInt(ip.split('.')[1], 10) <= 31);
-        };
-
-        // Get client IP address - prioritize x-forwarded-for
-        let clientIP = req.headers['x-forwarded-for']?.split(',')[0].trim() 
-                      || req.socket.remoteAddress 
-                      || req.ip;
+        const result = await usersService.getLocationFromIP(req);
         
-        // Clean up IP (remove IPv6 prefix if present)
-        if (clientIP && clientIP.startsWith('::ffff:')) {
-            clientIP = clientIP.replace('::ffff:', '');
-        }
-
-
-
-        const fetch = (await import('node-fetch')).default;
-        
-        // Strategy:
-        // 1. If public IP -> Query specific IP
-        // 2. If private/localhost -> Query "me" endpoint (auto-detect public IP)
-        
-        const useAutoDetect = !clientIP || isPrivateIP(clientIP);
-
-
-        // Primary Service: ipapi.co (Reliable, JSON format)
-        // Fallback Service: ip-api.com (Good free tier, slightly different format)
-        
-        try {
-            // --- PRIMARY ATTEMPT (ipapi.co) ---
-            const primaryUrl = useAutoDetect 
-                ? 'https://ipapi.co/json/' 
-                : `https://ipapi.co/${clientIP}/json/`;
-                
-
-            const response = await fetch(primaryUrl);
-            
-            if (response.ok) {
-                const data = await response.json();
-                
-                if (!data.error && data.latitude && data.longitude) {
-                    return sendResponse(res, 200, true, "location retrieved successfully", {
-                        latitude: data.latitude,
-                        longitude: data.longitude,
-                        city: data.city || 'Unknown',
-                        country: data.country_name || 'Unknown',
-                        ip: data.ip || clientIP,
-                        source: 'primary'
-                    });
-                }
-            }
-            console.warn('Primary API failed or returned invalid data, trying fallback...');
-        } catch (primaryError) {
-            console.error('Primary API error:', primaryError.message);
-        }
-
-        // --- FALLBACK ATTEMPT (ip-api.com) ---
-        try {
-            // Note: ip-api.com doesn't support HTTPS on free tier sometimes, but we'll try http if needed or use their secure endpoint if available.
-            // Using http for free tier compatibility as per their docs for non-commercial
-            const fallbackUrl = useAutoDetect
-                ? 'http://ip-api.com/json/'
-                : `http://ip-api.com/json/${clientIP}`;
-                
-
-            const response = await fetch(fallbackUrl);
-            
-            if (response.ok) {
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    return sendResponse(res, 200, true, "location retrieved successfully (fallback)", {
-                        latitude: data.lat,
-                        longitude: data.lon,
-                        city: data.city || 'Unknown',
-                        country: data.country || 'Unknown',
-                        ip: data.query || clientIP,
-                        source: 'fallback'
-                    });
-                }
-            }
-        } catch (fallbackError) {
-            console.error('Fallback API error:', fallbackError.message);
-        }
-
-        throw new Error('All geolocation services failed');
-
+        sendResponse(res, 200, true, "location retrieved successfully", result);
     } catch (error) {
         console.error('Final IP geolocation error:', error);
-        // Ultimate Fallback to Tel Aviv
         sendResponse(res, 200, true, "location retrieved (default)", {
             latitude: 32.0853,
             longitude: 34.7818,
@@ -400,36 +121,15 @@ exports.getLocationFromIP = async (req, res) => {
 
 exports.uploadAvatar = async (req, res) => {
     try {
-        const userId = req.userId; // Set by authMiddleware
-        
-        if (!userId) {
-            return sendResponse(res, 401, false, "unauthorized");
-        }
-
         const { avatar } = req.body;
+        
+        const result = await usersService.uploadAvatar(req.userId, avatar);
 
-        if (!avatar) {
-            return sendResponse(res, 400, false, "avatar data is required");
-        }
-
-        // Validate base64 image format
-        if (!avatar.startsWith('data:image/')) {
-            return sendResponse(res, 400, false, "invalid image format");
-        }
-
-        // Update user's avatar
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { avatar },
-            { new: true }
-        ).select('-password');
-
-        if (!user) {
-            return sendResponse(res, 404, false, "user not found");
-        }
-
-        sendResponse(res, 200, true, "avatar uploaded successfully", { user: sanitizeUser(user) });
+        sendResponse(res, 200, true, "avatar uploaded successfully", result);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error uploading avatar:', error);
         sendResponse(res, 500, false, "server error");
     }
@@ -437,73 +137,27 @@ exports.uploadAvatar = async (req, res) => {
 
 exports.deleteAvatar = async (req, res) => {
     try {
-        const userId = req.userId; // Set by authMiddleware
-        
-        if (!userId) {
-            return sendResponse(res, 401, false, "unauthorized");
-        }
+        const result = await usersService.deleteAvatar(req.userId);
 
-        // Remove user's avatar
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { avatar: null },
-            { new: true }
-        ).select('-password');
-
-        if (!user) {
-            return sendResponse(res, 404, false, "user not found");
-        }
-
-        sendResponse(res, 200, true, "avatar deleted successfully", { user: sanitizeUser(user) });
+        sendResponse(res, 200, true, "avatar deleted successfully", result);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error deleting avatar:', error);
         sendResponse(res, 500, false, "server error");
     }
 };
 
-// Get user's wallet balance and transaction history
 exports.getWallet = async (req, res) => {
     try {
-        const userId = req.userId;
-        const Transaction = require('../models/transactionModel');
-        
-        if (!userId) {
-            return sendResponse(res, 401, false, "unauthorized");
-        }
+        const result = await usersService.getWallet(req.userId);
 
-        const user = await User.findById(userId).select('balance totalEarnings totalWithdrawals');
-        
-        if (!user) {
-            return sendResponse(res, 404, false, "user not found");
-        }
-
-        // Initialize balance fields if they don't exist
-        if (user.balance === undefined || user.balance === null) {
-            user.balance = 0;
-        }
-        if (user.totalEarnings === undefined || user.totalEarnings === null) {
-            user.totalEarnings = 0;
-        }
-        if (user.totalWithdrawals === undefined || user.totalWithdrawals === null) {
-            user.totalWithdrawals = 0;
-        }
-        await user.save();
-
-        // Get recent transactions
-        const transactions = await Transaction.find({ user: userId })
-            .sort({ createdAt: -1 })
-            .limit(50)
-            .populate('request', 'problemType description');
-
-
-
-        sendResponse(res, 200, true, "wallet retrieved successfully", { 
-            balance: user.balance || 0,
-            totalEarnings: user.totalEarnings || 0,
-            totalWithdrawals: user.totalWithdrawals || 0,
-            transactions 
-        });
+        sendResponse(res, 200, true, "wallet retrieved successfully", result);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error requesting withdrawal:', error);
         sendResponse(res, 500, false, "server error");
     }
@@ -516,63 +170,13 @@ exports.forgotPassword = async (req, res) => {
     try {
         const { email: rawEmail } = req.body || {};
         
-        if (!rawEmail) {
-            return sendResponse(res, 400, false, "email is required");
-        }
+        const result = await usersService.forgotPassword(rawEmail);
         
-        const email = normalizeEmail(rawEmail);
-        
-        if (!isValidEmail(email)) {
-            return sendResponse(res, 400, false, "invalid email format");
-        }
-        
-        // Find user by email
-        const user = await User.findOne({ email });
-        
-        // Always return success message to avoid email enumeration
-        if (!user) {
-            return sendResponse(res, 200, true, "If this email exists in our system, a reset link was sent");
-        }
-        
-        // Generate random reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        
-        // Hash token and save to database
-        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-        user.resetPasswordToken = hashedToken;
-        user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
-        
-        await user.save();
-        
-        // Build reset URL using frontend URL
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
-        
-        // Send password reset email using existing SendGrid utility
-        try {
-            await sendEmail({
-                to: email,
-                subject: 'Password Reset Request',
-                text: `You requested a password reset. Click the link below to reset your password:\n\n${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
-                html: `
-                    <p>You requested a password reset.</p>
-                    <p>Click the link below to reset your password:</p>
-                    <p><a href="${resetUrl}">${resetUrl}</a></p>
-                    <p>This link will expire in 1 hour.</p>
-                    <p>If you didn't request this, please ignore this email.</p>
-                `
-            });
-        } catch (emailError) {
-            console.error('Failed to send password reset email:', emailError);
-            // Clear the reset token if email fails
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpires = undefined;
-            await user.save();
-            return sendResponse(res, 500, false, "failed to send reset email");
-        }
-        
-        sendResponse(res, 200, true, "If this email exists in our system, a reset link was sent");
+        sendResponse(res, 200, true, result.message);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error in forgotPassword:', error);
         sendResponse(res, 500, false, "server error");
     }
@@ -585,106 +189,29 @@ exports.resetPassword = async (req, res) => {
     try {
         const { token, newPassword } = req.body || {};
         
-        if (!token || !newPassword) {
-            return sendResponse(res, 400, false, "token and new password are required");
-        }
+        const result = await usersService.resetPassword({ token, newPassword });
         
-        if (String(newPassword).length < 8) {
-            return sendResponse(res, 400, false, "password must be at least 8 characters");
-        }
-        
-        // Hash the token to compare with stored hash
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-        
-        // Find user with valid reset token
-        const user = await User.findOne({
-            resetPasswordToken: hashedToken,
-            resetPasswordExpires: { $gt: Date.now() }
-        });
-        
-        if (!user) {
-            return sendResponse(res, 400, false, "Invalid or expired token");
-        }
-        
-        // Hash the new password using same bcrypt settings as registration
-        const saltRounds = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
-        const hashedPassword = await bcrypt.hash(newPassword, isNaN(saltRounds) ? 10 : saltRounds);
-        
-        // Update password and clear reset token fields
-        user.password = hashedPassword;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        
-        await user.save();
-        
-        sendResponse(res, 200, true, "Password has been reset successfully");
+        sendResponse(res, 200, true, result.message);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error in resetPassword:', error);
         sendResponse(res, 500, false, "server error");
     }
 };
 
-// Request withdrawal
 exports.requestWithdrawal = async (req, res) => {
     try {
-        const userId = req.userId;
         const { amount, method, accountInfo } = req.body;
-        const Transaction = require('../models/transactionModel');
         
-        if (!userId) {
-            return sendResponse(res, 401, false, "unauthorized");
-        }
+        const result = await usersService.requestWithdrawal(req.userId, { amount, method, accountInfo });
 
-        if (!amount || amount <= 0) {
-            return sendResponse(res, 400, false, "invalid withdrawal amount");
-        }
-
-        if (!method || !['bank_transfer', 'paypal', 'cash', 'other'].includes(method)) {
-            return sendResponse(res, 400, false, "invalid withdrawal method");
-        }
-
-        const user = await User.findById(userId);
-        
-        if (!user) {
-            return sendResponse(res, 404, false, "user not found");
-        }
-
-        if (user.balance < amount) {
-            return sendResponse(res, 400, false, "insufficient balance");
-        }
-
-        // Minimum withdrawal amount
-        if (amount < 10) {
-            return sendResponse(res, 400, false, "minimum withdrawal amount is 10 ILS");
-        }
-
-        // Create withdrawal transaction
-        const balanceBefore = user.balance;
-        user.balance -= amount;
-        user.totalWithdrawals += amount;
-        
-        await user.save();
-
-        const transaction = await Transaction.create({
-            user: userId,
-            type: 'withdrawal',
-            amount: -amount,
-            balanceBefore,
-            balanceAfter: user.balance,
-            description: `Withdrawal request via ${method}`,
-            status: 'pending',
-            withdrawalDetails: {
-                method,
-                accountInfo: accountInfo || '',
-                processedAt: null
-            }
-        });
-
-        sendResponse(res, 200, true, "withdrawal request submitted successfully", { 
-            transaction,
-            newBalance: user.balance 
-        });
+        sendResponse(res, 200, true, "withdrawal request submitted successfully", result);
     } catch (error) {
+        if (error.statusCode) {
+            return sendResponse(res, error.statusCode, false, error.message);
+        }
         console.error('Error requesting withdrawal:', error);
         sendResponse(res, 500, false, "server error");
     }

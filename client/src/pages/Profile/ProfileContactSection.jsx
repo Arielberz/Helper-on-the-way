@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - רכיב פרטי קשר בפרופיל (אימייל, טלפון)
+  - הסתרת/חשיפת פרטים רגישים
+  - שימוש בפונקציות מסיכה מ-profileUtils
+
+  הקובץ משמש את:
+  - profile.jsx - חלק אמצעי של דף הפרופיל
+
+  הקובץ אינו:
+  - מנהל מצב - מקבל מהאב
+  - שומר פרטים בשרת - רק מציג
+*/
+
 import React from 'react';
 import { maskEmail, maskPhone, formatPhoneForDisplay } from '../../utils/profileUtils';
 
@@ -18,7 +32,7 @@ export function ProfileContactSection({
       </h2>
       
       <div className="space-y-3 sm:space-y-4">
-        {/* Username */}
+
         <div className="flex items-center p-3 sm:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
           <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 ml-2 sm:ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -29,7 +43,7 @@ export function ProfileContactSection({
           </div>
         </div>
 
-        {/* Email */}
+
         <div className="flex items-center p-3 sm:p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
           <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 ml-2 sm:ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -58,7 +72,7 @@ export function ProfileContactSection({
           </button>
         </div>
 
-        {/* Phone */}
+
         <div className="flex items-center p-3 sm:p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
           <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 ml-2 sm:ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

@@ -1,5 +1,11 @@
-// Location selection component that provides options for GPS-based location or manual address entry
-// with real-time location detection and validation feedback.
+/*
+  קובץ זה אחראי על:
+  - רכיב בחירת מיקום בבקשת עזרה
+  - אפשרות למיקום GPS או הזנת כתובת ידנית
+  - זיהוי מיקום בזמן אמת
+  - משוב ולידציה של המיקום
+*/
+
 import React from 'react';
 import { InlineError } from './ErrorMessage';
 

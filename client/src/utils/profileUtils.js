@@ -1,4 +1,18 @@
-// Utility functions for profile page
+/*
+  קובץ זה אחראי על:
+  - פונקציות עזר לדף הפרופיל (הסתרת פרטים רגישים, עיצוב טקסט)
+  - תרגום סטטוסים וסוגי בעיות לעברית
+  - חישוב מרחקים בין נקודות (נוסחת Haversine)
+
+  הקובץ משמש את:
+  - דף הפרופיל - הצגת היסטוריית בקשות ופרטי משתמש
+  - רשימת בקשות קרובות - חישוב מרחקים
+  - כל מקום שצריך לתרגם סטטוסים/בעיות
+
+  הקובץ אינו:
+  - מנהל מצב - רק פונקציות טהורות
+  - מבצע קריאות API
+*/
 
 export const maskEmail = (email) => {
   if (!email) return "לא זמין";
@@ -8,7 +22,6 @@ export const maskEmail = (email) => {
 
 export const formatPhoneForDisplay = (phone) => {
   if (!phone) return "לא זמין";
-  // Convert +9725XXXXXXXX to 05XXXXXXXX for display
   if (phone.startsWith('+9725')) {
     return '0' + phone.substring(4);
   }
@@ -20,11 +33,10 @@ export const maskPhone = (phone) => {
   return "*".repeat(phone.length);
 };
 
-// Calculate distance between two points using Haversine formula
 export const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -32,7 +44,7 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in km
+  return R * c;
 };
 
 export const getProblemTypeLabel = (type) => {

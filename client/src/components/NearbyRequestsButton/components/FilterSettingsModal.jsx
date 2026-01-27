@@ -1,3 +1,11 @@
+/*
+  קובץ זה אחראי על:
+  - מודאל הגדרות פילטר לבקשות סמוכות
+  - סינון לפי סוג בעיה וטווח מרחק
+  - שמירה וטעינה של העדפות פילטר
+  - ממשק הגדרות למשתמש
+*/
+
 import React from 'react';
 import { CloseIcon } from './Icons';
 import { PROBLEM_TYPES } from '../utils/nearbyUtils';

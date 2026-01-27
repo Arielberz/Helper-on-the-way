@@ -1,32 +1,24 @@
-/**
- * Platform commission calculation utility
- * The helper receives a clean rounded amount, platform takes the remainder
- */
+/*
+  קובץ זה אחראי על:
+  - פונקציות עזר לחישוב עמלות
+  - חישוב אחוז עמלה מתשלומים
+  - חישוב סכום עמלה וסכום למסייע
+  - הגדרות עמלה מ-environment variables
 
-const COMMISSION_RATE = 0.10; // 10% commission (approximate)
+  הקובץ משמש את:
+  - paymentController.js
+  - adminController.js
 
-/**
- * Round to one decimal place (0.1 precision)
- * Examples: 3.73 → 3.7, 8.21 → 8.2, 12.5 → 12.5, 49.93 → 49.9
- * 
- * @param {number} value - The value to round
- * @returns {number} Rounded to 1 decimal place
- */
+  הקובץ אינו:
+  - מבצע עסקאות - רק מחשב סכומים
+*/
+
+const COMMISSION_RATE = 0.10;
+
 function roundToClean(value) {
-    // Round to one decimal place
     return Math.round(value * 10) / 10;
 }
 
-/**
- * Calculate platform commission and helper payout amount
- * HELPER RECEIVES CLEAN ROUNDED AMOUNT, platform takes the remainder
- * 
- * @param {number} totalAmount - The total transaction amount
- * @returns {Object} Object containing:
- *   - commissionAmount: Platform commission (whatever is left after rounding helper amount)
- *   - helperAmount: Amount helper receives (ALWAYS CLEAN/ROUNDED)
- *   - originalTotal: Original transaction amount
- */
 function calculateCommission(totalAmount) {
     if (!totalAmount || totalAmount <= 0) {
         return {
@@ -36,26 +28,19 @@ function calculateCommission(totalAmount) {
         };
     }
 
-    // Calculate approximate helper amount (90% of total)
     const approximateHelperAmount = totalAmount * (1 - COMMISSION_RATE);
     
-    // Round helper amount to clean number (0.5 or whole)
     const helperAmount = roundToClean(approximateHelperAmount);
     
-    // Commission is whatever is left over
     const commissionAmount = totalAmount - helperAmount;
 
     return {
-        commissionAmount: Math.max(0, commissionAmount), // Ensure non-negative
+        commissionAmount: Math.max(0, commissionAmount),
         helperAmount,
         originalTotal: totalAmount
     };
 }
 
-/**
- * Get the current commission rate as a percentage
- * @returns {number} Commission rate as percentage (e.g., 10)
- */
 function getCommissionRatePercentage() {
     return COMMISSION_RATE * 100;
 }

@@ -1,4 +1,21 @@
-// src/components/MapLive/MapLive.jsx
+/*
+  קובץ זה אחראי על:
+  - מרכיב המפה המרכזי של האפליקציה (Leaflet/React Leaflet)
+  - תצוגת בקשות עזרה בזמן אמת על המפה
+  - מעקב מיקום משתמש בזמן אמת ושיתוף מיקום ב-Socket.IO
+  - ניהול מסלולים וניווט לצורך מעבר לצ'אט ופרופיל
+  - הצגת markers לבקשות פעילות, משתמשים ומעזרים
+
+  הקובץ משמש את:
+  - דף Home כמרכיב ראשי
+  - HelpButton, IncomingHelpNotification וקומפוננטות משנה נוספות
+  - useMapLiveSocketHandlers, useMapLocation hooks
+
+  הקובץ אינו:
+  - מטפל באימות (זה תפקיד authMiddleware/ProtectedRoute)
+  - מכיל לוגיקת תשלומים או דירוגים
+*/
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapContainer, TileLayer } from "react-leaflet";
@@ -8,14 +25,15 @@ import { useHelperRequest } from "../../context/HelperRequestContext";
 
 import HelpButton from "../helpButton/helpButton";
 import IncomingHelpNotification from "../IncomingHelpNotification/IncomingHelpNotification";
-import { getToken, getUserId, clearAuthData } from "../../utils/authUtils";
+import { getToken, getUserId } from "../../utils/authUtils";
 import { useUnreadCount } from "../../hooks/useUnreadCount";
 import { useMapLocation } from "../../hooks/useMapLocation";
-import { API_BASE } from "../../utils/apiConfig";
-import { apiFetch } from "../../utils/apiFetch";
+import { useMapLiveSocketHandlers, useActiveRequestTracking } from "../../hooks/useMapLiveSocketHandlers";
 import { useAlert } from "../../context/AlertContext";
+import { fetchRouteGeometry } from "../../utils/locationUtils";
+import { getAllRequests, requestHelp } from "../../services/requests.service";
+import { getConversationByRequest } from "../../services/chat.service";
 
-// Subcomponents
 import MapRefSetter from "./components/MapRefSetter";
 import LocationAccuracyBanner from "./components/LocationAccuracyBanner";
 import MapSidebar from "./components/MapSidebar";
@@ -28,18 +46,16 @@ import RoutePolylines from "./components/RoutePolylines";
 
 export default function MapLive() {
   const { showAlert } = useAlert();
-  const [sharedMarkers, setSharedMarkers] = useState([]); // נקודות מהשרת
-  const { socket, setEtaForRequest } = useHelperRequest(); // Use shared socket from context
+  const [sharedMarkers, setSharedMarkers] = useState([]);
+  const { socket, setEtaForRequest } = useHelperRequest();
 
   const [confirmationMessage, setConfirmationMessage] = useState(null);
-  const [mapRef, setMapRef] = useState(null); // התייחסות למפה
-  const [showProfileMenu, setShowProfileMenu] = useState(false); // Profile dropdown menu
-  const unreadCount = useUnreadCount(); // Unread messages count from shared hook
+  const [mapRef, setMapRef] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const unreadCount = useUnreadCount();
   
-  // Track when help modal is open to hide sidebar
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   
-  // Mobile detection - sidebar is hidden on mobile
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -47,7 +63,6 @@ export default function MapLive() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Use location hook
   const {
     position,
     locationAccuracy,
@@ -56,118 +71,33 @@ export default function MapLive() {
     refreshLocation,
     dismissAccuracyBanner,
   } = useMapLocation(mapRef);
-  const [routes, setRoutes] = useState({}); // Store routes for each request { requestId: routeCoordinates }
+  const [routes, setRoutes] = useState({});
   const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
 
   const navigate = useNavigate();
   const location = useLocation();
-  const token = getToken(); // Secure token retrieval
+  const token = getToken();
 
-  // Handle focus location from navigation (when helper clicks "View on Map")
+  useMapLiveSocketHandlers(socket, setSharedMarkers, setMyActiveRequest);
+  useActiveRequestTracking(socket, sharedMarkers, setMyActiveRequest);
+
   useEffect(() => {
     const { focusLocation } = location.state || {};
     if (focusLocation && mapRef) {
 
-      // Center and zoom to the request location with animation
       mapRef.flyTo([focusLocation.lat, focusLocation.lng], 16, {
         duration: 1.5,
       });
     }
   }, [location.state, mapRef]);
 
-  // Listen to Socket.IO events for real-time updates
-  useEffect(() => {
-    if (!socket) return;
-
-    // האזנה לבקשות חדשות מהשרת
-    const handleRequestAdded = (request) => {
-
-      setSharedMarkers((prev) => {
-        if (!request?._id) return prev;
-        const exists = prev.some((m) => (m._id || m.id) === request._id);
-        return exists ? prev : [...prev, request];
-      });
-    };
-
-    // Update existing request
-    const handleRequestUpdated = (request) => {
-      if (!request?._id) return;
-      setSharedMarkers((prev) => prev.map((m) => ((m._id || m.id) === request._id ? { ...m, ...request } : m)));
-    };
-
-    // Remove deleted request
-    const handleRequestDeleted = ({ _id }) => {
-      if (!_id) return;
-      setSharedMarkers((prev) => prev.filter((m) => (m._id || m.id) !== _id));
-    };
-
-    socket.on("requestAdded", handleRequestAdded);
-    socket.on("requestUpdated", handleRequestUpdated);
-    socket.on("requestDeleted", handleRequestDeleted);
-
-    return () => {
-      socket.off("requestAdded", handleRequestAdded);
-      socket.off("requestUpdated", handleRequestUpdated);
-      socket.off("requestDeleted", handleRequestDeleted);
-    };
-  }, [socket]);
-
-  // Identify user's active request (as requester or helper) and send location updates if helper
-  useEffect(() => {
-    const userId = getUserId();
-    if (!userId || sharedMarkers.length === 0) return;
-
-    // Find active request where user is requester OR helper with status 'assigned'
-    const activeReq = sharedMarkers.find(
-      req => req.status === 'assigned' && 
-            (req.user?._id === userId || req.user === userId || 
-             req.helper?._id === userId || req.helper === userId)
-    );
-
-    setMyActiveRequest(activeReq || null);
-
-    // If user is the helper, send location updates every 30 seconds
-    if (activeReq && (activeReq.helper?._id === userId || activeReq.helper === userId) && socket) {
-      const sendLocationUpdate = () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const locationData = {
-                requestId: activeReq._id,
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude
-              };
-              socket.emit('helperLocationUpdate', locationData);
-
-            },
-            (error) => console.warn('❌ Geolocation error:', error.message)
-          );
-        }
-      };
-
-      // Send immediately on mount and then every 30 seconds
-
-      sendLocationUpdate();
-      const interval = setInterval(sendLocationUpdate, 30000);
-      return () => {
-
-        clearInterval(interval);
-      };
-    }
-  }, [sharedMarkers, socket]);
-
-  // 3. טעינת כל המיקומים מהשרת פעם אחת בהתחלה
   useEffect(() => {
     if (!token) return;
 
     const fetchRequests = async () => {
       try {
-        const res = await apiFetch(`${API_BASE}/api/requests`, {}, navigate);
-
-        const json = await res.json();
-
+        const json = await getAllRequests(navigate);
         
-        // Deduplicate by _id before setting
         const uniqueRequests = (json.data || []).reduce((acc, req) => {
           const id = req._id || req.id;
           if (id && !acc.some(r => (r._id || r.id) === id)) {
@@ -181,66 +111,39 @@ export default function MapLive() {
         if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
           return;
         }
-        // Failed to fetch locations
       }
     };
 
     fetchRequests();
   }, [token, navigate]);
 
-  // 4. Fetch route from OSRM
   const fetchRoute = async (requestId, fromLat, fromLng, toLat, toLng) => {
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+      const coordinates = await fetchRouteGeometry(fromLat, fromLng, toLat, toLng);
       
-      const response = await fetch(url);
-      if (!response.ok) {
-        console.error('Failed to fetch route from OSRM');
-        return;
-      }
-
-      const data = await response.json();
+      const latLngCoordinates = coordinates.map(coord => [coord[1], coord[0]]);
       
-      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
-        
-        setRoutes(prev => ({
-          ...prev,
-          [requestId]: {
-            coordinates,
-            distance: route.distance,
-            duration: route.duration
-          }
-        }));
-        
-        // Push ETA/distance to context for chat
-        const distanceKm = route.distance / 1000; // Convert meters to km
-        const etaMinutes = route.duration / 60; // Convert seconds to minutes
-        const etaSeconds = route.duration; // Keep seconds for consistency
-        
-        if (setEtaForRequest) {
-          setEtaForRequest(requestId, { distanceKm, etaMinutes, etaSeconds });
+      setRoutes(prev => ({
+        ...prev,
+        [requestId]: {
+          coordinates: latLngCoordinates
         }
-      }
+      }));
     } catch (error) {
       console.error('Error fetching route:', error);
     }
   };
 
-  // Auto-fetch routes for requests where current user is the assigned helper
   useEffect(() => {
     if (!position || !position[0] || !position[1] || !sharedMarkers.length) return;
 
     const currentUserId = getUserId();
     
     sharedMarkers.forEach(request => {
-      // Check if current user is the assigned helper
       const isAssignedHelper = 
         request.status === 'assigned' && 
         (request.helper === currentUserId || request.helper?._id === currentUserId);
       
-      // Fetch route if user is assigned helper and route not already loaded
       if (isAssignedHelper && 
           request.location?.lat && 
           request.location?.lng && 
@@ -256,17 +159,14 @@ export default function MapLive() {
         );
       }
     });
-  }, [sharedMarkers, position]); // Re-run when markers or position changes
+  }, [sharedMarkers, position]);
 
-  // 5. טיפול בבחירת בקשה מהרשימה
   const handleSelectRequest = (request) => {
-    // מרכז את המפה על הבקשה שנבחרה
     if (mapRef && request.location?.lat && request.location?.lng) {
       mapRef.flyTo([request.location.lat, request.location.lng], 16, {
         duration: 1.5,
       });
 
-      // Fetch route from user's position to the request
       if (position && position[0] && position[1]) {
         fetchRoute(
           request._id || request.id,
@@ -279,11 +179,9 @@ export default function MapLive() {
     }
   };
 
-  // Handle new request created from HelpButton
   const handleRequestCreated = (newRequest) => {
 
 
-    // Add to local markers (avoid duplicate since server will also emit requestAdded)
     setSharedMarkers((prev) => {
       if (!newRequest?._id && !newRequest?.id) return [...prev, newRequest];
       const id = newRequest._id || newRequest.id;
@@ -291,26 +189,19 @@ export default function MapLive() {
       return exists ? prev : [...prev, newRequest];
     });
 
-    // Note: real-time broadcast of new requests should be triggered by the server
-    // after authenticated creation, not directly by clients.
-
-    // Zoom to the new request location
     if (mapRef && newRequest.location) {
       mapRef.flyTo([newRequest.location.lat, newRequest.location.lng], 16, {
         duration: 1.5,
       });
     }
 
-    // Show confirmation message
     setConfirmationMessage("Help request created successfully!");
 
-    // Hide confirmation after 5 seconds
     setTimeout(() => {
       setConfirmationMessage(null);
     }, 5000);
   };
 
-  // Open chat with a specific user for a request
   const openChat = async (request) => {
 
 
@@ -320,7 +211,6 @@ export default function MapLive() {
       return;
     }
 
-    // Fetch and display route to the request
     if (position && position[0] && position[1] && request.location?.lat && request.location?.lng) {
       fetchRoute(
         request._id || request.id,
@@ -334,82 +224,40 @@ export default function MapLive() {
     try {
       const currentUserId = getUserId();
       
-      // Flow 1: Request is pending and no helper assigned yet → Send help request
       if (!request.helper && request.status === 'pending') {
-        const helpResponse = await fetch(`${API_BASE}/api/requests/${request._id}/request-help`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
+        try {
+          await requestHelp(request._id, {
             message: 'אני יכול לעזור לך!',
             location: {
               lat: position[0],
               lng: position[1]
             }
-          })
-        });
-        
-        if (!helpResponse.ok) {
-          const helpData = await helpResponse.json();
-          showAlert(`❌ ${helpData.message || 'נכשל בשליחת בקשת העזרה'}`);
-          return;
-        } else {
-          await helpResponse.json();
+          });
           showAlert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`, { onClose: () => window.location.reload() });
+          return;
+        } catch (error) {
+          showAlert(`❌ ${error.message || 'נכשל בשליחת בקשת העזרה'}`);
           return;
         }
       } 
       
-      // Flow 2: Helper is assigned and current user is the helper → Open chat
       else if (request.helper && (request.helper === currentUserId || request.helper._id === currentUserId)) {
-        // Continue to chat opening code below
       } 
       
-      // Flow 3: Helper already assigned to someone else
       else if (request.helper) {
         showAlert('⚠️ בקשה זו כבר שובצה לעוזר אחר');
         return;
       } 
       
-      // Flow 4: Request is not pending anymore
       else {
         showAlert('⚠️ בקשה זו אינה זמינה יותר');
         return;
       }
 
-      // Now get or create conversation
-      const url = `${API_BASE}/api/chat/conversation/request/${request._id}`;
-
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        console.error("Failed to parse chat response", e);
-      }
-
-      if (response.ok && data) {
-        // Navigate to chat page - the chat page will load this conversation
-        const conversationId = data.data?.conversation?._id || data.data?._id;
-
-        navigate("/chat", { state: { conversationId } });
-      } else if (response.status === 401) {
-
-        clearAuthData();
-        navigate("/login");
-      } else {
-        console.error("Failed to open chat:", data);
-        const errorMessage = data?.message || "שגיאה לא ידועה";
-        showAlert(`לא ניתן לפתוח שיחה: ${errorMessage}`);
-      }
+      const data = await getConversationByRequest(request._id);
+      
+      const conversationId = data.data?.conversation?._id || data.data?._id;
+      navigate("/chat", { state: { conversationId } });
     } catch (error) {
       showAlert(`שגיאה בפתיחת השיחה: ${error.message}`);
     }
@@ -425,7 +273,6 @@ export default function MapLive() {
         setShowAccuracyBanner={dismissAccuracyBanner}
       />
 
-      {/* Sidebar - Desktop only, hidden when help modal is open */}
       {!isMobile && !isHelpModalOpen && (
         <MapSidebar
           mapRef={mapRef}
@@ -435,7 +282,6 @@ export default function MapLive() {
         />
       )}
 
-      {/* Mobile Header - Logo, Nearby, Profile in one row, hidden when help modal is open */}
       {isMobile && !isHelpModalOpen && (
         <MobileMapHeader
           mapRef={mapRef}
@@ -474,7 +320,6 @@ export default function MapLive() {
         <RoutePolylines routes={routes} />
       </MapContainer>
 
-      {/* Profile Menu - Desktop only, hidden when help modal is open */}
       {!isMobile && !isHelpModalOpen && (
         <ProfileMenu
           showProfileMenu={showProfileMenu}
@@ -486,10 +331,8 @@ export default function MapLive() {
 
       <ConfirmationToast message={confirmationMessage} />
 
-      {/* Incoming Help Notification - Replaces PendingHelpersMapButton */}
       {!isHelpModalOpen && <IncomingHelpNotification />}
 
-      {/* Button Group - Help at bottom */}
       <div className="fixed bottom-6 right-6 flex flex-col-reverse gap-2 z-1000">
         <HelpButton
           onRequestCreated={handleRequestCreated}

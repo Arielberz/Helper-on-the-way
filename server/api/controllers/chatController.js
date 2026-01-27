@@ -1,10 +1,24 @@
 const Conversation = require('../models/chatModel');
 const Request = require('../models/requestsModel');
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP לשיחות: שליפת שיחות והודעות
+  - יצירת שיחות, שליחת הודעות, סימון כנקרא
+  - קבלת מספר הודעות שלא נקראו
+  - קורא לשירות chatService ללוגיקה עסקית
+
+  הקובץ משמש את:
+  - נתיב הצ'אט (chatRouter)
+  - הצד הקליינט לניהול שיחות
+
+  הקובץ אינו:
+  - מטפל בשיחות בזמן אמת - זה ב-chatSockets
+*/
+
 const sendResponse = require('../utils/sendResponse');
 const chatService = require('../services/chatService');
 const { isConversationParticipant } = require('../utils/conversationUtils');
 
-// Get all conversations for a user (both as requester and helper)
 exports.getUserConversations = async (req, res) => {
   try {
     const userId = req.userId;
@@ -25,7 +39,6 @@ exports.getUserConversations = async (req, res) => {
   }
 };
 
-// Get a specific conversation by ID
 exports.getConversationById = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -40,7 +53,6 @@ exports.getConversationById = async (req, res) => {
       return sendResponse(res, 404, false, 'conversation not found');
     }
 
-    // Check if user is part of this conversation
     if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
@@ -52,19 +64,16 @@ exports.getConversationById = async (req, res) => {
   }
 };
 
-// Get or create a conversation for a request
 exports.getOrCreateConversation = async (req, res) => {
   try {
     const { requestId } = req.params;
     const userId = req.userId;
 
-    // Find the request
     const request = await Request.findById(requestId);
     if (!request) {
       return sendResponse(res, 404, false, 'request not found');
     }
 
-    // Check if user is part of this request (either as requester or helper)
     if (
       request.user.toString() !== userId &&
       (!request.helper || request.helper.toString() !== userId)
@@ -72,17 +81,13 @@ exports.getOrCreateConversation = async (req, res) => {
       return sendResponse(res, 403, false, 'access denied');
     }
 
-    // Check if a conversation already exists for this request
     let conversation = await Conversation.findOne({ request: requestId })
       .populate('user', 'username email avatar')
       .populate('helper', 'username email avatar')
       .populate('request', 'problemType status location description payment etaData');
 
     if (!conversation) {
-      // Determine helper - either the assigned helper or the current user (if they're trying to help)
       let helperId = request.helper;
-      
-      // If no helper assigned yet, assign current user as helper if they're not the requester
       if (!helperId) {
         if (request.user.toString() === userId) {
           return sendResponse(res, 400, false, 'you cannot be the helper for your own request');
@@ -99,7 +104,6 @@ exports.getOrCreateConversation = async (req, res) => {
 
       await conversation.save();
       
-      // Populate fields after saving
       conversation = await Conversation.findById(conversation._id)
         .populate('user', 'username email avatar')
         .populate('helper', 'username email avatar')
@@ -113,7 +117,6 @@ exports.getOrCreateConversation = async (req, res) => {
   }
 };
 
-// Send a message (mainly for REST fallback, socket.io is preferred)
 exports.sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -124,7 +127,6 @@ exports.sendMessage = async (req, res) => {
       return sendResponse(res, 400, false, 'message content is required');
     }
 
-    // Use chat service to append message
     const { conversation, message } = await chatService.appendMessage({
       conversationId,
       senderId: userId,
@@ -149,19 +151,16 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
-// Mark messages as read
 exports.markMessagesAsRead = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const userId = req.userId;
 
-    // Use chat service to mark messages as read
     const conversation = await chatService.markConversationRead({
       conversationId,
       userId
     });
 
-    // Emit socket notification to the other user as well
     try {
       const io = req.app.get('io');
       if (io) {
@@ -171,7 +170,6 @@ exports.markMessagesAsRead = async (req, res) => {
         io.to(`user:${String(otherUserId)}`).emit('messages_read', { conversationId, readBy: userId });
       }
     } catch (e) {
-      // Non-fatal: logging only
       console.warn('⚠️ Failed to emit messages_read from REST path:', e.message);
     }
 
@@ -188,7 +186,6 @@ exports.markMessagesAsRead = async (req, res) => {
   }
 };
 
-// Get unread message count
 exports.getUnreadCount = async (req, res) => {
   try {
     const userId = req.userId;
@@ -214,7 +211,6 @@ exports.getUnreadCount = async (req, res) => {
   }
 };
 
-// Archive/close a conversation
 exports.archiveConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -225,7 +221,6 @@ exports.archiveConversation = async (req, res) => {
       return sendResponse(res, 404, false, 'conversation not found');
     }
 
-    // Verify user is part of conversation
     if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
@@ -240,7 +235,6 @@ exports.archiveConversation = async (req, res) => {
   }
 };
 
-// Delete a conversation (including all its messages)
 exports.deleteConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -251,21 +245,11 @@ exports.deleteConversation = async (req, res) => {
       return sendResponse(res, 404, false, 'conversation not found');
     }
 
-    // Verify user is part of conversation
     if (!isConversationParticipant(conversation, userId)) {
       return sendResponse(res, 403, false, 'access denied');
     }
 
-    // Log the deletion for debugging
-
-
-    // Delete the entire conversation document (including all embedded messages)
-    const result = await Conversation.findByIdAndDelete(conversationId);
-    
-    if (!result) {
-      return sendResponse(res, 500, false, 'failed to delete conversation');
-    }
-
+    await Conversation.findByIdAndDelete(conversationId);
 
     sendResponse(res, 200, true, 'conversation and all messages deleted successfully');
   } catch (error) {

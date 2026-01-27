@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - הצגת קווי מסלול על המפה
+  - ציור נתיבי ניווט בין נקודות
+  - הצגה גרפית של מסלולי נסיעה
+*/
+
 import React from "react";
 import { Polyline } from "react-leaflet";
 

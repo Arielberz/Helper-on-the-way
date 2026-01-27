@@ -1,9 +1,17 @@
-/**
- * Centralized API configuration
- * 
- * This file provides a single source of truth for the API base URL.
- * All API requests should use this constant instead of defining their own.
- */
+/*
+  קובץ זה אחראי על:
+  - הגדרת כתובת הבסיס של שרת ה-API
+  - קריאת משתני סביבה מ-Vite
+  - מקור אמת יחיד לכתובת השרת
+
+  הקובץ משמש את:
+  - כל קבצי ה-services לבניית כתובות API
+  - רכיבים שצריכים גישה ישירה לכתובת השרת
+
+  הקובץ אינו:
+  - מבצע בקשות HTTP - רק מספק קונפיגורציה
+  - משתנה בזמן ריצה - נקבע בהתחלה
+*/
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 

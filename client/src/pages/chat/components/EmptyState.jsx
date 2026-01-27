@@ -1,9 +1,23 @@
+/*
+  קובץ זה אחראי על:
+  - מסך ריק כשאין שיחה נבחרת
+  - הודעה ידידותית למשתמש
+  - אייקון וטקסט מרכזי
+
+  הקובץ משמש את:
+  - chat.jsx - כשאין selectedConversation
+
+  הקובץ אינו:
+  - מציג תוכן - רק placeholder
+  - מנהל ניווט - סטטי
+*/
+
 import React from "react";
 
 export default function EmptyState({ setIsMobileMenuOpen }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center text-[var(--text-secondary)]">
-      {/* Mobile header with hamburger when no conversation */}
+
       <div className="absolute top-0 left-0 right-0 flex h-12 items-center border-b border-[var(--background-dark)] bg-[var(--background)] px-4 md:hidden">
         <button onClick={() => setIsMobileMenuOpen(true)} className="mr-2">
           <svg

@@ -1,10 +1,27 @@
+/*
+  קובץ זה אחראי על:
+  - מודל דירוג מעזרים לאחר סיום בקשת עזרה
+  - מערכת כוכבים (1-5) עם אפקט hover
+  - שדה טקסט לביקורת כתובה (אופציונלי)
+  - UI בלבד - הלוגיקה ב-RatingContext
+
+  הקובץ משמש את:
+  - GlobalRatingModal שמעטפת אותו ב-RatingContext
+  - דף צ'אט ונוטיפיקציות המזמינות לדירוג
+
+  הקובץ אינו:
+  - מנהל לוגיקה גלובלית של דירוגים (זה תפקיד RatingContext)
+  - מטפל בתשלומים או צ'אט
+  - שולח קריאות API ישירות (עבר לקונטקסט)
+*/
+
 import { useState } from 'react'
-import axios from 'axios'
-import { getToken } from '../../utils/authUtils'
+import { useRating } from '../../context/RatingContext'
 import { useAlert } from '../../context/AlertContext'
 
 const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
   const { showAlert } = useAlert()
+  const { submitRatingFromContext } = useRating()
   const [score, setScore] = useState(0)
   const [hoveredScore, setHoveredScore] = useState(0)
   const [review, setReview] = useState('')
@@ -21,34 +38,32 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
     setIsSubmitting(true)
 
     try {
-      const token = getToken()
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/ratings`,
-        {
-          requestId,
-          score,
-          review
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
+      const result = await submitRatingFromContext(requestId, score, review)
 
-      if (response.data.success) {
-        const updatedHelper = response.data.data?.updatedHelper;
+      if (result.alreadyRated) {
+        showAlert('הבקשה כבר דורגה. אין צורך לדרג שוב.');
+        if (onSubmitSuccess) {
+          onSubmitSuccess({ requestId, alreadyRated: true });
+        }
+        onClose();
+        return;
+      }
+
+      if (result.success) {
+        const updatedHelper = result.data?.updatedHelper;
         if (updatedHelper) {
           showAlert(`✅ תודה על הדירוג!\n${helperName} כעת בעל דירוג: ${updatedHelper.averageRating.toFixed(1)} ⭐ (${updatedHelper.ratingCount} דירוגים)`);
         } else {
           showAlert('✅ תודה על הדירוג!');
         }
         if (onSubmitSuccess) {
-          onSubmitSuccess(response.data.data)
+          onSubmitSuccess({ requestId, ...result.data })
         }
         onClose()
       }
     } catch (error) {
       console.error('Error submitting rating:', error)
-      showAlert(error.response?.data?.message || 'שגיאה בשליחת הדירוג')
+      showAlert(error.message || 'שגיאה בשליחת הדירוג')
     } finally {
       setIsSubmitting(false)
     }
@@ -68,7 +83,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[1002] p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
+
         <div className="bg-white px-8 py-6 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-slate-800">דרג את השירות</h2>
@@ -88,10 +103,10 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
           )}
         </div>
 
-        {/* Content */}
+
         <div className="flex-1 overflow-y-auto p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Star Rating */}
+
             <div className="flex flex-col items-center">
               <label className="text-sm font-medium text-gray-700 mb-4">
                 בחר דירוג
@@ -125,7 +140,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
               )}
             </div>
 
-            {/* Review */}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 חוות דעת (אופציונלי)
@@ -145,7 +160,7 @@ const RatingModal = ({ requestId, helperName, onClose, onSubmitSuccess }) => {
           </form>
         </div>
 
-        {/* Footer */}
+
         <div className="bg-slate-50 border-t border-slate-100 px-8 py-4 flex justify-between gap-3">
           <button
             type="button"

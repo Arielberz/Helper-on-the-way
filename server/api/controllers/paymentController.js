@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP לתשלומים: PayPal, ארנק, משיכות
+  - יצירת וביצוע תשלומים בפייפאל
+  - ניהול ארנק המשתמש: הפקדה, משיכה, יתרה
+  - חישוב עמלות והמרת מטבע
+  - קורא לשירות paypalService לאינטגרציית PayPal
+
+  הקובץ משמש את:
+  - נתיב התשלומים (paymentRouter)
+  - הצד הקליינט לעסקאות כספיות
+
+  הקובץ אינו:
+  - מתחבר ישירות ל-PayPal API - זה ב-paypalService
+*/
+
 const Request = require('../models/requestsModel');
 const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
@@ -6,7 +22,6 @@ const { calculateCommission, getCommissionRatePercentage } = require('../utils/c
 const { ilsToAgorot, agorotToIlsString, agorotToIls, isValidAgorotAmount } = require('../utils/currencyConverter');
 const { createPayPalOrder, capturePayPalOrder, getPayPalOrderDetails } = require('../services/paypalService');
 
-// Create PayPal order
 exports.createOrder = async (req, res) => {
     try {
         const { requestId } = req.body;
@@ -24,7 +39,6 @@ exports.createOrder = async (req, res) => {
             return sendResponse(res, 400, false, "requestId is required");
         }
 
-        // Verify the request exists and user is the requester
         const request = await Request.findById(requestId);
         if (!request) {
             return sendResponse(res, 404, false, "request not found");
@@ -38,24 +52,24 @@ exports.createOrder = async (req, res) => {
             return sendResponse(res, 400, false, "no helper assigned to this request");
         }
 
-        // Get amount in agorot from request (already stored as agorot in DB)
-        const amountAgorot = request.payment?.offeredAmount || 0;
+        const amountIls = request.payment?.offeredAmount || 0;
 
-        if (!isValidAgorotAmount(amountAgorot)) {
+        if (typeof amountIls !== 'number' || amountIls < 0) {
             return sendResponse(res, 400, false, "invalid payment amount");
         }
 
-        if (amountAgorot === 0) {
+        if (amountIls === 0) {
             return sendResponse(res, 400, false, "cannot use PayPal for free help - use 'Confirm Completion' button instead");
         }
 
+        const amountAgorot = ilsToAgorot(amountIls);
+
         console.log('💰 Payment amount:', {
+            ils: amountIls,
             agorot: amountAgorot,
-            ils: agorotToIls(amountAgorot),
             currency: 'ILS'
         });
 
-        // Create PayPal order with ILS currency
         const returnUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/success?requestId=${requestId}`;
         const cancelUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/paypal/cancel?requestId=${requestId}`;
         
@@ -69,7 +83,6 @@ exports.createOrder = async (req, res) => {
 
         console.log('🔵 PayPal order response:', JSON.stringify(paypalOrder, null, 2));
 
-        // Get approval URL
         if (!paypalOrder || !paypalOrder.links || !Array.isArray(paypalOrder.links)) {
             console.error('❌ Invalid PayPal order response:', paypalOrder);
             return sendResponse(res, 500, false, "invalid PayPal order response - missing links array");
@@ -86,8 +99,7 @@ exports.createOrder = async (req, res) => {
             orderId: paypalOrder.id,
             approvalUrl,
             amount: {
-                agorot: amountAgorot,
-                ils: agorotToIls(amountAgorot),
+                ils: amountIls,
                 currency: 'ILS'
             }
         });
@@ -99,7 +111,6 @@ exports.createOrder = async (req, res) => {
     }
 };
 
-// Capture PayPal order (after user approves)
 exports.captureOrder = async (req, res) => {
     try {
         const { orderId, requestId } = req.body;
@@ -117,7 +128,6 @@ exports.captureOrder = async (req, res) => {
             return sendResponse(res, 400, false, "orderId and requestId are required");
         }
 
-        // Verify the request
         const request = await Request.findById(requestId);
         if (!request) {
             return sendResponse(res, 404, false, "request not found");
@@ -127,7 +137,6 @@ exports.captureOrder = async (req, res) => {
             return sendResponse(res, 403, false, "not authorized");
         }
 
-        // Capture the PayPal payment
         const captureData = await capturePayPalOrder(orderId);
 
         if (captureData.status !== 'COMPLETED') {
@@ -135,7 +144,6 @@ exports.captureOrder = async (req, res) => {
             return sendResponse(res, 400, false, "payment capture failed");
         }
 
-        // Extract payment details
         const captureInfo = captureData.purchase_units[0].payments.captures[0];
         const capturedCurrency = captureInfo.amount.currency_code;
         const capturedValueString = captureInfo.amount.value;
@@ -145,48 +153,36 @@ exports.captureOrder = async (req, res) => {
             value: capturedValueString
         });
 
-        // Verify currency is ILS
         if (capturedCurrency !== 'ILS') {
             console.error('❌ Wrong currency captured:', capturedCurrency);
             return sendResponse(res, 400, false, `Payment captured in wrong currency: ${capturedCurrency}`);
         }
 
-        // Convert captured amount to agorot
         const capturedIls = parseFloat(capturedValueString);
-        const capturedAgorot = ilsToAgorot(capturedIls);
 
-        // Verify amount matches what was expected
-        const expectedAgorot = request.payment?.offeredAmount || 0;
-        if (Math.abs(capturedAgorot - expectedAgorot) > 1) { // Allow 1 agora difference for rounding
-            console.error('❌ Amount mismatch:', { captured: capturedAgorot, expected: expectedAgorot });
+        const expectedIls = request.payment?.offeredAmount || 0;
+        if (Math.abs(capturedIls - expectedIls) > 0.01) {
+            console.error('❌ Amount mismatch:', { captured: capturedIls, expected: expectedIls });
             return sendResponse(res, 400, false, "payment amount mismatch");
         }
 
-        // Calculate commission and helper payout (working in agorot)
-        const { commissionAmount, helperAmount } = calculateCommission(agorotToIls(capturedAgorot));
-        const commissionAgorot = ilsToAgorot(commissionAmount);
-        const helperAgorot = ilsToAgorot(helperAmount);
+        const { commissionAmount, helperAmount } = calculateCommission(capturedIls);
 
         console.log('💰 Payment breakdown:', {
-            total_agorot: capturedAgorot,
-            total_ils: agorotToIls(capturedAgorot),
-            commission_agorot: commissionAgorot,
-            commission_ils: agorotToIls(commissionAgorot),
-            helper_agorot: helperAgorot,
-            helper_ils: agorotToIls(helperAgorot)
+            total_ils: capturedIls,
+            commission_ils: commissionAmount,
+            helper_ils: helperAmount
         });
 
-        // Update request payment status
         request.payment = request.payment || {};
         request.payment.isPaid = true;
         request.payment.paidAt = Date.now();
         request.payment.paymentMethod = 'paypal';
-        request.payment.offeredAmount = capturedAgorot;
-        request.payment.helperAmount = helperAgorot;
-        request.payment.commissionAmount = commissionAgorot;
+        request.payment.offeredAmount = capturedIls;
+        request.payment.helperAmount = helperAmount;
+        request.payment.commissionAmount = commissionAmount;
         request.payment.currency = 'ILS';
         
-        // Mark request as completed if requester has confirmed
         if (request.requesterConfirmedAt) {
             request.status = 'completed';
             request.completedAt = Date.now();
@@ -194,21 +190,18 @@ exports.captureOrder = async (req, res) => {
         
         await request.save();
 
-        // Credit helper's wallet (after commission) - using ILS for wallet
         if (request.helper) {
             const helper = await User.findById(request.helper);
             if (helper) {
                 const balanceBefore = helper.balance || 0;
-                const helperEarningIls = agorotToIls(helperAgorot);
-                helper.balance = (helper.balance || 0) + helperEarningIls;
-                helper.totalEarnings = (helper.totalEarnings || 0) + helperEarningIls;
+                helper.balance = (helper.balance || 0) + helperAmount;
+                helper.totalEarnings = (helper.totalEarnings || 0) + helperAmount;
                 await helper.save();
 
-                // Create transaction record
                 await Transaction.create({
                     user: helper._id,
                     type: 'earning',
-                    amount: helperEarningIls,
+                    amount: helperAmount,
                     balanceBefore,
                     balanceAfter: helper.balance,
                     currency: 'ILS',
@@ -216,14 +209,14 @@ exports.captureOrder = async (req, res) => {
                     request: request._id,
                     status: 'completed',
                     commission: {
-                        amount: agorotToIls(commissionAgorot),
+                        amount: commissionAmount,
                         rate: getCommissionRatePercentage()
                     }
                 });
 
                 console.log('✅ Helper credited:', {
                     helper_id: helper._id,
-                    amount_ils: helperEarningIls,
+                    amount_ils: helperAmount,
                     new_balance: helper.balance
                 });
             }
@@ -231,9 +224,9 @@ exports.captureOrder = async (req, res) => {
 
         sendResponse(res, 200, true, "payment successful", {
             captureId: captureData.id,
-            totalAmount: agorotToIls(capturedAgorot),
-            helperAmount: agorotToIls(helperAgorot),
-            commissionAmount: agorotToIls(commissionAgorot),
+            totalAmount: capturedIls,
+            helperAmount: helperAmount,
+            commissionAmount: commissionAmount,
             currency: 'ILS'
         });
 
@@ -243,7 +236,6 @@ exports.captureOrder = async (req, res) => {
     }
 };
 
-// Pay with balance
 exports.payWithBalance = async (req, res) => {
     let requesterBalanceReverted = false;
     let requester = null;
@@ -263,7 +255,6 @@ exports.payWithBalance = async (req, res) => {
             return sendResponse(res, 400, false, "requestId is required");
         }
 
-        // Get the request
         const request = await Request.findById(requestId);
         if (!request) {
             return sendResponse(res, 404, false, "request not found");
@@ -286,20 +277,16 @@ exports.payWithBalance = async (req, res) => {
             return sendResponse(res, 400, false, "invalid payment amount");
         }
 
-        // Get requester
         requester = await User.findById(userId);
         if (!requester) {
             return sendResponse(res, 404, false, "user not found");
         }
 
-        // Only process balance transfer if amount > 0
         if (amount > 0) {
-            // Check if requester has enough balance
             if ((requester.balance || 0) < amount) {
                 return sendResponse(res, 400, false, "insufficient balance");
             }
 
-            // Deduct from requester's balance
             requesterBalanceBefore = requester.balance || 0;
             requester.balance -= amount;
             await requester.save();
@@ -307,12 +294,9 @@ exports.payWithBalance = async (req, res) => {
         }
 
         try {
-            // Only create transactions and transfer money if amount > 0
             if (amount > 0) {
-                // Calculate commission and helper payout
                 const { commissionAmount, helperAmount } = calculateCommission(amount);
 
-                // Create deduction transaction for requester
                 await Transaction.create({
                     user: requester._id,
                     type: 'payment',
@@ -326,7 +310,6 @@ exports.payWithBalance = async (req, res) => {
                 });
 
 
-                // Credit helper's wallet (after commission)
                 const helper = await User.findById(request.helper);
                 if (helper) {
                     const helperBalanceBefore = helper.balance || 0;
@@ -335,7 +318,6 @@ exports.payWithBalance = async (req, res) => {
                     await helper.save();
 
 
-                    // Create earning transaction for helper
                     await Transaction.create({
                         user: helper._id,
                         type: 'earning',
@@ -359,20 +341,17 @@ exports.payWithBalance = async (req, res) => {
 
             }
 
-            // Update request payment status
             request.payment = request.payment || {};
             request.payment.isPaid = true;
             request.payment.paidAt = Date.now();
             request.payment.paymentMethod = amount > 0 ? 'balance' : 'free';
             
-            // Save commission details if amount > 0
             if (amount > 0) {
                 const { commissionAmount, helperAmount } = calculateCommission(amount);
                 request.payment.helperAmount = helperAmount;
                 request.payment.commissionAmount = commissionAmount;
             }
             
-            // Mark request as completed if requester has confirmed
             if (request.requesterConfirmedAt) {
                 request.status = 'completed';
                 request.completedAt = Date.now();
@@ -390,7 +369,6 @@ exports.payWithBalance = async (req, res) => {
 
         } catch (innerError) {
             console.error('Error during payment processing, reverting requester balance:', innerError);
-            // Revert requester balance
             requester.balance = requesterBalanceBefore;
             await requester.save();
             requesterBalanceReverted = true;

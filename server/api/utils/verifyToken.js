@@ -1,11 +1,18 @@
-/**
- * Shared JWT token verification utility
- * Extracts and verifies JWT tokens for both HTTP and Socket.IO contexts
- * 
- * @param {String} rawToken - The raw token (may include "Bearer " prefix)
- * @returns {Object} { decoded, userId } - Decoded token and extracted userId
- * @throws {Error} With code property for error handling
- */
+/*
+  קובץ זה אחראי על:
+  - פונקציית עזר לאימות JWT tokens
+  - חילוץ טוקן מכותרת Authorization
+  - בדיקת תקפות וחתימה
+  - טיפול בשגיאות אימות
+
+  הקובץ משמש את:
+  - authMiddleware.js
+  - chatSockets.js
+
+  הקובץ אינו:
+  - מייצר טוכנים - זה ב-usersService
+*/
+
 const jwt = require('jsonwebtoken');
 
 function verifyToken(rawToken) {
@@ -15,14 +22,11 @@ function verifyToken(rawToken) {
     throw err;
   }
 
-  // Remove "Bearer " prefix if present (case-insensitive)
   const token = rawToken.replace(/^Bearer\s+/i, '');
   
   try {
-    // Verify token and decode payload
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Extract userId from either userId or id field (handle both patterns)
     const userId = decoded.userId || decoded.id;
     
     return { decoded, userId };

@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - שליחת אימיילים דרך SendGrid
+  - אימות אימייל, שחזור סיסמה, הודעות מערכת
+  - הגדרות SendGrid מ-environment variables
+  - תמיכה בתבניות HTML
+
+  הקובץ משמש את:
+  - usersService.js
+  - contactController.js
+
+  הקובץ אינו:
+  - מכיל לוגיקה עסקית - רק פונקציית עזר
+*/
+
 const sgMail = require('@sendgrid/mail');
 
 /**
@@ -23,10 +38,8 @@ async function sendEmail({ to, subject, text, html }) {
             throw new Error('FROM_EMAIL environment variable is not set');
         }
 
-        // Set API key
         sgMail.setApiKey(apiKey);
 
-        // Send email via HTTP API (works on Render and other cloud platforms)
         const msg = {
             to,
             from: fromEmail,

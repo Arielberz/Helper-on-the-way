@@ -1,5 +1,20 @@
+/*
+  קובץ זה אחראי על:
+  - מעטפת Layout לכל דפי המנהל
+  - תפריט צד עם ניווט לדפים שונים
+  - בדיקת הרשאות מנהל - הפניה ל-403 אם אין גישה
+
+  הקובץ משמש את:
+  - כל דפי המנהל (Dashboard, UsersTable, וכו')
+
+  הקובץ אינו:
+  - מנהל נתונים - רק Layout
+  - מאמת מנהל - נעשה בשרת
+*/
+
 import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
+import { getToken, clearAuthData } from '../../utils/authUtils';
 import { 
   LayoutDashboard, 
   Users, 
@@ -18,8 +33,7 @@ function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in and is admin
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const userData = localStorage.getItem('user');
     
     if (!token || !userData) {
@@ -29,7 +43,6 @@ function AdminLayout() {
 
     const parsedUser = JSON.parse(userData);
     
-    // Check if user has admin role
     if (parsedUser.role !== 'admin') {
       navigate('/');
       return;
@@ -63,7 +76,7 @@ function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      {/* Mobile menu button */}
+
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-800 text-white rounded-md"
@@ -71,7 +84,7 @@ function AdminLayout() {
         {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Sidebar */}
+
       <aside
         className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -114,14 +127,14 @@ function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
+
       <div className="lg:ml-64">
         <main className="p-4 lg:p-8">
           <Outlet />
         </main>
       </div>
 
-      {/* Overlay for mobile */}
+
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"

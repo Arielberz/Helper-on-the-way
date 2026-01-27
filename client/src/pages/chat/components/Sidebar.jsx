@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - סיידבאר שיחות בדף הצ'אט
+  - רשימת שיחות עם הודעה אחרונה
+  - כפתור מחיקת שיחה, ניווט
+
+  הקובץ משמש את:
+  - chat.jsx - חלק שמאלי של מסך הצ'אט
+
+  הקובץ אינו:
+  - מנהל מצב - מקבל מהאב
+  - טוען הודעות - רק מציג
+*/
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -24,7 +38,7 @@ export default function Sidebar({
       `}
     >
       <div className="h-full flex flex-col border-l border-[var(--background-dark)]">
-        {/* Close (mobile) */}
+
         <div className="flex items-center justify-between px-4 pt-4 md:hidden">
           <span className="text-sm font-medium text-[var(--text-secondary)]">
             השיחות שלי
@@ -37,7 +51,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Profile */}
+
         <div
           onClick={() => navigate("/profile")}
           className="glass m-4 flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition-colors"
@@ -64,7 +78,7 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Chats list */}
+
         <div className="flex-1 overflow-y-auto px-4 pb-4 pt-1">
           <p className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">
             שיחות אחרונות
@@ -89,7 +103,6 @@ export default function Sidebar({
                     ? conv.helper?.username
                     : conv.user?.username;
 
-                // Check if request is still open (not completed or cancelled)
                 const requestStatus = conv.request?.status;
                 const isRequestOpen = requestStatus && requestStatus !== 'completed' && requestStatus !== 'cancelled';
 
@@ -130,7 +143,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Return Home */}
+
         <div className="border-t border-[var(--background)] p-4">
           <button
             onClick={() => navigate("/home")}

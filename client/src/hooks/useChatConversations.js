@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - ניהול מצב שיחות הצ'אט והודעות
+  - טעינת שיחות וקביעת שיחה נבחרת
+  - סנכרון בין שיחות להודעות
+
+  הקובץ משמש את:
+  - דף הצ'אט - ניהול מצב ממשק המשתמש
+
+  הקובץ אינו:
+  - מבצע קריאות API ישירות - מחזיר פונקציות ניהול
+  - מטפל באירועי סוקט - רק מצב מקומי
+*/
+
 import { useState, useEffect } from 'react';
 import { API_BASE } from '../utils/apiConfig';
 import { getToken, getUserId, clearAuthData } from '../utils/authUtils';
@@ -9,7 +23,6 @@ export function useChatConversations(navigate) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Get current user ID from token
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -30,12 +43,10 @@ export function useChatConversations(navigate) {
     }
   }, [navigate]);
 
-  // Update messages when new message arrives
   const addMessage = (message) => {
     setMessages((prev) => [...prev, message]);
   };
 
-  // Update selected conversation
   const selectConversation = (conversation) => {
     setSelectedConversation(conversation);
     setMessages(conversation?.messages || []);

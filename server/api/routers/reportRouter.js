@@ -1,18 +1,29 @@
+/*
+  קובץ זה אחראי על:
+  - הגדרת כל הנתיבים הקשורים לדיווחים
+  - נתיבים: יצירת דיווח, שליפת דיווחים
+  - חיבור בין הקונטרולר לאפליקציה הראשית
+  - כל הנתיבים דורשים אימות
+
+  הקובץ משמש את:
+  - app.js (רושם את הראוטר)
+  - הצד הקליינט לדיווח על משתמשים
+
+  הקובץ אינו:
+  - מכיל לוגיקה - זה בקונטרולר
+*/
+
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
 const authMiddleware = require('../authMiddleware');
 
-// All routes require authentication
 router.use(authMiddleware);
 
-// Create a new report
 router.post('/report', reportController.createReport);
 
-// Get user's own reports
 router.get('/my-reports', reportController.getUserReports);
 
-// Get all reports (admin only - would need admin check)
 router.get('/all', reportController.getAllReports);
 
 module.exports = router;

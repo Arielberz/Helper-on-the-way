@@ -1,7 +1,23 @@
+/*
+  קובץ זה אחראי על:
+  - דף הרשמה למשתמשים חדשים
+  - אימות אימייל עם קוד אימות
+  - הסכמה לתנאי שימוש ומדיניות פריטיות
+  - וולידציה של פורמט טלפון ואימייל
+
+  הקובץ משמש את:
+  - משתמשים חדשים שרוצים להירשם למערכת
+  - קישור מדף ההתחברות
+
+  הקובץ אינו:
+  - מאמת אימייל בצד שרת - רק מקבל קוד
+  - מנהל פרופילים - רק יוצר
+*/
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setAuthData } from "../../utils/authUtils";
-import { API_BASE } from "../../utils/apiConfig";
+import { register as registerUser, verifyEmail as verifyEmailService } from "../../services/users.service";
 import { RegisterForm } from "./RegisterForm";
 import { EmailVerificationModal } from "./EmailVerificationModal";
 import TermsConsentModal from "../../components/TermsConsentModal/TermsConsentModal";
@@ -23,7 +39,6 @@ export default function Register() {
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   
-  // Terms consent state
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState("");
@@ -34,9 +49,7 @@ export default function Register() {
   const handleChange = (e) => {
     let value = e.target.value;
     
-    // Auto-format phone number as user types
     if (e.target.name === 'phone') {
-      // Remove all non-digit characters except +
       value = value.replace(/[^\d+]/g, '');
     }
     
@@ -59,31 +72,17 @@ export default function Register() {
     setVerificationLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/users/verify-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: registeredEmail,
-          code: verificationCode
-        }),
-      });
-
-      const data = await response.json();
+      const data = await verifyEmailService(registeredEmail, verificationCode);
 
       if (data.success) {
-        // Store token and user data
         localStorage.setItem("token", data.data.token);
         localStorage.setItem("user", JSON.stringify(data.data.user));
         if (data.data.user && data.data.user.id) {
           localStorage.setItem("userId", data.data.user.id);
         }
         
-        // Navigate to home page
         navigate("/home");
       } else {
-        // Translate error messages to Hebrew
         const serverMsg = data.message;
         let errorMessage = "אימות נכשל";
         switch (serverMsg) {
@@ -118,7 +117,6 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
-    // Validation
     if (!formData.username || !formData.phone || !formData.email || !formData.password || !formData.confirmPassword) {
       setError("כל השדות חייבים להיות מלאים");
       return;
@@ -129,13 +127,11 @@ export default function Register() {
       return;
     }
 
-    // Match backend rules: min 8 chars
     if (formData.password.length < 8) {
       setError("הסיסמה חייבת להכיל לפחות 8 תווים");
       return;
     }
 
-    // Optional client-side checks aligned with server
     const usernameOk = /^[a-z0-9_.]{3,30}$/.test(String(formData.username).trim().toLowerCase());
     if (!usernameOk) {
       setError("שם המשתמש אינו תקין (3-30 תווים, אותיות/ספרות/._)");
@@ -147,20 +143,17 @@ export default function Register() {
       return;
     }
     
-    // Validate Israeli mobile number: must start with 05 or +9725
     let phone = String(formData.phone).trim();
     if (!phone.startsWith('05') && !phone.startsWith('+9725')) {
       setError("מספר טלפון חייב להתחיל ב-05 (לדוגמה: 0521234567)");
       return;
     }
-    // Check length: 05XXXXXXXX (10 digits) or +9725XXXXXXXX (13 chars)
     if ((phone.startsWith('05') && phone.length !== 10) || 
         (phone.startsWith('+9725') && phone.length !== 13)) {
       setError("מספר טלפון נייד ישראלי חייב להכיל 10 ספרות (05XXXXXXXX)");
       return;
     }
 
-    // Show terms modal before proceeding with registration
     setShowTermsModal(true);
   };
 
@@ -173,39 +166,27 @@ export default function Register() {
     setShowTermsModal(false);
     setTermsError("");
     
-    // Now proceed with actual registration
     setLoading(true);
 
     try {
-      // Auto-convert phone to international format before sending
       let phoneToSend = formData.phone.trim();
       if (phoneToSend.startsWith('05')) {
         phoneToSend = '+972' + phoneToSend.substring(1);
       }
       
-      const response = await fetch(`${API_BASE}/api/users/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          phone: phoneToSend,
-          email: formData.email,
-          password: formData.password,
-          termsAccepted: true
-        }),
+      const data = await registerUser({
+        username: formData.username,
+        phone: phoneToSend,
+        email: formData.email,
+        password: formData.password,
+        termsAccepted: true
       });
 
-      const data = await response.json();
-
       if (data.success) {
-        // Registration successful - show verification modal
         setRegisteredEmail(formData.email);
         setShowVerification(true);
         setError("");
       } else {
-        // Translate error messages to Hebrew
         const serverMsg = data.message;
         let errorMessage = "ההרשמה נכשלה";
         switch (serverMsg) {
@@ -234,7 +215,6 @@ export default function Register() {
           case "server misconfiguration: missing JWT secret":
             errorMessage = "שגיאת שרת. נסו מאוחר יותר";
             break;
-          // Backward compatibility with old message
           case "email already in use":
             errorMessage = "האימייל כבר קיים במערכת";
             break;
@@ -270,7 +250,6 @@ export default function Register() {
         ← חזרה
       </button>
 
-      {/* Terms Consent Modal */}
       <TermsConsentModal
         isOpen={showTermsModal}
         onAccept={handleTermsAccept}
@@ -283,7 +262,6 @@ export default function Register() {
         error={termsError}
       />
 
-      {/* Verification Modal */}
       <EmailVerificationModal
         isOpen={showVerification}
         email={registeredEmail}

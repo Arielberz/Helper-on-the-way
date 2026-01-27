@@ -1,3 +1,18 @@
+/*
+  קובץ זה אחראי על:
+  - טיפול בבקשות HTTP למנהלים: ניהול משתמשים, דיווחים, סטטיסטיקות
+  - חסימת וביטול חסימת משתמשים, מחיקת משתמשים
+  - טיפול בדיווחים על משתמשים ועדכון סטטוסם
+  - לוח בקרה עם נתונים סטטיסטיים על המערכת
+
+  הקובץ משמש את:
+  - נתיב המנהל (adminRouter) עם מידלווייר מנהל
+  - פאנל מנהל בצד הקליינט
+
+  הקובץ אינו:
+  - מטפל באימות מנהלים - זה במידלווייר adminMiddleware
+*/
+
 const User = require('../models/userModel');
 const Request = require('../models/requestsModel');
 const Transaction = require('../models/transactionModel');
@@ -5,23 +20,19 @@ const Report = require('../models/reportModel');
 const sendResponse = require('../utils/sendResponse');
 const { getCommissionRatePercentage } = require('../utils/commissionUtils');
 
-// GET /api/admin/overview - Dashboard statistics
 exports.getOverview = async (req, res) => {
     try {
-        // Get counters
         const totalUsers = await User.countDocuments();
         const blockedUsers = await User.countDocuments({ isBlocked: true });
         const activeRequests = await Request.countDocuments({ status: 'active' });
         const finishedRequests = await Request.countDocuments({ status: 'finished' });
         const openReports = await Report.countDocuments({ status: { $in: ['pending', 'in_review'] } });
         
-        // Calculate total transaction volume
         const volumeResult = await Transaction.aggregate([
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
         const totalVolume = volumeResult.length > 0 ? volumeResult[0].total : 0;
 
-        // Bar chart data - Users registered per month (last 12 months)
         const twelveMonthsAgo = new Date();
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
         
@@ -44,7 +55,6 @@ exports.getOverview = async (req, res) => {
             count: item.count
         }));
 
-        // Pie chart data - Request types distribution
         const requestsByType = await Request.aggregate([
             {
                 $group: {
@@ -77,7 +87,6 @@ exports.getOverview = async (req, res) => {
     }
 };
 
-// GET /api/admin/users - Get all users with pagination
 exports.getUsers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -107,7 +116,6 @@ exports.getUsers = async (req, res) => {
     }
 };
 
-// GET /api/admin/requests - Get all requests with pagination
 exports.getRequests = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -138,7 +146,6 @@ exports.getRequests = async (req, res) => {
     }
 };
 
-// GET /api/admin/transactions - Get all transactions with pagination
 exports.getTransactions = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -168,7 +175,6 @@ exports.getTransactions = async (req, res) => {
     }
 };
 
-// GET /api/admin/reports - Get all reports with pagination
 exports.getReports = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -199,7 +205,6 @@ exports.getReports = async (req, res) => {
     }
 };
 
-// PATCH /api/admin/reports/:id - Update report status
 exports.updateReportStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -222,7 +227,6 @@ exports.updateReportStatus = async (req, res) => {
             report.reviewedAt = new Date();
         }
 
-        // If admin chooses to block the reported user
         if (blockUser && report.reportedUser) {
             const user = await User.findById(report.reportedUser._id);
             if (user && !user.isBlocked && user.role !== 'admin') {
@@ -252,25 +256,20 @@ exports.updateReportStatus = async (req, res) => {
     }
 };
 
-// GET /api/admin/stats - Additional statistics
 exports.getStats = async (req, res) => {
     try {
-        // Users by role
         const usersByRole = await User.aggregate([
             { $group: { _id: '$role', count: { $sum: 1 } } }
         ]);
 
-        // Requests by status
         const requestsByStatus = await Request.aggregate([
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
-        // Reports by status
         const reportsByStatus = await Report.aggregate([
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
-        // Average user rating
         const avgRatingResult = await User.aggregate([
             { $group: { _id: null, avgRating: { $avg: '$averageRating' } } }
         ]);
@@ -288,7 +287,6 @@ exports.getStats = async (req, res) => {
     }
 };
 
-// POST /api/admin/users/:id/block - Block a user account
 exports.blockUser = async (req, res) => {
     try {
         const { id } = req.params;
@@ -312,7 +310,6 @@ exports.blockUser = async (req, res) => {
         user.blockReason = reason || 'Violated platform terms';
         await user.save();
 
-        // If this action is related to a report, update the report
         if (reportId) {
             const report = await Report.findById(reportId);
             if (report) {
@@ -335,7 +332,6 @@ exports.blockUser = async (req, res) => {
     }
 };
 
-// POST /api/admin/users/:id/unblock - Unblock a user account
 exports.unblockUser = async (req, res) => {
     try {
         const { id } = req.params;
@@ -364,10 +360,8 @@ exports.unblockUser = async (req, res) => {
     }
 };
 
-// GET /api/admin/commission-stats - Get commission statistics
 exports.getCommissionStats = async (req, res) => {
     try {
-        // Get all transactions with commission data
         const commissionsData = await Transaction.aggregate([
             {
                 $match: {
@@ -386,7 +380,6 @@ exports.getCommissionStats = async (req, res) => {
             }
         ]);
 
-        // Commission by month (last 12 months)
         const twelveMonthsAgo = new Date();
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -424,7 +417,6 @@ exports.getCommissionStats = async (req, res) => {
             totalHelperPayouts: 0
         };
 
-        // Calculate total transaction volume (commission + helper payouts)
         const totalVolume = stats.totalCommission + stats.totalHelperPayouts;
 
         sendResponse(res, 200, true, 'Commission statistics retrieved', {

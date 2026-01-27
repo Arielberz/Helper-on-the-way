@@ -1,9 +1,25 @@
+/*
+  קובץ זה אחראי על:
+  - טבלת עסקאות ותשלומים בממשק המנהל
+  - סינון לפי סטטוס, תאריך, משתמש
+  - הצגת סכומים, עמלות, סטטוס
+
+  הקובץ משמש את:
+  - מנהלים למעקב כספי
+  - ניתוב מ-AdminLayout
+
+  הקובץ אינו:
+  - מעבד תשלומים - רק מציג
+  - משנה סטטוס עסקאות - רק צופה
+*/
+
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiFetch } from '../../utils/apiFetch';
-import { API_BASE } from '../../utils/apiConfig';
+import { useNavigate } from 'react-router-dom';
+import { getTransactions } from '../../services/admin.service';
 
 function TransactionsTable() {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,11 +34,7 @@ function TransactionsTable() {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch(`${API_BASE}/api/admin/transactions?page=${page}&limit=20`, {
-        method: 'GET',
-      });
-
-      const response = await res.json();
+      const response = await getTransactions(page, navigate);
 
       if (response.success) {
         setTransactions(response.data.transactions);
@@ -75,7 +87,7 @@ function TransactionsTable() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Transactions</h1>
@@ -83,7 +95,7 @@ function TransactionsTable() {
         </div>
       </div>
 
-      {/* Search */}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
         <input
@@ -95,7 +107,7 @@ function TransactionsTable() {
         />
       </div>
 
-      {/* Table */}
+
       <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -182,7 +194,7 @@ function TransactionsTable() {
         </div>
       </div>
 
-      {/* Pagination */}
+
       {pagination && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-400">

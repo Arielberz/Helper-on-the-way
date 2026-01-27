@@ -1,3 +1,17 @@
+/*
+  קובץ זה אחראי על:
+  - דף ביטול תשלום PayPal
+  - הודעה למשתמש שהתשלום בוטל
+  - ניתוב חזרה לצ'אט או פרופיל
+
+  הקובץ משמש את:
+  - PayPal redirect - כשמשתמש מבטל תשלום
+
+  הקובץ אינו:
+  - מבטל עסקאות בשרת - רק מודיע
+  - שומר מצב - רק דף סטטי
+*/
+
 import { useNavigate } from 'react-router-dom';
 
 export default function PayPalCancel() {

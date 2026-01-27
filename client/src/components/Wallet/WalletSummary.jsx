@@ -1,3 +1,10 @@
+/*
+  קובץ זה אחראי על:
+  - תצוגת סיכום הארנק עם היתרה והרווחים הכוללים
+  - הצגת מידע כספי בעיצוב גרדיאנט כחול
+  - רכיב משני להצגת נתוני הארנק
+*/
+
 import React from 'react';
 
 export function WalletSummary({ balance, totalEarnings }) {

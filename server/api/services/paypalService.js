@@ -1,3 +1,19 @@
+/*
+  קובץ זה אחראי על:
+  - אינטגרציה מלאה עם PayPal API
+  - יצירת וביצוע תשלומים
+  - ניהול משיכות (payouts) למסייעים
+  - קבלת טוקן גישה ואימות
+  - טיפול בשגיאות PayPal
+
+  הקובץ משמש את:
+  - paymentController.js
+
+  הקובץ אינו:
+  - מטפל בבקשות HTTP - זה בקונטרולר
+  - מעדכן יתרות ארנק - זה בקונטרולר
+*/
+
 const { agorotToIlsString, isValidAgorotAmount } = require('../utils/currencyConverter');
 
 const PAYPAL_API_BASE = process.env.PAYPAL_MODE === 'live' 
@@ -48,17 +64,7 @@ async function getAccessToken() {
     }
 }
 
-/**
- * Create PayPal order with ILS currency
- * @param {number} amountAgorot - Amount in agorot (Israeli cents)
- * @param {string} requestId - Request ID for reference
- * @param {string} description - Payment description
- * @param {string} returnUrl - URL to return after payment approval
- * @param {string} cancelUrl - URL to return on payment cancellation
- * @returns {Promise<Object>} PayPal order object
- */
 async function createPayPalOrder(amountAgorot, requestId, description = 'Helper on the Way Service', returnUrl, cancelUrl) {
-    // Validate amount
     if (!isValidAgorotAmount(amountAgorot)) {
         throw new Error('Invalid payment amount');
     }
@@ -67,7 +73,6 @@ async function createPayPalOrder(amountAgorot, requestId, description = 'Helper 
         throw new Error('Cannot create PayPal order for zero amount');
     }
 
-    // Convert to ILS string
     const ilsValue = agorotToIlsString(amountAgorot);
 
     try {
@@ -152,11 +157,6 @@ async function createPayPalOrder(amountAgorot, requestId, description = 'Helper 
     }
 }
 
-/**
- * Capture PayPal order payment
- * @param {string} orderId - PayPal order ID
- * @returns {Promise<Object>} Capture result
- */
 async function capturePayPalOrder(orderId) {
     try {
         const accessToken = await getAccessToken();
