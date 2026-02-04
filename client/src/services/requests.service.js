@@ -19,16 +19,25 @@ import { API_BASE } from '../utils/apiConfig';
 import { apiFetch } from '../utils/apiFetch';
 
 export async function createRequest(requestData, navigate) {
-  const response = await apiFetch(`${API_BASE}/api/requests`, {
-    method: 'POST',
-    body: JSON.stringify(requestData)
-  }, navigate);
+  try {
+    const response = await apiFetch(`${API_BASE}/api/requests`, {
+      method: 'POST',
+      body: JSON.stringify(requestData)
+    }, navigate);
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to create request');
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to create request');
+    }
+    return data;
+  } catch (error) {
+    // Re-throw errors that come from apiFetch (like phone verification)
+    if (error.code === 'PHONE_VERIFICATION_REQUIRED') {
+      throw error;
+    }
+    // Re-throw any other error as-is
+    throw error;
   }
-  return data;
 }
 
 

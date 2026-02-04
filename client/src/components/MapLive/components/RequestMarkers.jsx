@@ -17,6 +17,8 @@ export default function RequestMarkers({
   position,
   fetchRoute,
   openChat,
+  isPhoneVerified,
+  onVerifyPhoneClick,
 }) {
   const currentUserId = getUserId();
 
@@ -115,7 +117,21 @@ export default function RequestMarkers({
 
                   {!isMyRequest && (
                     <>
-                      {m.status === "pending" && !alreadyRequested && (
+                      {!isPhoneVerified && (
+                        <div className="popup-phone-warning">
+                          <div style={{ marginBottom: '8px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#dc2626' }}>
+                            📱 צריך לאמת מספר טלפון
+                          </div>
+                          <button
+                            onClick={onVerifyPhoneClick}
+                            className="popup-btn primary"
+                          >
+                            אמת טלפון
+                          </button>
+                        </div>
+                      )}
+                      
+                      {isPhoneVerified && m.status === "pending" && !alreadyRequested && (
                         <button
                           onClick={() => openChat(m)}
                           className="popup-btn success"

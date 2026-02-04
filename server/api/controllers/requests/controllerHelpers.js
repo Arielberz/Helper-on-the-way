@@ -54,11 +54,17 @@ function sendNotFound(res, message = 'Request not found') {
   });
 }
 
-function sendForbidden(res, message = 'Forbidden') {
-  res.status(403).json({
+function sendForbidden(res, message = 'Forbidden', data = null) {
+  const payload = {
     success: false,
     message
-  });
+  };
+
+  if (data && typeof data === 'object') {
+    Object.assign(payload, data);
+  }
+
+  res.status(403).json(payload);
 }
 
 function sendBadRequest(res, message) {

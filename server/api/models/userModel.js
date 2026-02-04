@@ -84,6 +84,13 @@ const userSchema = new Schema({
     emailVerificationExpires: {
         type: Date
     },
+    phoneVerified: {
+        type: Boolean,
+        default: false
+    },
+    phoneVerifiedAt: {
+        type: Date
+    },
     resetPasswordToken: {
         type: String
     },

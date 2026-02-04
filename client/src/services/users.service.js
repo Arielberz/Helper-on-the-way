@@ -183,3 +183,37 @@ export async function getLocationFromIP() {
   }
   return data;
 }
+
+export async function startPhoneVerification(phone, navigate) {
+  const response = await apiFetch(
+    `${API_BASE}/api/users/phone/start`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ phone })
+    },
+    navigate
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to start phone verification');
+  }
+  return data;
+}
+
+export async function checkPhoneVerification(phone, code, navigate) {
+  const response = await apiFetch(
+    `${API_BASE}/api/users/phone/check`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ phone, code })
+    },
+    navigate
+  );
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to verify phone');
+  }
+  return data;
+}

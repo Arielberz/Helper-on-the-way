@@ -73,6 +73,7 @@ export default function MapLive() {
   } = useMapLocation(mapRef);
   const [routes, setRoutes] = useState({});
   const [myActiveRequest, setMyActiveRequest] = useState(null); // User's active request (as requester or helper)
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -107,6 +108,10 @@ export default function MapLive() {
         }, []);
         
         setSharedMarkers(uniqueRequests);
+        
+        // Get current user's phone verification status
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        setIsPhoneVerified(user.phoneVerified || false);
       } catch (err) {
         if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
           return;
@@ -236,6 +241,17 @@ export default function MapLive() {
           showAlert(`✅ בקשת העזרה נשלחה! ממתין לאישור המבקש.`, { onClose: () => window.location.reload() });
           return;
         } catch (error) {
+          // Handle phone verification error
+          if (error.code === 'PHONE_VERIFICATION_REQUIRED' || 
+              error.message?.includes('Phone verification required')) {
+            showAlert(
+              `📱 צריך לאמת מספר טלפון כדי לעזור בבקשות. אנא אמת את המספר שלך.`,
+              {
+                onClose: () => navigate('/phone-verification')
+              }
+            );
+            return;
+          }
           showAlert(`❌ ${error.message || 'נכשל בשליחת בקשת העזרה'}`);
           return;
         }
@@ -315,6 +331,8 @@ export default function MapLive() {
           position={position}
           fetchRoute={fetchRoute}
           openChat={openChat}
+          isPhoneVerified={isPhoneVerified}
+          onVerifyPhoneClick={() => navigate('/phone-verification')}
         />
 
         <RoutePolylines routes={routes} />

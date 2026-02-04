@@ -45,19 +45,38 @@ export async function apiFetch(url, options = {}, navigate) {
   });
 
   if (res.status === 401 || res.status === 403) {
-    const errorData = await res.json().catch(() => ({}))
-    
-    clearAuthData()
-    
-    if (navigate) {
-      navigate("/login", { 
-        state: { 
-          message: errorData.message || "Session expired. Please login again.",
-          expired: true 
-        }
-      });
+    const errorData = await res.json().catch(() => ({}));
+    const requiresPhoneVerification = Boolean(errorData?.requirePhoneVerification);
+
+    if (res.status === 401 || (res.status === 403 && !requiresPhoneVerification)) {
+      clearAuthData();
+
+      if (navigate) {
+        navigate("/login", {
+          state: {
+            message: errorData.message || "Session expired. Please login again.",
+            expired: true
+          }
+        });
+      }
+
+      throw new Error("UNAUTHORIZED");
     }
-    
+
+    if (requiresPhoneVerification) {
+      const error = new Error(errorData.message || "Phone verification required");
+      error.code = "PHONE_VERIFICATION_REQUIRED";
+      if (navigate) {
+        navigate("/phone-verification", {
+          state: {
+            message: errorData.message || "Phone verification required",
+            requirePhoneVerification: true
+          }
+        });
+      }
+      throw error;
+    }
+
     throw new Error("UNAUTHORIZED");
   }
 

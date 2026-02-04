@@ -16,17 +16,25 @@
 */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HelpRequestModal from './HelpRequestModal';
 import { useImageUpload } from './useImageUpload';
 import { useLocation } from './useLocation';
 import { geocodeAddress, createHelpRequest, convertImageToBase64 } from './requestService';
 import { getToken } from '../../utils/authUtils';
+import { startPhoneVerification, checkPhoneVerification } from '../../services/users.service';
 
 export default function HelpButton({ onRequestCreated, onModalStateChange, fallbackLocation }) {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true); // Default to GPS location
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
+  const [phoneVerificationError, setPhoneVerificationError] = useState('');
+  const [phoneVerificationLoading, setPhoneVerificationLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState('send');
   
   const [formData, setFormData] = useState({
     problemType: 'other',
@@ -71,9 +79,67 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
     });
     setUseCurrentLocation(true);
     setErrorMessage('');
+    setShowPhoneVerification(false);
+    setPhoneVerificationError('');
+    setPhoneVerificationLoading(false);
+    setVerificationCode('');
+    setVerificationStep('send');
     resetImage();
     resetLocation();
     onModalStateChange?.(false);
+  };
+
+  const handleOpenPhoneVerification = () => {
+    handleCloseModal();
+    navigate('/phone-verification');
+  };
+
+  const handleSendVerificationCode = async () => {
+    try {
+      setPhoneVerificationError('');
+      setPhoneVerificationLoading(true);
+
+      const profile = await startPhoneVerification(null, navigate).catch((error) => {
+        throw error;
+      });
+
+      setVerificationStep('check');
+      return profile;
+    } catch (error) {
+      setPhoneVerificationError(error.message || 'שגיאה בשליחת קוד אימות');
+    } finally {
+      setPhoneVerificationLoading(false);
+    }
+  };
+
+  const handleCheckVerificationCode = async () => {
+    try {
+      setPhoneVerificationError('');
+      if (!verificationCode || verificationCode.trim().length !== 6) {
+        setPhoneVerificationError('נא להזין קוד בן 6 ספרות');
+        return;
+      }
+
+      setPhoneVerificationLoading(true);
+
+      const me = await startPhoneVerification(null, navigate);
+      const phone = me?.data?.user?.phone || me?.user?.phone;
+      if (!phone) {
+        setPhoneVerificationError('מספר טלפון לא נמצא בפרופיל');
+        return;
+      }
+
+      await checkPhoneVerification(phone, verificationCode.trim(), navigate);
+
+      setShowPhoneVerification(false);
+      setVerificationCode('');
+      setVerificationStep('send');
+      setPhoneVerificationError('');
+    } catch (error) {
+      setPhoneVerificationError(error.message || 'שגיאה באימות הטלפון');
+    } finally {
+      setPhoneVerificationLoading(false);
+    }
   };
 
   const handleLocationMethodChange = (useGPS) => {
@@ -156,12 +222,19 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
         requestData.photos = [photoData];
       }
 
-      const result = await createHelpRequest(requestData, token);
+      const result = await createHelpRequest(requestData, token, navigate);
       onRequestCreated?.(result);
       handleCloseModal();
     } catch (error) {
       console.error('Error creating request:', error);
-      setErrorMessage(error.message || 'שגיאה ביצירת בקשת עזרה. אנא נסה שוב.');
+      // Check for phone verification requirement
+      if (error.code === 'PHONE_VERIFICATION_REQUIRED' || 
+          error.message?.includes('Phone verification required')) {
+        setErrorMessage('נדרש אימות טלפון לפני יצירת בקשת עזרה.');
+        handleOpenPhoneVerification();
+      } else {
+        setErrorMessage(error.message || 'שגיאה ביצירת בקשת עזרה. אנא נסה שוב.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -212,6 +285,70 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
         onRemoveImage={handleRemoveImage}
         isSubmitting={isSubmitting}
       />
+
+      {showPhoneVerification && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md" dir="rtl">
+            <div className="text-center mb-6">
+              <div className="text-3xl mb-2">📱</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">אימות טלפון</h2>
+              <p className="text-gray-600">
+                כדי לשלוח בקשת עזרה, יש לאמת את מספר הטלפון שלך.
+              </p>
+            </div>
+
+            {phoneVerificationError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-center text-sm mb-4">
+                {phoneVerificationError}
+              </div>
+            )}
+
+            {verificationStep === 'send' ? (
+              <button
+                onClick={handleSendVerificationCode}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={phoneVerificationLoading}
+              >
+                {phoneVerificationLoading ? 'שולח קוד...' : 'שלח קוד אימות'}
+              </button>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">קוד אימות</label>
+                  <input
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none text-center text-2xl tracking-widest disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="6"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    disabled={phoneVerificationLoading}
+                    placeholder="000000"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  onClick={handleCheckVerificationCode}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={phoneVerificationLoading}
+                >
+                  {phoneVerificationLoading ? 'מאמת...' : 'אמת'}
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowPhoneVerification(false)}
+              className="mt-4 w-full text-sm text-gray-600 hover:text-gray-800"
+              disabled={phoneVerificationLoading}
+            >
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

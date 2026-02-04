@@ -30,9 +30,9 @@ export async function geocodeAddress(address) {
   }
 }
 
-export async function createHelpRequest(requestData, token) {
+export async function createHelpRequest(requestData, token, navigate) {
   try {
-    const response = await createRequest(requestData);
+    const response = await createRequest(requestData, navigate);
 
     if (!response.success) {
       throw new Error(response.message || 'Failed to create request');
@@ -40,6 +40,11 @@ export async function createHelpRequest(requestData, token) {
 
     return response.data;
   } catch (error) {
+    // Preserve phone verification errors
+    if (error.code === 'PHONE_VERIFICATION_REQUIRED') {
+      throw error;
+    }
+    
     if (error.message.includes('image is too large') || 
         error.message.includes('session has expired') ||
         error.message.includes('Server error') ||

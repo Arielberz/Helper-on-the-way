@@ -31,6 +31,7 @@ import Terms from "./pages/Terms/Terms";
 import Privacy from "./pages/Privacy/Privacy";
 import About from "./pages/About/About";
 import Contact from "./pages/Contact/Contact";
+import PhoneVerification from "./pages/PhoneVerification/PhoneVerification";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute/PublicRoute";
 import { RatingProvider } from "./context/RatingContext";
@@ -49,13 +50,17 @@ import ContactMessagesTable from "./pages/Admin/ContactMessagesTable";
 import AdminDebugPage from "./pages/Admin/AdminDebugPage";
 import ScrollToTop from "./components/ScrollToTop/ScrollToTop";
 
+// Wrapper component to ensure RatingProvider is active before GlobalRatingModal renders
+function RatingModalWrapper() {
+  return <GlobalRatingModal />;
+}
 
 function App() {
   return (
     <RatingProvider>
       <HelperRequestProvider>
         <ScrollToTop />
-        <GlobalRatingModal />
+        <RatingModalWrapper />
 
         <HelperConfirmedNotification />
         <Routes>
@@ -96,6 +101,14 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route
+          path="/phone-verification"
+          element={
+            <ProtectedRoute>
+              <PhoneVerification />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/home"
           element={

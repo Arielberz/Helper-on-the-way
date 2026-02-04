@@ -64,7 +64,7 @@ app.use((err, req, res, next) => {
 
 app.set('io', io);
 
-// Health check endpoint for verification
+
 app.get('/', (req, res) => {
     res.json({ success: true, message: 'Server is running', timestamp: new Date().toISOString() });
 });
@@ -84,7 +84,7 @@ app.use('/api/contact', contactRouter);
 
 initializeChatSockets(io);
 
-// Start server after DB connection
+
 const startServer = async () => {
     try {
         await connectDB();

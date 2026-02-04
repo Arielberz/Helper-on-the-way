@@ -15,6 +15,7 @@
 */
 
 const Request = require('../models/requestsModel');
+const User = require('../models/userModel');
 const REQUEST_STATUS = require('../constants/requestStatus');
 const { calculateETAWithDistance } = require('../utils/etaUtils');
 const requestsService = require('../services/requestsService');
@@ -39,6 +40,16 @@ exports.createRequest = async (req, res) => {
   try {
     if (!req.userId) {
       return sendUnauthorized(res);
+    }
+
+    // Check phone verification before creating request
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return sendUnauthorized(res);
+    }
+
+    if (!user.phoneVerified) {
+      return sendForbidden(res, 'Phone verification required', { requirePhoneVerification: true });
     }
 
     const { request, sanitized } = await requestsService.createRequest(req.userId, req.body);
@@ -187,6 +198,16 @@ exports.requestToHelp = async (req, res) => {
 
     if (!helperId) {
       return sendUnauthorized(res);
+    }
+
+    // Check phone verification before offering help
+    const helper = await User.findById(helperId);
+    if (!helper) {
+      return sendUnauthorized(res);
+    }
+
+    if (!helper.phoneVerified) {
+      return sendForbidden(res, 'Phone verification required', { requirePhoneVerification: true });
     }
 
     const request = await Request.findById(id).populate('user', 'username avatar');
