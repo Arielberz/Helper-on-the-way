@@ -22,7 +22,6 @@ import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Home from "./pages/home/home";
 import Chat from "./pages/chat/chat";
-import Rating from "./pages/Rating/Rating";
 import Profile from "./pages/Profile/profile";
 
 import PayPalSuccess from "./pages/PayPal/PayPalSuccess";
@@ -122,14 +121,6 @@ function App() {
           element={
             <ProtectedRoute>
               <Chat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/rating"
-          element={
-            <ProtectedRoute>
-              <Rating />
             </ProtectedRoute>
           }
         />

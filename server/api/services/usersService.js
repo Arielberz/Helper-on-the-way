@@ -144,6 +144,11 @@ async function registerUser(data) {
 
     } catch (emailError) {
         console.error('Failed to send verification email:', emailError);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('DEV EMAIL VERIFICATION CODE:', verificationCode);
+        } else {
+            throw { statusCode: 500, message: 'failed to send verification email' };
+        }
     }
 
     return { user: sanitizeUser(newUser) };
@@ -433,27 +438,31 @@ async function forgotPassword(rawEmail) {
     await user.save();
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+    const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
     
     try {
         await sendEmail({
             to: email,
             subject: 'Password Reset Request',
-            text: `You requested a password reset. Click the link below to reset your password:\n\n${resetUrl}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
+            text: `You requested a password reset. Click the link below to reset your password:\n\n${resetLink}\n\nThis link will expire in 1 hour.\n\nIf you didn't request this, please ignore this email.`,
             html: `
                 <p>You requested a password reset.</p>
                 <p>Click the link below to reset your password:</p>
-                <p><a href="${resetUrl}">${resetUrl}</a></p>
+                <p><a href="${resetLink}">${resetLink}</a></p>
                 <p>This link will expire in 1 hour.</p>
                 <p>If you didn't request this, please ignore this email.</p>
             `
         });
     } catch (emailError) {
         console.error('Failed to send password reset email:', emailError);
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        await user.save();
-        throw { statusCode: 500, message: "failed to send reset email" };
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('DEV RESET PASSWORD LINK:', resetLink);
+        } else {
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpires = undefined;
+            await user.save();
+            throw { statusCode: 500, message: "failed to send reset email" };
+        }
     }
     
     return { message: "If this email exists in our system, a reset link was sent" };
