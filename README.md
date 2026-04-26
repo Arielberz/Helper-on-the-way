@@ -153,6 +153,122 @@ See [scripts/README.md](scripts/README.md) for detailed documentation.
 - **Rating System:** Trust and reputation via user ratings
 - **Mobile Responsive:** Works on all screen sizes
 
+## 🔄 Requester Help Flow (End-to-End)
+
+### Step 1: Requester Logs In & Opens Home
+- **Frontend:** User navigates to `home.jsx` (displays `MapLive` component)
+- **Component:** `MapLive.jsx` initializes Leaflet map and fetches active requests
+- **API Call:** `GET /api/requests/active` → `requestsController.getActiveRequests()`
+
+### Step 2: Requester Creates Help Request
+- **Frontend:** User fills form in `HelpButton` component with:
+  - Problem type (`flat_tire`, `dead_battery`, etc.)
+  - Location (lat, lng, address)
+  - Description and optional payment offer
+- **Client Call:** `createRequest()` in `requests.service.js`
+- **API Endpoint:** `POST /api/requests`
+- **Backend Flow:**
+  - `requestsController.createRequest()` validates phone verification
+  - Calls `requestsService.createRequest()` which:
+    - Checks for existing open request (status `pending` or `assigned`)
+    - Creates new document in `Request` model with status `PENDING`
+    - Returns populated request with user data
+  - **Database:** Saves to MongoDB `requests` collection
+  - **Response:** Returns created request with `_id`, status, user, location, payment info
+
+### Step 3: Broadcast to Active Helpers & Map Update
+- **Backend:** `broadcastRequestAdded()` emits Socket.IO event `requestAdded`
+- **Frontend:** MapLive listens for `requestAdded` event and updates map markers
+- **Map Display:** New request appears as marker with user avatar, problem type, payment info
+
+### Step 4: Helper Discovers & Assigns to Request
+- **Frontend:** Helper sees request on map, clicks marker or list
+- **Helper Action:** Clicks "Request to Help" or assign button
+- **Client Call:** `requestHelp(requestId)` in `requests.service.js`
+- **API Endpoint:** `POST /api/requests/:id/request-help`
+- **Backend Flow:**
+  - `requestsController.requestToHelp()` validates helper is not requester
+  - Calls `requestsService.requestToHelp()` which:
+    - Adds helper to `pendingHelpers` array (with timestamp and message)
+    - Does NOT change status yet
+  - **Database:** Updates `Request` document with new helper in pending list
+  - **Response:** Returns updated request
+- **Notification:** Socket.IO notifies requester of incoming help request
+
+### Step 5: Requester Confirms Helper & Status → ASSIGNED
+- **Frontend:** Requester sees `IncomingHelpNotification` with helper details
+- **Requester Action:** Clicks "Accept" to confirm helper
+- **API Endpoint:** `POST /api/requests/:id/confirm-help`
+- **Backend Flow:**
+  - `requestsController.confirmHelp()` validates requester ownership
+  - Calls `requestsService.confirmHelp()` which:
+    - Sets `helper` field to confirmed helper ID
+    - Changes status from `PENDING` → `ASSIGNED`
+    - Clears `pendingHelpers` array
+  - **Database:** Updates `Request.helper`, `Request.status = 'assigned'`
+  - **Response:** Returns updated request
+- **Socket Broadcast:** Both parties notified via `requestAssigned` event
+- **Chat:** Conversation automatically created between requester and helper
+
+### Step 6: Helper Starts Job & Status → IN_PROGRESS
+- **Frontend:** Helper sees `HelperConfirmedNotification`
+- **Helper Action:** Clicks "Start Work"
+- **API Endpoint:** `PATCH /api/requests/:id/status` with `{ status: 'in_progress' }`
+- **Backend Flow:**
+  - `requestsController.updateRequestStatus()` validates helper ownership
+  - Sets status `ASSIGNED` → `IN_PROGRESS`
+  - Optionally sets `estimatedArrival` (ETA calculation via `etaUtils.js`)
+  - **Database:** Updates `Request.status`, `Request.updatedAt`
+  - **Response:** Returns updated request
+- **Socket Broadcast:** `requestUpdate` event notifies both parties
+- **Real-time Tracking:** Helper location updates sent via Socket.IO
+
+### Step 7: Job Completion Flow
+**Helper marks as complete:**
+- **API Endpoint:** `PATCH /api/requests/:id/status` with `{ helperCompleted: true }`
+- **Backend:**
+  - Sets `helperCompletedAt` timestamp
+  - Status remains `ASSIGNED` (awaiting requester confirmation)
+  - **Database:** Updates `Request.helperCompletedAt`
+
+**Requester confirms completion:**
+- **Frontend:** Requester sees completion dialog
+- **API Endpoint:** `PATCH /api/requests/:id/status` with `{ requesterConfirmed: true }`
+- **Backend Flow:**
+  - Validates `helperCompletedAt` exists
+  - If payment not marked as paid → Status `CONFIRMED` (pending payment)
+  - If payment paid → Status `COMPLETED`, sets `completedAt` timestamp
+  - **Database:** Updates `Request.requesterConfirmedAt`, `Request.status`, `Request.completedAt`
+  - **Response:** Returns updated request
+
+### Step 8: Optional Payment Processing
+- **Frontend:** `ChatPayment` component handles payment UI (Stripe/PayPal)
+- **API Endpoint:** `PATCH /api/requests/:id/payment` with payment details
+- **Backend Flow:**
+  - `requestsController.updatePayment()` validates permissions
+  - Updates `payment.isPaid = true` and `payment.paymentMethod`
+  - If in `CONFIRMED` status → Changes to `COMPLETED`, sets `completedAt`
+  - **Database:** Updates `Request.payment`
+  - **Response:** Returns updated request
+
+### Step 9: Rating & Feedback
+- **Frontend:** `RatingModal` component displayed for both parties
+- **API Endpoint:** `POST /api/ratings`
+- **Backend:**
+  - `ratingsController.createRating()` stores rating with:
+    - `rater` (who gave the rating)
+    - `ratee` (who is being rated)
+    - `request` (reference to request)
+    - `score` (1-5), `comment`, `categories`
+  - Updates user's `averageRating` and `ratingCount`
+  - **Database:** Saves to MongoDB `ratings` collection, updates `users` collection
+
+### Step 10: Request Lifecycle Complete
+- **Status:** Request in `COMPLETED` status
+- **Database:** All fields populated (user, helper, payment, timestamps)
+- **User Profiles:** Both users' ratings updated
+- **UI:** Request removed from active requests, archived in user history
+
 ## 📝 API Endpoints
 
 **Authentication (public):**
