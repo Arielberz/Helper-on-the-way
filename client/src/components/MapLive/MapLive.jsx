@@ -33,6 +33,7 @@ import { useAlert } from "../../context/AlertContext";
 import { fetchRouteGeometry } from "../../utils/locationUtils";
 import { getAllRequests, requestHelp } from "../../services/requests.service";
 import { getConversationByRequest } from "../../services/chat.service";
+import { getCurrentUser } from "../../services/users.service";
 
 import MapRefSetter from "./components/MapRefSetter";
 import LocationAccuracyBanner from "./components/LocationAccuracyBanner";
@@ -108,10 +109,19 @@ export default function MapLive() {
         }, []);
         
         setSharedMarkers(uniqueRequests);
-        
-        // Get current user's phone verification status
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsPhoneVerified(user.phoneVerified || false);
+
+        try {
+          const me = await getCurrentUser(navigate);
+          const freshUser = me?.data?.user || me?.user;
+          if (freshUser) {
+            setIsPhoneVerified(Boolean(freshUser.phoneVerified));
+            const stored = JSON.parse(localStorage.getItem('user') || '{}');
+            localStorage.setItem('user', JSON.stringify({ ...stored, ...freshUser }));
+          }
+        } catch {
+          const cached = JSON.parse(localStorage.getItem('user') || '{}');
+          setIsPhoneVerified(Boolean(cached.phoneVerified));
+        }
       } catch (err) {
         if (err.message === 'NO_TOKEN' || err.message === 'UNAUTHORIZED') {
           return;

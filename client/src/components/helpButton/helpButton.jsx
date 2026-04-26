@@ -131,6 +131,14 @@ export default function HelpButton({ onRequestCreated, onModalStateChange, fallb
 
       await checkPhoneVerification(phone, verificationCode.trim(), navigate);
 
+      try {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        stored.phoneVerified = true;
+        localStorage.setItem('user', JSON.stringify(stored));
+      } catch {
+        // localStorage user blob is malformed; safe to ignore
+      }
+
       setShowPhoneVerification(false);
       setVerificationCode('');
       setVerificationStep('send');

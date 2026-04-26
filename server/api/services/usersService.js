@@ -71,6 +71,7 @@ function sanitizeUser(user) {
         totalEarnings: user.totalEarnings || 0,
         totalWithdrawals: user.totalWithdrawals || 0,
         emailVerified: user.emailVerified || false,
+        phoneVerified: user.phoneVerified || false,
         role: user.role || 'user'
     };
 }

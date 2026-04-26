@@ -81,6 +81,15 @@ export default function PhoneVerification() {
       }
 
       await checkPhoneVerification(phone, code.trim(), navigate);
+
+      try {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        stored.phoneVerified = true;
+        localStorage.setItem('user', JSON.stringify(stored));
+      } catch {
+        // localStorage user blob is malformed; safe to ignore
+      }
+
       setStep('success');
     } catch (err) {
       setError(err.message || 'שגיאה באימות הטלפון');
